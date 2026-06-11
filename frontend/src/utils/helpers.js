@@ -55,6 +55,7 @@ export const CATEGORIAS_COLORES = {
   'Salud': '#D4537E', 'Educación': '#BA7517', 'Entretenimiento': '#D85A30',
   'Ropa': '#1D9E75', 'Vivienda': '#5F5E5A', 'Deudas': '#A32D2D',
 };
+
 export const fmtShort = (n) => {
   if (n === undefined || n === null) return '$0';
   const abs = Math.abs(n);
