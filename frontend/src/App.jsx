@@ -9,13 +9,14 @@ import CierreSemanal from './pages/CierreSemanal';
 import { Activos, Deudas, Metas } from './pages/Patrimonio';
 import Mental from './pages/Mental';
 import Academia from './pages/Academia';
+import Coach from './pages/Coach';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-g-50">
       <div className="text-center">
-        <div className="w-8 h-8 border-2 border-g-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <div className="w-8 h-8 border-2 border-g-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
         <p className="text-g-400 text-sm">Cargando...</p>
       </div>
     </div>
@@ -40,6 +41,7 @@ function AppRoutes() {
               <Route path="/metas"       element={<Metas />} />
               <Route path="/mental"      element={<Mental />} />
               <Route path="/academia"    element={<Academia />} />
+              <Route path="/coach"       element={<Coach />} />
               <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
