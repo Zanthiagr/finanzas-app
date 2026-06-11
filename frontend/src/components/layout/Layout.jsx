@@ -2,22 +2,23 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const NAV_DESKTOP = [
-  { to: '/',             icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
-  { to: '/movimientos',  icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
-  { to: '/cierre',       icon: 'ti-calendar-stats',   label: 'Cierre semanal', group: 'principal' },
-  { to: '/activos',      icon: 'ti-building-bank',    label: 'Activos',        group: 'patrimonio' },
-  { to: '/deudas',       icon: 'ti-credit-card',      label: 'Deudas',         group: 'patrimonio' },
-  { to: '/metas',        icon: 'ti-target',           label: 'Metas',          group: 'patrimonio' },
-  { to: '/mental',       icon: 'ti-brain',            label: 'Mentalidad',     group: 'crecimiento' },
-  { to: '/academia',     icon: 'ti-school',           label: 'Academia',       group: 'crecimiento' },
+  { to: '/',            icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
+  { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
+  { to: '/cierre',      icon: 'ti-calendar-stats',   label: 'Cierre semanal', group: 'principal' },
+  { to: '/activos',     icon: 'ti-building-bank',    label: 'Activos',        group: 'patrimonio' },
+  { to: '/deudas',      icon: 'ti-credit-card',      label: 'Deudas',         group: 'patrimonio' },
+  { to: '/metas',       icon: 'ti-target',           label: 'Metas',          group: 'patrimonio' },
+  { to: '/mental',      icon: 'ti-brain',            label: 'Mentalidad',     group: 'crecimiento' },
+  { to: '/academia',    icon: 'ti-school',           label: 'Academia',       group: 'crecimiento' },
+  { to: '/coach',       icon: 'ti-robot',            label: 'Coach IA',       group: 'crecimiento' },
 ];
 
 const NAV_MOBILE = [
   { to: '/',            icon: 'ti-layout-dashboard', label: 'Inicio' },
-  { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Movimientos' },
+  { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Gastos' },
+  { to: '/coach',       icon: 'ti-robot',            label: 'Coach' },
   { to: '/mental',      icon: 'ti-brain',            label: 'Mente' },
-  { to: '/academia',    icon: 'ti-school',           label: 'Academia' },
-  { to: '/metas',       icon: 'ti-target',           label: 'Metas' },
+  { to: '/academia',    icon: 'ti-school',           label: 'Aprender' },
 ];
 
 const groups = [
@@ -35,24 +36,25 @@ const PAGE_TITLES = {
   '/metas':        'Metas',
   '/mental':       'Mentalidad',
   '/academia':     'Academia',
+  '/coach':        'Coach IA',
 };
 
 export default function Layout({ children }) {
   const { user, perfil, logout } = useAuth();
-  const navigate   = useNavigate();
-  const location   = useLocation();
-  const initials   = (perfil?.nombre || user?.user_metadata?.full_name || 'U')
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const initials  = (perfil?.nombre || user?.user_metadata?.full_name || 'U')
     .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const pageTitle  = PAGE_TITLES[location.pathname] || 'Fintual';
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Fintual';
 
   return (
     <div className="flex h-screen overflow-hidden">
 
-      {/* ── SIDEBAR DESKTOP ── */}
+      {/* Sidebar desktop */}
       <aside className="hidden md:flex w-52 flex-shrink-0 bg-g-800 flex-col">
         <div className="px-5 py-5 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-gold" />
+            <div className="w-2 h-2 rounded-full bg-gold"/>
             <span className="text-white font-medium text-base tracking-tight">Fintual</span>
           </div>
           <p className="text-white/30 text-[10px] mt-0.5 ml-4">Tu camino a la libertad</p>
@@ -66,9 +68,13 @@ export default function Layout({ children }) {
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-5 py-2 text-[13px] transition-all border-l-2 ${
                       isActive ? 'text-white bg-gold/10 border-gold'
-                               : 'text-white/55 border-transparent hover:text-white/85 hover:bg-white/5'}`}>
-                  <i className={`ti ${n.icon} text-base`} />
+                               : 'text-white/55 border-transparent hover:text-white/85 hover:bg-white/5'
+                    }`}>
+                  <i className={`ti ${n.icon} text-base`}/>
                   {n.label}
+                  {n.to === '/coach' && (
+                    <span className="ml-auto text-[9px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full">IA</span>
+                  )}
                 </NavLink>
               ))}
             </div>
@@ -84,13 +90,13 @@ export default function Layout({ children }) {
               <p className="text-white/35 text-[10px]">{perfil?.puntos_xp || 0} XP</p>
             </div>
             <button onClick={() => { logout(); navigate('/login'); }} className="text-white/30 hover:text-white/70 transition-colors">
-              <i className="ti ti-logout text-sm" />
+              <i className="ti ti-logout text-sm"/>
             </button>
           </div>
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Topbar desktop */}
@@ -126,18 +132,18 @@ export default function Layout({ children }) {
           {children}
         </main>
 
-        {/* ── BOTTOM NAV MÓVIL ── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50">
+        {/* Bottom nav móvil */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50 safe-area-bottom">
           <div className="flex items-center">
             {NAV_MOBILE.map((n, i) => {
               const isCenter = i === 2;
               if (isCenter) return (
                 <div key={n.to} className="flex-1 flex justify-center -mt-5">
-                  <NavLink to={n.to} end={n.to === '/'}
+                  <NavLink to={n.to}
                     className={({ isActive }) =>
                       `w-14 h-14 rounded-full flex flex-col items-center justify-center shadow-lg transition-all ${
-                        isActive ? 'bg-g-700 text-white' : 'bg-g-800 text-white/80'}`}>
-                    <i className={`ti ${n.icon} text-xl`} />
+                        isActive ? 'bg-gold text-g-900' : 'bg-g-800 text-white'}`}>
+                    <i className={`ti ${n.icon} text-xl`}/>
                   </NavLink>
                 </div>
               );
@@ -146,7 +152,7 @@ export default function Layout({ children }) {
                   className={({ isActive }) =>
                     `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                       isActive ? 'text-g-700' : 'text-g-400'}`}>
-                  <i className={`ti ${n.icon} text-xl`} />
+                  <i className={`ti ${n.icon} text-xl`}/>
                   <span className="text-[9px] font-medium">{n.label}</span>
                 </NavLink>
               );
@@ -154,12 +160,11 @@ export default function Layout({ children }) {
           </div>
         </nav>
 
-        {/* FAB móvil - registrar movimiento rápido */}
-        {location.pathname !== '/movimientos' && (
-          <button
-            onClick={() => navigate('/movimientos')}
+        {/* FAB móvil */}
+        {location.pathname !== '/movimientos' && location.pathname !== '/coach' && (
+          <button onClick={() => navigate('/movimientos')}
             className="md:hidden fixed bottom-20 right-4 w-12 h-12 rounded-full bg-g-700 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform">
-            <i className="ti ti-plus text-xl" />
+            <i className="ti ti-plus text-xl"/>
           </button>
         )}
       </div>
