@@ -5,6 +5,7 @@ const NAV_DESKTOP = [
   { to: '/',            icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
   { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
   { to: '/cierre',      icon: 'ti-calendar-stats',   label: 'Cierre semanal', group: 'principal' },
+  { to: '/reporte',     icon: 'ti-file-download',    label: 'Reporte PDF',    group: 'principal' },
   { to: '/activos',     icon: 'ti-building-bank',    label: 'Activos',        group: 'patrimonio' },
   { to: '/deudas',      icon: 'ti-credit-card',      label: 'Deudas',         group: 'patrimonio' },
   { to: '/metas',       icon: 'ti-target',           label: 'Metas',          group: 'patrimonio' },
@@ -31,6 +32,7 @@ const PAGE_TITLES = {
   '/':             'Resumen',
   '/movimientos':  'Movimientos',
   '/cierre':       'Cierre semanal',
+  '/reporte':      'Reporte PDF',
   '/activos':      'Activos',
   '/deudas':       'Deudas',
   '/metas':        'Metas',
@@ -67,8 +69,9 @@ export default function Layout({ children }) {
                 <NavLink key={n.to} to={n.to} end={n.to === '/'}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-5 py-2 text-[13px] transition-all border-l-2 ${
-                      isActive ? 'text-white bg-gold/10 border-gold'
-                               : 'text-white/55 border-transparent hover:text-white/85 hover:bg-white/5'
+                      isActive
+                        ? 'text-white bg-gold/10 border-gold'
+                        : 'text-white/55 border-transparent hover:text-white/85 hover:bg-white/5'
                     }`}>
                   <i className={`ti ${n.icon} text-base`}/>
                   {n.label}
@@ -133,7 +136,7 @@ export default function Layout({ children }) {
         </main>
 
         {/* Bottom nav móvil */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50 safe-area-bottom">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50">
           <div className="flex items-center">
             {NAV_MOBILE.map((n, i) => {
               const isCenter = i === 2;
@@ -161,7 +164,7 @@ export default function Layout({ children }) {
         </nav>
 
         {/* FAB móvil */}
-        {location.pathname !== '/movimientos' && location.pathname !== '/coach' && (
+        {!['/movimientos', '/coach', '/reporte'].includes(location.pathname) && (
           <button onClick={() => navigate('/movimientos')}
             className="md:hidden fixed bottom-20 right-4 w-12 h-12 rounded-full bg-g-700 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform">
             <i className="ti ti-plus text-xl"/>
