@@ -10,6 +10,7 @@ import { Activos, Deudas, Metas } from './pages/Patrimonio';
 import Mental from './pages/Mental';
 import Academia from './pages/Academia';
 import Coach from './pages/Coach';
+import Reporte from './pages/Reporte';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -42,6 +43,7 @@ function AppRoutes() {
               <Route path="/mental"      element={<Mental />} />
               <Route path="/academia"    element={<Academia />} />
               <Route path="/coach"       element={<Coach />} />
+              <Route path="/reporte"     element={<Reporte />} />
               <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
