@@ -1,4 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 const NAV_DESKTOP = [
@@ -14,12 +15,22 @@ const NAV_DESKTOP = [
   { to: '/coach',       icon: 'ti-robot',            label: 'Coach IA',       group: 'crecimiento' },
 ];
 
-const NAV_MOBILE = [
+// Tabs principales móvil — los 4 más usados + "Más"
+const NAV_MOBILE_MAIN = [
   { to: '/',            icon: 'ti-layout-dashboard', label: 'Inicio' },
   { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Gastos' },
   { to: '/coach',       icon: 'ti-robot',            label: 'Coach' },
   { to: '/mental',      icon: 'ti-brain',            label: 'Mente' },
-  { to: '/academia',    icon: 'ti-school',           label: 'Aprender' },
+];
+
+// Secciones en el menú "Más"
+const NAV_MOBILE_MAS = [
+  { to: '/academia',    icon: 'ti-school',           label: 'Academia',       color: '#BA7517', bg: '#FAEEDA' },
+  { to: '/metas',       icon: 'ti-target',           label: 'Metas',          color: '#0F6E56', bg: '#E1F5EE' },
+  { to: '/cierre',      icon: 'ti-calendar-stats',   label: 'Cierre semanal', color: '#2D6B4A', bg: '#EDFAF3' },
+  { to: '/activos',     icon: 'ti-building-bank',    label: 'Activos',        color: '#185FA5', bg: '#E6F1FB' },
+  { to: '/deudas',      icon: 'ti-credit-card',      label: 'Deudas',         color: '#A32D2D', bg: '#FCEBEB' },
+  { to: '/reporte',     icon: 'ti-file-download',    label: 'Reporte PDF',    color: '#534AB7', bg: '#EEEDFE' },
 ];
 
 const groups = [
@@ -43,16 +54,26 @@ const PAGE_TITLES = {
 
 export default function Layout({ children }) {
   const { user, perfil, logout } = useAuth();
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const [masOpen, setMasOpen] = useState(false);
+
   const initials  = (perfil?.nombre || user?.user_metadata?.full_name || 'U')
     .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const pageTitle = PAGE_TITLES[location.pathname] || 'Fintual';
 
+  // Saber si la página actual está en el menú "Más"
+  const enMenuMas = NAV_MOBILE_MAS.some(n => n.to === location.pathname);
+
+  const irA = (to) => {
+    setMasOpen(false);
+    navigate(to);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
 
-      {/* Sidebar desktop */}
+      {/* ── SIDEBAR DESKTOP ── */}
       <aside className="hidden md:flex w-52 flex-shrink-0 bg-g-800 flex-col">
         <div className="px-5 py-5 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -92,14 +113,14 @@ export default function Layout({ children }) {
               <p className="text-white/80 text-xs font-medium truncate">{perfil?.nombre || user?.user_metadata?.full_name}</p>
               <p className="text-white/35 text-[10px]">{perfil?.puntos_xp || 0} XP</p>
             </div>
-            <button onClick={() => { logout(); navigate('/login'); }} className="text-white/30 hover:text-white/70 transition-colors">
+            <button onClick={() => { logout(); navigate('/login'); }} className="text-white/30 hover:text-white/70">
               <i className="ti ti-logout text-sm"/>
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* ── MAIN ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Topbar desktop */}
@@ -135,10 +156,45 @@ export default function Layout({ children }) {
           {children}
         </main>
 
-        {/* Bottom nav móvil */}
+        {/* ── MENÚ MÁS (sheet desde abajo) ── */}
+        {masOpen && (
+          <>
+            {/* Overlay */}
+            <div className="md:hidden fixed inset-0 bg-black/40 z-40" onClick={() => setMasOpen(false)}/>
+            {/* Sheet */}
+            <div className="md:hidden fixed bottom-16 left-0 right-0 bg-white rounded-t-2xl z-50 p-5 shadow-2xl">
+              <div className="flex justify-center mb-4">
+                <div className="w-10 h-1 rounded-full bg-g-200"/>
+              </div>
+              <p className="text-xs text-g-400 uppercase tracking-widest mb-3">Más secciones</p>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {NAV_MOBILE_MAS.map(n => (
+                  <button key={n.to} onClick={() => irA(n.to)}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all active:scale-95 ${
+                      location.pathname === n.to ? 'ring-2 ring-g-400' : ''
+                    }`}
+                    style={{ background: n.bg }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ background: n.color + '20' }}>
+                      <i className={`ti ${n.icon} text-lg`} style={{ color: n.color }}/>
+                    </div>
+                    <span className="text-xs font-medium text-g-800">{n.label}</span>
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
+                <i className="ti ti-logout text-sm"/>
+                Cerrar sesión
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── BOTTOM NAV MÓVIL ── */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50">
           <div className="flex items-center">
-            {NAV_MOBILE.map((n, i) => {
+            {NAV_MOBILE_MAIN.map((n, i) => {
               const isCenter = i === 2;
               if (isCenter) return (
                 <div key={n.to} className="flex-1 flex justify-center -mt-5">
@@ -160,11 +216,19 @@ export default function Layout({ children }) {
                 </NavLink>
               );
             })}
+
+            {/* Tab "Más" */}
+            <button onClick={() => setMasOpen(!masOpen)}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
+                enMenuMas || masOpen ? 'text-g-700' : 'text-g-400'}`}>
+              <i className={`ti ${masOpen ? 'ti-x' : 'ti-dots'} text-xl`}/>
+              <span className="text-[9px] font-medium">{masOpen ? 'Cerrar' : 'Más'}</span>
+            </button>
           </div>
         </nav>
 
         {/* FAB móvil */}
-        {!['/movimientos', '/coach', '/reporte'].includes(location.pathname) && (
+        {!['/movimientos', '/coach', '/reporte'].includes(location.pathname) && !masOpen && (
           <button onClick={() => navigate('/movimientos')}
             className="md:hidden fixed bottom-20 right-4 w-12 h-12 rounded-full bg-g-700 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform">
             <i className="ti ti-plus text-xl"/>
