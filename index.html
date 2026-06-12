@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fintual — Tu camino a la libertad financiera</title>
+  <meta name="description" content="La app que transforma tu relación con el dinero. Control de finanzas, coach IA, academia financiera y reprogramación mental. Todo en un solo lugar."/>
+  <meta property="og:title" content="Fintual — Tu camino a la libertad financiera"/>
+  <meta property="og:description" content="No es una app de finanzas. Es tu camino a la libertad."/>
+  <meta property="og:type" content="website"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --g900: #0F2318; --g800: #1A3A2A; --g700: #225038;
+      --g600: #2D6B4A; --g400: #4A9E72; --g200: #9ED4B8; --g50: #EDFAF3;
+      --gold: #C9A84C; --gold-light: #F5E8C0;
+      --bg: #F2F5F2;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #fff; color: var(--g900); overflow-x: hidden; }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.85);
+      border-bottom: 0.5px solid rgba(26,58,42,0.08);
+      transition: all 0.3s;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+    .nav-name { font-size: 18px; font-weight: 600; color: var(--g900); }
+    .nav-links { display: flex; align-items: center; gap: 2rem; }
+    .nav-links a { font-size: 14px; color: var(--g600); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--g900); }
+    .nav-cta {
+      background: var(--g800); color: #fff; font-size: 13px; font-weight: 500;
+      padding: 8px 20px; border-radius: 10px; text-decoration: none;
+      transition: background 0.2s; white-space: nowrap;
+    }
+    .nav-cta:hover { background: var(--g900); }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--g900) 0%, #0D3020 40%, #1A4535 70%, #0F2318 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 7rem 1.5rem 4rem; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.15) 0%, transparent 60%),
+                  radial-gradient(ellipse 60% 40% at 80% 80%, rgba(74,158,114,0.1) 0%, transparent 50%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(201,168,76,0.15); border: 0.5px solid rgba(201,168,76,0.3);
+      color: var(--gold); font-size: 12px; font-weight: 500;
+      padding: 6px 14px; border-radius: 20px; margin-bottom: 2rem;
+      position: relative; z-index: 1;
+      animation: fadeUp 0.6s ease;
+    }
+    .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 7vw, 5rem); font-weight: 700; color: #fff;
+      line-height: 1.1; letter-spacing: -2px; margin-bottom: 1.5rem;
+      position: relative; z-index: 1;
+      animation: fadeUp 0.6s ease 0.1s both;
+    }
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--gold) 0%, #E8C85A 50%, var(--gold) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.25rem); color: rgba(255,255,255,0.55);
+      max-width: 560px; line-height: 1.7; margin-bottom: 2.5rem;
+      position: relative; z-index: 1;
+      animation: fadeUp 0.6s ease 0.2s both;
+    }
+    .hero-btns {
+      display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+      position: relative; z-index: 1;
+      animation: fadeUp 0.6s ease 0.3s both;
+    }
+    .btn-hero-primary {
+      background: var(--gold); color: var(--g900); font-size: 15px; font-weight: 600;
+      padding: 14px 32px; border-radius: 12px; text-decoration: none;
+      transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-hero-primary:hover { background: #D4A83E; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(201,168,76,0.3); }
+    .btn-hero-secondary {
+      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); font-size: 15px;
+      padding: 14px 28px; border-radius: 12px; text-decoration: none; border: 0.5px solid rgba(255,255,255,0.15);
+      transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-hero-secondary:hover { background: rgba(255,255,255,0.14); }
+
+    .hero-stats {
+      display: flex; gap: 3rem; margin-top: 4rem; flex-wrap: wrap; justify-content: center;
+      position: relative; z-index: 1;
+      animation: fadeUp 0.6s ease 0.4s both;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 700; color: #fff; }
+    .stat-label { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+    /* Floating cards en hero */
+    .hero-cards {
+      position: absolute; bottom: -2rem; left: 50%; transform: translateX(-50%);
+      width: min(900px, 95vw); display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      z-index: 2;
+    }
+    .hero-card {
+      background: rgba(255,255,255,0.06); backdrop-filter: blur(20px);
+      border: 0.5px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 1.25rem;
+      animation: fadeUp 0.6s ease 0.5s both;
+    }
+    .hero-card-icon { font-size: 1.5rem; margin-bottom: 8px; }
+    .hero-card-title { font-size: 13px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+    .hero-card-sub { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+    /* SECTIONS */
+    section { padding: 6rem 1.5rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-tag {
+      display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+      color: var(--g600); background: var(--g50); border: 0.5px solid var(--g200);
+      padding: 4px 12px; border-radius: 20px; margin-bottom: 1rem; font-weight: 500;
+    }
+    .section-title { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 700; color: var(--g900); line-height: 1.2; margin-bottom: 1rem; letter-spacing: -1px; }
+    .section-sub { font-size: 1.1rem; color: #4A6357; line-height: 1.7; max-width: 560px; }
+
+    /* PROBLEMA */
+    .problema { background: var(--bg); }
+    .problema-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .problema-card {
+      background: #fff; border: 0.5px solid rgba(26,58,42,0.08); border-radius: 16px; padding: 1.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .problema-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(26,58,42,0.08); }
+    .problema-card-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+    .problema-card h3 { font-size: 16px; font-weight: 600; color: var(--g900); margin-bottom: 8px; }
+    .problema-card p { font-size: 14px; color: #4A6357; line-height: 1.6; }
+
+    /* FEATURES */
+    .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-top: 4rem; }
+    .features-list { display: flex; flex-direction: column; gap: 1.5rem; }
+    .feature-item { display: flex; gap: 1rem; align-items: flex-start; }
+    .feature-ico {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+    .feature-title { font-size: 16px; font-weight: 600; color: var(--g900); margin-bottom: 4px; }
+    .feature-desc { font-size: 14px; color: #4A6357; line-height: 1.6; }
+
+    .app-mockup {
+      background: var(--g800); border-radius: 24px; padding: 1.5rem;
+      box-shadow: 0 40px 80px rgba(15,35,24,0.3); position: relative;
+    }
+    .mockup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .mockup-title { color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .mockup-score { font-size: 2.5rem; font-weight: 700; color: #fff; }
+    .mockup-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 20px; overflow: hidden; margin-bottom: 1.5rem; }
+    .mockup-bar-fill { height: 100%; width: 72%; background: linear-gradient(90deg, var(--gold), var(--g400)); border-radius: 20px; }
+    .mockup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mockup-kpi { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; }
+    .mockup-kpi-label { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .mockup-kpi-val { font-size: 16px; font-weight: 600; color: #fff; }
+    .mockup-tx { margin-top: 12px; background: rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; }
+    .mockup-tx-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 0.5px solid rgba(255,255,255,0.06); }
+    .mockup-tx-row:last-child { border: none; }
+    .mockup-tx-name { font-size: 12px; color: rgba(255,255,255,0.7); }
+    .mockup-tx-pos { font-size: 12px; font-weight: 500; color: var(--g200); }
+    .mockup-tx-neg { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.6); }
+
+    /* PILARES */
+    .pilares { background: var(--g900); }
+    .pilares .section-title { color: #fff; }
+    .pilares .section-sub { color: rgba(255,255,255,0.5); }
+    .pilares-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .pilar {
+      background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 1.5rem; transition: all 0.3s;
+    }
+    .pilar:hover { background: rgba(255,255,255,0.08); transform: translateY(-4px); }
+    .pilar-num { font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; font-weight: 500; }
+    .pilar-icon { font-size: 1.75rem; margin-bottom: 12px; }
+    .pilar-title { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+    .pilar-desc { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.6; }
+
+    /* TESTIMONIOS */
+    .testimonios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .testimonio {
+      background: #fff; border: 0.5px solid rgba(26,58,42,0.1); border-radius: 16px; padding: 1.5rem;
+    }
+    .testimonio-estrellas { color: var(--gold); font-size: 14px; margin-bottom: 12px; letter-spacing: 2px; }
+    .testimonio-texto { font-size: 14px; color: #0F2318; line-height: 1.7; margin-bottom: 16px; font-style: italic; }
+    .testimonio-autor { display: flex; align-items: center; gap: 10px; }
+    .testimonio-avatar {
+      width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0;
+    }
+    .testimonio-nombre { font-size: 13px; font-weight: 600; color: var(--g900); }
+    .testimonio-cargo { font-size: 12px; color: #8AA398; }
+
+    /* PRECIO */
+    .precio { background: var(--bg); }
+    .precio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 700px; margin: 3rem auto 0; }
+    .plan {
+      background: #fff; border: 0.5px solid rgba(26,58,42,0.1); border-radius: 20px; padding: 2rem;
+    }
+    .plan.destacado {
+      background: var(--g800); border-color: var(--g600);
+      box-shadow: 0 20px 60px rgba(26,58,42,0.2);
+    }
+    .plan-tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem; }
+    .plan-precio { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .plan-periodo { font-size: 13px; margin-bottom: 1.5rem; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 2rem; }
+    .plan-feature { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .plan-btn {
+      display: block; text-align: center; padding: 12px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; text-decoration: none; transition: all 0.2s;
+    }
+
+    /* CTA FINAL */
+    .cta-final {
+      background: linear-gradient(135deg, var(--g900) 0%, #1A4535 50%, var(--g900) 100%);
+      text-align: center; position: relative; overflow: hidden;
+    }
+    .cta-final::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(201,168,76,0.12) 0%, transparent 70%);
+    }
+    .cta-final h2 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; color: #fff; margin-bottom: 1rem; letter-spacing: -1px; position: relative; z-index: 1; }
+    .cta-final p { font-size: 1.1rem; color: rgba(255,255,255,0.5); margin-bottom: 2.5rem; position: relative; z-index: 1; }
+
+    /* FOOTER */
+    footer {
+      background: var(--g900); padding: 3rem 1.5rem 2rem;
+    }
+    .footer-inner { max-width: 1100px; margin: 0 auto; }
+    .footer-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 2rem; margin-bottom: 3rem; }
+    .footer-brand p { font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 8px; max-width: 240px; line-height: 1.6; }
+    .footer-links h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.3); margin-bottom: 12px; font-weight: 500; }
+    .footer-links a { display: block; font-size: 13px; color: rgba(255,255,255,0.55); text-decoration: none; margin-bottom: 8px; transition: color 0.2s; }
+    .footer-links a:hover { color: #fff; }
+    .footer-bottom { border-top: 0.5px solid rgba(255,255,255,0.06); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .footer-bottom p { font-size: 12px; color: rgba(255,255,255,0.25); }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      nav { padding: 1rem; }
+      .nav-links { display: none; }
+      .hero-cards { display: none; }
+      .features-grid { grid-template-columns: 1fr; }
+      .precio-grid { grid-template-columns: 1fr; }
+      .hero-stats { gap: 2rem; }
+      .stat-num { font-size: 1.5rem; }
+    }
+
+    /* ANIMACIÓN SCROLL */
+    .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <div class="nav-dot"></div>
+    <span class="nav-name">Fintual</span>
+  </a>
+  <div class="nav-links">
+    <a href="#como-funciona">Cómo funciona</a>
+    <a href="#pilares">Características</a>
+    <a href="#precio">Precios</a>
+  </div>
+  <a href="APP_URL_AQUI" class="nav-cta">Empezar gratis →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <div class="hero-badge-dot"></div>
+    La app que cambia tu relación con el dinero
+  </div>
+  <h1>No es una app<br/>de finanzas.<br/><span>Es tu libertad.</span></h1>
+  <p class="hero-sub">
+    Controla cada peso, aprende lo que nadie te enseñó, y transforma tu mentalidad.
+    Para personas que ya decidieron crecer — sin importar desde dónde empiecen.
+  </p>
+  <div class="hero-btns">
+    <a href="APP_URL_AQUI" class="btn-hero-primary">
+      <i class="ti ti-rocket"></i> Empieza gratis hoy
+    </a>
+    <a href="#como-funciona" class="btn-hero-secondary">
+      <i class="ti ti-play"></i> Ver cómo funciona
+    </a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">5 min</div><div class="stat-label">Para empezar</div></div>
+    <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Gratis para empezar</div></div>
+    <div class="stat"><div class="stat-num">∞</div><div class="stat-label">Sin límite de datos</div></div>
+  </div>
+</section>
+
+<!-- PROBLEMA -->
+<section class="problema" style="padding-top: 8rem;">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-tag">El problema</span>
+      <h2 class="section-title">¿Te suena familiar?</h2>
+      <p class="section-sub">La mayoría de personas no tiene problemas de dinero — tiene problemas de información y hábitos.</p>
+    </div>
+    <div class="problema-grid">
+      <div class="problema-card reveal">
+        <div class="problema-card-icon">😰</div>
+        <h3>El dinero se acaba y no sabes dónde</h3>
+        <p>A fin de mes no sabes en qué gastaste. El dinero simplemente desaparece sin explicación.</p>
+      </div>
+      <div class="problema-card reveal">
+        <div class="problema-card-icon">📊</div>
+        <h3>Excel se vuelve aburrido y lo abandoans</h3>
+        <p>Empiezas con buenas intenciones pero en semanas el archivo queda abandonado en el escritorio.</p>
+      </div>
+      <div class="problema-card reveal">
+        <div class="problema-card-icon">🧠</div>
+        <h3>Sabes que debes ahorrar pero no lo haces</h3>
+        <p>El problema no es de voluntad — es de hábitos y de no saber exactamente cuánto ni cómo.</p>
+      </div>
+      <div class="problema-card reveal">
+        <div class="problema-card-icon">💳</div>
+        <h3>Las deudas no bajan nunca</h3>
+        <p>Pagas el mínimo mes a mes sin saber que así nunca terminas de pagar la deuda real.</p>
+      </div>
+      <div class="problema-card reveal">
+        <div class="problema-card-icon">😶</div>
+        <h3>No sabes nada de inversiones</h3>
+        <p>Escuchas de CDTs, fondos y acciones pero no tienes ni idea por dónde empezar con lo poco que tienes.</p>
+      </div>
+      <div class="problema-card reveal">
+        <div class="problema-card-icon">🔄</div>
+        <h3>El ciclo se repite mes a mes</h3>
+        <p>Enero prometes cambiar. En marzo estás igual. No es tu culpa — no tienes el sistema correcto.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section id="como-funciona">
+  <div class="container">
+    <div class="reveal" style="text-align:center; margin-bottom: 1rem;">
+      <span class="section-tag">La solución</span>
+      <h2 class="section-title">Todo lo que necesitas<br/>en un solo lugar</h2>
+    </div>
+    <div class="features-grid reveal">
+      <div class="features-list">
+        <div class="feature-item">
+          <div class="feature-ico" style="background:#EDFAF3; color:#2D6B4A;">
+            <i class="ti ti-chart-line"></i>
+          </div>
+          <div>
+            <div class="feature-title">Control total de tus finanzas</div>
+            <div class="feature-desc">Registra ingresos y gastos en segundos. Ve tu balance real, categorías, tendencias y salud financiera de un vistazo.</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-ico" style="background:#FAEEDA; color:#BA7517;">
+            <i class="ti ti-calendar-check"></i>
+          </div>
+          <div>
+            <div class="feature-title">Cierre semanal guiado</div>
+            <div class="feature-desc">Cada semana revisas y reflexionas. La constancia es lo que genera el cambio real y duradero.</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-ico" style="background:#EEEDFE; color:#534AB7;">
+            <i class="ti ti-brain"></i>
+          </div>
+          <div>
+            <div class="feature-title">Reprogramación mental</div>
+            <div class="feature-desc">Hábitos diarios, frases, afirmaciones y un diario financiero. Porque el dinero empieza en la mente.</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-ico" style="background:#E6F1FB; color:#185FA5;">
+            <i class="ti ti-robot"></i>
+          </div>
+          <div>
+            <div class="feature-title">Coach IA personalizado</div>
+            <div class="feature-desc">Una inteligencia artificial que lee tus datos reales y te da consejos específicos para tu situación. No genérico — tuyo.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-mockup reveal">
+        <div class="mockup-header">
+          <div>
+            <div class="mockup-title">Salud financiera</div>
+            <div class="mockup-score">72 <span style="font-size:1rem;color:rgba(255,255,255,0.3)">/ 100</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Balance neto</div>
+            <div style="font-size:18px;font-weight:600;color:#9ED4B8;">+$1.220.000</div>
+          </div>
+        </div>
+        <div class="mockup-bar"><div class="mockup-bar-fill"></div></div>
+        <div class="mockup-grid">
+          <div class="mockup-kpi">
+            <div class="mockup-kpi-label">Ingresos</div>
+            <div class="mockup-kpi-val" style="color:#9ED4B8;">$4.200.000</div>
+          </div>
+          <div class="mockup-kpi">
+            <div class="mockup-kpi-label">Gastos</div>
+            <div class="mockup-kpi-val">$2.980.000</div>
+          </div>
+          <div class="mockup-kpi">
+            <div class="mockup-kpi-label">Deuda activa</div>
+            <div class="mockup-kpi-val" style="color:#F87171;">$3.500.000</div>
+          </div>
+          <div class="mockup-kpi">
+            <div class="mockup-kpi-label">Meta ahorro</div>
+            <div class="mockup-kpi-val" style="color:#C9A84C;">68%</div>
+          </div>
+        </div>
+        <div class="mockup-tx">
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Últimos movimientos</div>
+          <div class="mockup-tx-row"><span class="mockup-tx-name">Salario</span><span class="mockup-tx-pos">+$4.200.000</span></div>
+          <div class="mockup-tx-row"><span class="mockup-tx-name">Éxito · mercado</span><span class="mockup-tx-neg">-$185.000</span></div>
+          <div class="mockup-tx-row"><span class="mockup-tx-name">Recarga Mío</span><span class="mockup-tx-neg">-$50.000</span></div>
+          <div class="mockup-tx-row"><span class="mockup-tx-name">EPM Internet</span><span class="mockup-tx-neg">-$92.000</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PILARES -->
+<section class="pilares" id="pilares">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-tag" style="background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.2);color:var(--gold);">Los 5 pilares</span>
+      <h2 class="section-title">Diseñado para transformarte,<br/>no solo para organizarte</h2>
+      <p class="section-sub" style="color:rgba(255,255,255,0.5);">Cada sección fue pensada para llevarte de donde estás hoy a donde quieres estar.</p>
+    </div>
+    <div class="pilares-grid">
+      <div class="pilar reveal">
+        <div class="pilar-num">01</div>
+        <div class="pilar-icon">📊</div>
+        <div class="pilar-title">Control financiero</div>
+        <div class="pilar-desc">Ingresos, gastos, deudas, activos y cierres semanales. Tu dinero bajo control real.</div>
+      </div>
+      <div class="pilar reveal">
+        <div class="pilar-num">02</div>
+        <div class="pilar-icon">🧠</div>
+        <div class="pilar-title">Reprogramación mental</div>
+        <div class="pilar-desc">Hábitos, creencias, afirmaciones y diario. La riqueza empieza en la mente.</div>
+      </div>
+      <div class="pilar reveal">
+        <div class="pilar-num">03</div>
+        <div class="pilar-icon">🎓</div>
+        <div class="pilar-title">Academia financiera</div>
+        <div class="pilar-desc">Tarjetas, deuda buena y mala, inversiones y más. Todo lo que necesitabas saber.</div>
+      </div>
+      <div class="pilar reveal">
+        <div class="pilar-num">04</div>
+        <div class="pilar-icon">🎯</div>
+        <div class="pilar-title">Metas y libertad</div>
+        <div class="pilar-desc">Visualiza y persigue tus metas de ahorro. Tu yo futuro te lo agradecerá.</div>
+      </div>
+      <div class="pilar reveal">
+        <div class="pilar-num">05</div>
+        <div class="pilar-icon">🤖</div>
+        <div class="pilar-title">Coach IA personal</div>
+        <div class="pilar-desc">Un coach que conoce tus datos reales y te acompaña 24/7 sin juzgarte.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIOS -->
+<section>
+  <div class="container">
+    <div class="reveal" style="text-align:center;">
+      <span class="section-tag">Historias reales</span>
+      <h2 class="section-title">Personas que ya<br/>tomaron el control</h2>
+    </div>
+    <div class="testimonios-grid">
+      <div class="testimonio reveal">
+        <div class="testimonio-estrellas">★★★★★</div>
+        <p class="testimonio-texto">"Llevaba años diciendo que iba a organizarme. En el primer mes con Fintual pagué $500.000 de deuda y ahorré más que en todo el año anterior."</p>
+        <div class="testimonio-autor">
+          <div class="testimonio-avatar" style="background:#2D6B4A;">CM</div>
+          <div>
+            <div class="testimonio-nombre">Camila M.</div>
+            <div class="testimonio-cargo">Diseñadora freelance · Medellín</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonio reveal">
+        <div class="testimonio-estrellas">★★★★★</div>
+        <p class="testimonio-texto">"El coach IA me explicó la diferencia entre deuda buena y mala y me ayudó a reorganizar mis créditos. Nadie me había explicado eso tan claro."</p>
+        <div class="testimonio-autor">
+          <div class="testimonio-avatar" style="background:#185FA5;">JR</div>
+          <div>
+            <div class="testimonio-nombre">Julián R.</div>
+            <div class="testimonio-cargo">Emprendedor · Bogotá</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonio reveal">
+        <div class="testimonio-estrellas">★★★★★</div>
+        <p class="testimonio-texto">"Lo que más me gustó es que no solo me ayuda a organizar plata — me enseña y me motiva. Siento que por primera vez estoy construyendo algo."</p>
+        <div class="testimonio-autor">
+          <div class="testimonio-avatar" style="background:#534AB7;">AS</div>
+          <div>
+            <div class="testimonio-nombre">Andrea S.</div>
+            <div class="testimonio-cargo">Enfermera · Cali</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRECIO -->
+<section class="precio" id="precio">
+  <div class="container" style="text-align:center;">
+    <div class="reveal">
+      <span class="section-tag">Planes</span>
+      <h2 class="section-title">Empieza gratis,<br/>escala cuando quieras</h2>
+      <p class="section-sub" style="margin:0 auto;">Sin tarjeta de crédito. Sin trucos. Gratis de verdad hasta que decides ir más lejos.</p>
+    </div>
+    <div class="precio-grid">
+      <div class="plan reveal">
+        <div class="plan-tag" style="color:var(--g600);">Gratuito</div>
+        <div class="plan-precio" style="color:var(--g900);">$0</div>
+        <div class="plan-periodo" style="color:#8AA398;">para siempre</div>
+        <ul class="plan-features">
+          <li class="plan-feature" style="color:var(--g700);">
+            <i class="ti ti-check" style="color:var(--g400);"></i> Dashboard completo
+          </li>
+          <li class="plan-feature" style="color:var(--g700);">
+            <i class="ti ti-check" style="color:var(--g400);"></i> Movimientos ilimitados
+          </li>
+          <li class="plan-feature" style="color:var(--g700);">
+            <i class="ti ti-check" style="color:var(--g400);"></i> Activos, deudas y metas
+          </li>
+          <li class="plan-feature" style="color:var(--g700);">
+            <i class="ti ti-check" style="color:var(--g400);"></i> Academia financiera
+          </li>
+          <li class="plan-feature" style="color:var(--g700);">
+            <i class="ti ti-check" style="color:var(--g400);"></i> 15 mensajes con el Coach IA
+          </li>
+        </ul>
+        <a href="APP_URL_AQUI" class="plan-btn" style="background:var(--g50);color:var(--g700);">Empezar gratis</a>
+      </div>
+      <div class="plan destacado reveal">
+        <div class="plan-tag" style="color:var(--gold);">Premium</div>
+        <div class="plan-precio" style="color:#fff;">$9.900</div>
+        <div class="plan-periodo" style="color:rgba(255,255,255,0.4);">COP / mes</div>
+        <ul class="plan-features">
+          <li class="plan-feature" style="color:rgba(255,255,255,0.8);">
+            <i class="ti ti-check" style="color:var(--g200);"></i> Todo del plan gratis
+          </li>
+          <li class="plan-feature" style="color:rgba(255,255,255,0.8);">
+            <i class="ti ti-check" style="color:var(--g200);"></i> Coach IA ilimitado
+          </li>
+          <li class="plan-feature" style="color:rgba(255,255,255,0.8);">
+            <i class="ti ti-check" style="color:var(--g200);"></i> Reportes PDF mensuales
+          </li>
+          <li class="plan-feature" style="color:rgba(255,255,255,0.8);">
+            <i class="ti ti-check" style="color:var(--g200);"></i> Análisis avanzados
+          </li>
+          <li class="plan-feature" style="color:rgba(255,255,255,0.8);">
+            <i class="ti ti-check" style="color:var(--g200);"></i> Soporte prioritario
+          </li>
+        </ul>
+        <a href="APP_URL_AQUI" class="plan-btn" style="background:var(--gold);color:var(--g900);">Obtener Premium</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final">
+  <div class="container reveal">
+    <h2>El mejor momento<br/>para empezar fue ayer.<br/>El segundo mejor es <span style="color:var(--gold);">hoy.</span></h2>
+    <p>Más de 15 minutos leyendo esto es tiempo que podrías usar en tomar el control.</p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;position:relative;z-index:1;">
+      <a href="APP_URL_AQUI" class="btn-hero-primary" style="font-size:1rem;padding:16px 36px;">
+        <i class="ti ti-rocket"></i> Crear mi cuenta gratis
+      </a>
+    </div>
+    <p style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:1.5rem;position:relative;z-index:1;">
+      Sin tarjeta de crédito · Configura en 5 minutos · Cancela cuando quieras
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--gold);"></div>
+          <span style="color:#fff;font-weight:600;font-size:16px;">Fintual</span>
+        </div>
+        <p>Tu camino a la libertad financiera. Desde donde estás hoy.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Producto</h4>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#pilares">Características</a>
+        <a href="#precio">Precios</a>
+        <a href="APP_URL_AQUI">Entrar a la app</a>
+      </div>
+      <div class="footer-links">
+        <h4>Legal</h4>
+        <a href="#">Términos de uso</a>
+        <a href="#">Privacidad</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Fintual. Hecho con 💚 en Colombia.</p>
+      <p>Todos los derechos reservados.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+  }, { threshold: 0.1 });
+  reveals.forEach(r => observer.observe(r));
+
+  // Nav scroll effect
+  window.addEventListener('scroll', () => {
+    const nav = document.getElementById('navbar');
+    if (window.scrollY > 50) {
+      nav.style.background = 'rgba(255,255,255,0.95)';
+      nav.style.boxShadow = '0 2px 20px rgba(26,58,42,0.08)';
+    } else {
+      nav.style.background = 'rgba(255,255,255,0.85)';
+      nav.style.boxShadow = 'none';
+    }
+  });
+</script>
+</body>
+</html>
