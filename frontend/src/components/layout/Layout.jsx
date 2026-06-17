@@ -27,7 +27,7 @@ const NAV_MOBILE_MAIN = [
 const NAV_MOBILE_MAS = [
   { to: '/academia',    icon: 'ti-school',           label: 'Academia',       color: '#BA7517', bg: '#FAEEDA' },
   { to: '/metas',       icon: 'ti-target',           label: 'Metas',          color: '#0F6E56', bg: '#E1F5EE' },
-  { to: '/cierre',      icon: 'ti-calendar-stats',   label: 'Cierre semanal', color: '#2D6B4A', bg: '#EDFAF3' },
+  { to: '/cierre',      icon: 'ti-calendar-stats',   label: 'Cierre',         color: '#2D6B4A', bg: '#EDFAF3' },
   { to: '/activos',     icon: 'ti-building-bank',    label: 'Activos',        color: '#185FA5', bg: '#E6F1FB' },
   { to: '/deudas',      icon: 'ti-credit-card',      label: 'Deudas',         color: '#A32D2D', bg: '#FCEBEB' },
   { to: '/reporte',     icon: 'ti-file-download',    label: 'Reporte PDF',    color: '#534AB7', bg: '#EEEDFE' },
@@ -132,24 +132,35 @@ export default function Layout({ children }) {
         </header>
 
         {/* Topbar móvil */}
-        <header className="md:hidden bg-g-800 px-4 pt-12 pb-4 flex-shrink-0">
+        <header className="md:hidden bg-g-800 px-4 pt-8 pb-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/40 text-xs">Hola,</p>
-              <p className="text-white font-medium text-base leading-tight">
+              <p className="text-white/40 text-[11px]">Hola,</p>
+              <p className="text-white font-medium text-[15px] leading-tight">
                 {(perfil?.nombre || user?.user_metadata?.full_name || '').split(' ')[0]}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-white/10 text-white/60">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] px-2 py-1 rounded-full bg-white/10 text-white/55">
                 {new Date().toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}
               </span>
-              <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-g-900 text-xs font-semibold">
+              <div className="w-7 h-7 rounded-full bg-gold flex items-center justify-center text-g-900 text-[11px] font-semibold">
                 {initials}
               </div>
             </div>
           </div>
         </header>
+
+        {/* Header secundario móvil — en páginas del menú "Más" da una salida clara al inicio */}
+        {enMenuMas && (
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-g-100 flex-shrink-0">
+            <button onClick={() => navigate('/')}
+              className="w-8 h-8 rounded-full bg-g-50 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform">
+              <i className="ti ti-arrow-left text-g-700 text-sm"/>
+            </button>
+            <p className="text-sm font-medium text-g-900">{pageTitle}</p>
+          </div>
+        )}
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-5 pb-24 md:pb-5 page-enter">
