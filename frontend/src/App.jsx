@@ -1,12 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/layout/Layout';
+import Onboarding from './components/Onboarding';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import Movimientos from './pages/Movimientos';
 import CierreSemanal from './pages/CierreSemanal';
 import { Activos, Deudas, Metas } from './pages/Patrimonio';
+import Presupuestos from './pages/Presupuestos';
 import Mental from './pages/Mental';
 import Academia from './pages/Academia';
 import Coach from './pages/Coach';
@@ -27,29 +30,47 @@ function PrivateRoute({ children }) {
 
 function AppRoutes() {
   const { user } = useAuth();
+  const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      const yaVisto = localStorage.getItem(`onboarding_${user.id}`);
+      if (!yaVisto) setMostrarOnboarding(true);
+    }
+  }, [user]);
+
+  const completarOnboarding = () => {
+    if (user) localStorage.setItem(`onboarding_${user.id}`, 'true');
+    setMostrarOnboarding(false);
+  };
+
   return (
-    <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
-      <Route path="/*" element={
-        <PrivateRoute>
-          <Layout>
-            <Routes>
-              <Route path="/"            element={<Dashboard />} />
-              <Route path="/movimientos" element={<Movimientos />} />
-              <Route path="/cierre"      element={<CierreSemanal />} />
-              <Route path="/activos"     element={<Activos />} />
-              <Route path="/deudas"      element={<Deudas />} />
-              <Route path="/metas"       element={<Metas />} />
-              <Route path="/mental"      element={<Mental />} />
-              <Route path="/academia"    element={<Academia />} />
-              <Route path="/coach"       element={<Coach />} />
-              <Route path="/reporte"     element={<Reporte />} />
-              <Route path="*"            element={<Navigate to="/" replace />} />
-            </Routes>
-          </Layout>
-        </PrivateRoute>
-      } />
-    </Routes>
+    <>
+      {mostrarOnboarding && user && <Onboarding onComplete={completarOnboarding} />}
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
+        <Route path="/*" element={
+          <PrivateRoute>
+            <Layout>
+              <Routes>
+                <Route path="/"             element={<Dashboard />} />
+                <Route path="/movimientos"  element={<Movimientos />} />
+                <Route path="/cierre"       element={<CierreSemanal />} />
+                <Route path="/presupuestos" element={<Presupuestos />} />
+                <Route path="/activos"      element={<Activos />} />
+                <Route path="/deudas"       element={<Deudas />} />
+                <Route path="/metas"        element={<Metas />} />
+                <Route path="/mental"       element={<Mental />} />
+                <Route path="/academia"     element={<Academia />} />
+                <Route path="/coach"        element={<Coach />} />
+                <Route path="/reporte"      element={<Reporte />} />
+                <Route path="*"             element={<Navigate to="/" replace />} />
+              </Routes>
+            </Layout>
+          </PrivateRoute>
+        } />
+      </Routes>
+    </>
   );
 }
 
