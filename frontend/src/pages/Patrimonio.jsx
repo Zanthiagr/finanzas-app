@@ -3,6 +3,7 @@ import { getActivos, crearActivo, eliminarActivo,
          getDeudas, crearDeuda, actualizarDeuda, eliminarDeuda,
          getMetas, crearMeta, actualizarMeta, eliminarMeta } from '../utils/api';
 import { fmt, fmtDate, fmtShort } from '../utils/helpers';
+import CalculadoraLibertad from '../components/CalculadoraLibertad';
 import toast from 'react-hot-toast';
 
 const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','Vehículo','Inmueble','Negocio','Otro'];
@@ -258,6 +259,9 @@ export function Metas() {
           );
         })}
       </div>
+
+      <CalculadoraLibertad/>
+
       <BottomModal open={modal} onClose={()=>setModal(false)} title="Nueva meta">
         <form onSubmit={submit} className="space-y-3">
           <input className="input" placeholder="Nombre de tu meta" value={form.nombre} onChange={set('nombre')} required/>
