@@ -3,16 +3,17 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 const NAV_DESKTOP = [
-  { to: '/',            icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
-  { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
-  { to: '/cierre',      icon: 'ti-calendar-stats',   label: 'Cierre semanal', group: 'principal' },
-  { to: '/reporte',     icon: 'ti-file-download',    label: 'Reporte PDF',    group: 'principal' },
-  { to: '/activos',     icon: 'ti-building-bank',    label: 'Activos',        group: 'patrimonio' },
-  { to: '/deudas',      icon: 'ti-credit-card',      label: 'Deudas',         group: 'patrimonio' },
-  { to: '/metas',       icon: 'ti-target',           label: 'Metas',          group: 'patrimonio' },
-  { to: '/mental',      icon: 'ti-brain',            label: 'Mentalidad',     group: 'crecimiento' },
-  { to: '/academia',    icon: 'ti-school',           label: 'Academia',       group: 'crecimiento' },
-  { to: '/coach',       icon: 'ti-robot',            label: 'Coach IA',       group: 'crecimiento' },
+  { to: '/',             icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
+  { to: '/movimientos',  icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
+  { to: '/cierre',       icon: 'ti-calendar-stats',   label: 'Cierre semanal', group: 'principal' },
+  { to: '/presupuestos', icon: 'ti-wallet',           label: 'Presupuestos',   group: 'principal' },
+  { to: '/reporte',      icon: 'ti-file-download',    label: 'Reporte PDF',    group: 'principal' },
+  { to: '/activos',      icon: 'ti-building-bank',    label: 'Activos',        group: 'patrimonio' },
+  { to: '/deudas',       icon: 'ti-credit-card',      label: 'Deudas',         group: 'patrimonio' },
+  { to: '/metas',        icon: 'ti-target',           label: 'Metas',          group: 'patrimonio' },
+  { to: '/mental',       icon: 'ti-brain',            label: 'Mentalidad',     group: 'crecimiento' },
+  { to: '/academia',     icon: 'ti-school',           label: 'Academia',       group: 'crecimiento' },
+  { to: '/coach',        icon: 'ti-robot',            label: 'Coach IA',       group: 'crecimiento' },
 ];
 
 // Tabs principales móvil — los 4 más usados + "Más"
@@ -25,12 +26,13 @@ const NAV_MOBILE_MAIN = [
 
 // Secciones en el menú "Más"
 const NAV_MOBILE_MAS = [
-  { to: '/academia',    icon: 'ti-school',           label: 'Academia',       color: '#BA7517', bg: '#FAEEDA' },
-  { to: '/metas',       icon: 'ti-target',           label: 'Metas',          color: '#0F6E56', bg: '#E1F5EE' },
-  { to: '/cierre',      icon: 'ti-calendar-stats',   label: 'Cierre',         color: '#2D6B4A', bg: '#EDFAF3' },
-  { to: '/activos',     icon: 'ti-building-bank',    label: 'Activos',        color: '#185FA5', bg: '#E6F1FB' },
-  { to: '/deudas',      icon: 'ti-credit-card',      label: 'Deudas',         color: '#A32D2D', bg: '#FCEBEB' },
-  { to: '/reporte',     icon: 'ti-file-download',    label: 'Reporte PDF',    color: '#534AB7', bg: '#EEEDFE' },
+  { to: '/academia',     icon: 'ti-school',           label: 'Academia',     color: '#BA7517', bg: '#FAEEDA' },
+  { to: '/metas',        icon: 'ti-target',           label: 'Metas',        color: '#0F6E56', bg: '#E1F5EE' },
+  { to: '/presupuestos', icon: 'ti-wallet',           label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
+  { to: '/cierre',       icon: 'ti-calendar-stats',   label: 'Cierre',       color: '#2D6B4A', bg: '#EDFAF3' },
+  { to: '/activos',      icon: 'ti-building-bank',    label: 'Activos',      color: '#185FA5', bg: '#E6F1FB' },
+  { to: '/deudas',       icon: 'ti-credit-card',      label: 'Deudas',       color: '#A32D2D', bg: '#FCEBEB' },
+  { to: '/reporte',      icon: 'ti-file-download',    label: 'Reporte PDF',  color: '#534AB7', bg: '#EEEDFE' },
 ];
 
 const groups = [
@@ -40,16 +42,17 @@ const groups = [
 ];
 
 const PAGE_TITLES = {
-  '/':             'Resumen',
-  '/movimientos':  'Movimientos',
-  '/cierre':       'Cierre semanal',
-  '/reporte':      'Reporte PDF',
-  '/activos':      'Activos',
-  '/deudas':       'Deudas',
-  '/metas':        'Metas',
-  '/mental':       'Mentalidad',
-  '/academia':     'Academia',
-  '/coach':        'Coach IA',
+  '/':              'Resumen',
+  '/movimientos':   'Movimientos',
+  '/cierre':        'Cierre semanal',
+  '/presupuestos':  'Presupuestos',
+  '/reporte':       'Reporte PDF',
+  '/activos':       'Activos',
+  '/deudas':        'Deudas',
+  '/metas':         'Metas',
+  '/mental':        'Mentalidad',
+  '/academia':      'Academia',
+  '/coach':         'Coach IA',
 };
 
 export default function Layout({ children }) {
