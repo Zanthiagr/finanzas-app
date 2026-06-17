@@ -278,3 +278,26 @@ const getWeekNumber = (date) => {
   const d = new Date(date);
   return Math.ceil(d.getDate() / 7);
 };
+
+// ── PRESUPUESTOS ──────────────────────────────────────────
+export const getPresupuestos = async () => {
+  const userId = await getUserId();
+  const { data, error } = await supabase.from('presupuestos').select('*')
+    .eq('usuario_id', userId);
+  if (error) throw error;
+  return data;
+};
+
+export const guardarPresupuesto = async ({ categoria, monto_limite }) => {
+  const userId = await getUserId();
+  const { data, error } = await supabase.from('presupuestos')
+    .upsert({ usuario_id: userId, categoria, monto_limite }, { onConflict: 'usuario_id,categoria' })
+    .select().single();
+  if (error) throw error;
+  return data;
+};
+
+export const eliminarPresupuesto = async (id) => {
+  const { error } = await supabase.from('presupuestos').delete().eq('id', id);
+  if (error) throw error;
+};
