@@ -14,6 +14,11 @@ export const fmtDate = (d) => {
   return new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+export const fmtDateShort = (d) => {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+};
+
 // Semana DENTRO DEL MES actual (1 a 5) — coincide con el cálculo de api.js
 export const getCurrentWeek = () => {
   const d = new Date();
@@ -29,10 +34,18 @@ export const calcSaludFinanciera = ({ ingresos, gastos, deudaTotal, balance }) =
 };
 
 export const CATEGORIAS_ICONOS = {
-  'Salario': 'ti-briefcase', 'Freelance': 'ti-device-laptop', 'Negocio': 'ti-building-store',
-  'Alimentación': 'ti-shopping-cart', 'Transporte': 'ti-bus', 'Servicios': 'ti-wifi',
-  'Salud': 'ti-heart-rate-monitor', 'Educación': 'ti-school', 'Entretenimiento': 'ti-device-tv',
-  'Ropa': 'ti-shirt', 'Vivienda': 'ti-home', 'Deudas': 'ti-credit-card',
+  'Salario': 'ti-briefcase',
+  'Freelance': 'ti-device-laptop',
+  'Negocio': 'ti-building-store',
+  'Alimentación': 'ti-shopping-cart',
+  'Transporte': 'ti-bus',
+  'Servicios': 'ti-wifi',
+  'Salud': 'ti-heart-rate-monitor',
+  'Educación': 'ti-school',
+  'Entretenimiento': 'ti-device-tv',
+  'Ropa': 'ti-shirt',
+  'Vivienda': 'ti-home',
+  'Deudas': 'ti-credit-card',
 };
 
 export const CATEGORIAS_COLORES = {
