@@ -207,17 +207,18 @@ export default function Dashboard() {
       {/* Accesos rápidos móvil */}
       <div className="md:hidden">
         <p className="section-label">Accesos rápidos</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-2.5">
           {[
-            { to: '/cierre',  icon: 'ti-calendar-stats', label: 'Cierre', color: '#2D6B4A', bg: '#EDFAF3' },
-            { to: '/deudas',  icon: 'ti-credit-card',    label: 'Deudas', color: '#A32D2D', bg: '#FCEBEB' },
-            { to: '/activos', icon: 'ti-building-bank',  label: 'Activos',color: '#185FA5', bg: '#E6F1FB' },
+            { to: '/cierre',       icon: 'ti-calendar-stats', label: 'Cierre',       color: '#2D6B4A', bg: '#EDFAF3' },
+            { to: '/presupuestos', icon: 'ti-wallet',         label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
+            { to: '/deudas',       icon: 'ti-credit-card',    label: 'Deudas',       color: '#A32D2D', bg: '#FCEBEB' },
+            { to: '/activos',      icon: 'ti-building-bank',  label: 'Activos',      color: '#185FA5', bg: '#E6F1FB' },
           ].map(a => (
-            <Link key={a.to} to={a.to} className="card p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: a.bg }}>
-                <i className={`ti ${a.icon} text-lg`} style={{ color: a.color }}/>
+            <Link key={a.to} to={a.to} className="card p-2.5 flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: a.bg }}>
+                <i className={`ti ${a.icon} text-base`} style={{ color: a.color }}/>
               </div>
-              <span className="text-xs font-medium text-g-700">{a.label}</span>
+              <span className="text-[11px] font-medium text-g-700 text-center leading-tight">{a.label}</span>
             </Link>
           ))}
         </div>
