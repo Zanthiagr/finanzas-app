@@ -109,7 +109,13 @@ export default function Dashboard() {
             <BarChart data={chartData} barSize={10} barGap={3}>
               <XAxis dataKey="semana" tick={{ fontSize: 10, fill: '#8AA398' }} axisLine={false} tickLine={false}/>
               <YAxis hide/>
-              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }}/>
+              <Tooltip
+                formatter={(v) => fmt(v)}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '0.5px solid #CBF0DC' }}
+                cursor={{ fill: 'rgba(74,158,114,0.08)' }}
+                isAnimationActive={false}
+                wrapperStyle={{ zIndex: 20 }}
+              />
               <Bar dataKey="ingreso" fill="#4A9E72" radius={[3,3,0,0]}/>
               <Bar dataKey="gasto"   fill="#C9A84C" radius={[3,3,0,0]}/>
             </BarChart>
