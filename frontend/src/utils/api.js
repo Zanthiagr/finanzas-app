@@ -272,10 +272,9 @@ export const crearCierre = async ({ semana_num, mes_num, anio_num, reflexion, in
 };
 
 // ── HELPER ──────────────────────────────────────────────
+// Semana DENTRO DEL MES (1 a 5), no semana del año.
+// Así "Semana 1" siempre significa los primeros días del mes actual.
 const getWeekNumber = (date) => {
   const d = new Date(date);
-  d.setHours(0,0,0,0);
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return Math.ceil(d.getDate() / 7);
 };
