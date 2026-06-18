@@ -132,16 +132,16 @@ export default function Presupuestos() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-center pt-3 pb-1 md:hidden">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-0 md:p-4">
+          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[88dvh] md:max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-g-200"/>
             </div>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-g-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-g-100 flex-shrink-0">
               <h3 className="font-medium text-g-900">Nuevo presupuesto</h3>
               <button onClick={() => setModal(false)}><i className="ti ti-x text-g-400"/></button>
             </div>
-            <form onSubmit={submit} className="p-5 space-y-4">
+            <form id="form-presupuesto" onSubmit={submit} className="p-5 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="section-label block mb-1">Categoría</label>
                 <select className="select" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
@@ -153,11 +153,11 @@ export default function Presupuestos() {
                 <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
                   value={form.monto_limite} onChange={e => setForm(f => ({ ...f, monto_limite: e.target.value }))} required/>
               </div>
-              <div className="flex gap-2 pt-1 pb-2">
-                <button type="button" onClick={() => setModal(false)} className="btn-secondary flex-1">Cancelar</button>
-                <button type="submit" className="btn-primary flex-1">Guardar</button>
-              </div>
             </form>
+            <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0">
+              <button type="button" onClick={() => setModal(false)} className="btn-secondary flex-1">Cancelar</button>
+              <button type="submit" form="form-presupuesto" className="btn-primary flex-1">Guardar</button>
+            </div>
           </div>
         </div>
       )}
