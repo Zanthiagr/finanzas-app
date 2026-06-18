@@ -177,46 +177,51 @@ export default function Movimientos() {
 
       {/* Modal */}
       {modal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* Handle móvil */}
-            <div className="flex justify-center pt-3 pb-1 md:hidden">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-0 md:p-4">
+          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[88dvh] md:max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Handle móvil — fijo */}
+            <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-g-200"/>
             </div>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-g-100">
+            {/* Header — fijo */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-g-100 flex-shrink-0">
               <h3 className="font-medium text-g-900">{editing?'Editar movimiento':'Nuevo movimiento'}</h3>
               <button onClick={()=>setModal(false)} className="text-g-400"><i className="ti ti-x"/></button>
             </div>
-            <form onSubmit={submit} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                {['gasto','ingreso'].map(t=>(
-                  <button key={t} type="button"
-                    onClick={()=>setForm(f=>({...f,tipo:t,categoria:t==='ingreso'?'Salario':'Alimentación'}))}
-                    className={`py-3 rounded-xl text-sm font-medium border transition-all ${form.tipo===t?t==='gasto'?'bg-red-50 border-red-300 text-red-700':'bg-g-50 border-g-300 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
-                    {t==='gasto'?'↑ Gasto':'↓ Ingreso'}
-                  </button>
-                ))}
+            {/* Body — con scroll propio */}
+            <form onSubmit={submit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 space-y-4 overflow-y-auto flex-1">
+                <div className="grid grid-cols-2 gap-2">
+                  {['gasto','ingreso'].map(t=>(
+                    <button key={t} type="button"
+                      onClick={()=>setForm(f=>({...f,tipo:t,categoria:t==='ingreso'?'Salario':'Alimentación'}))}
+                      className={`py-3 rounded-xl text-sm font-medium border transition-all ${form.tipo===t?t==='gasto'?'bg-red-50 border-red-300 text-red-700':'bg-g-50 border-g-300 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
+                      {t==='gasto'?'↑ Gasto':'↓ Ingreso'}
+                    </button>
+                  ))}
+                </div>
+                <div>
+                  <label className="section-label block mb-1">Monto (COP)</label>
+                  <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
+                    value={form.monto} onChange={set('monto')} required min="1"/>
+                </div>
+                <div>
+                  <label className="section-label block mb-1">Categoría</label>
+                  <select className="select" value={form.categoria} onChange={set('categoria')}>
+                    {(form.tipo==='ingreso'?CATS_INGRESO:CATS_GASTO).map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="section-label block mb-1">Descripción (opcional)</label>
+                  <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
+                </div>
+                <div>
+                  <label className="section-label block mb-1">Fecha</label>
+                  <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
+                </div>
               </div>
-              <div>
-                <label className="section-label block mb-1">Monto (COP)</label>
-                <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
-                  value={form.monto} onChange={set('monto')} required min="1"/>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Categoría</label>
-                <select className="select" value={form.categoria} onChange={set('categoria')}>
-                  {(form.tipo==='ingreso'?CATS_INGRESO:CATS_GASTO).map(c=><option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Descripción (opcional)</label>
-                <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Fecha</label>
-                <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
-              </div>
-              <div className="flex gap-2 pt-1 pb-2">
+              {/* Botones — fijos abajo, siempre visibles */}
+              <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0">
                 <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button type="submit" className="btn-primary flex-1">{editing?'Guardar':'Registrar'}</button>
               </div>
