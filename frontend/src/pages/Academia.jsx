@@ -137,24 +137,26 @@ function TarjetaLesson() {
       </div>
       <div>
         <p className="text-xs font-medium text-g-900 mb-3">Calculadora: el costo real del mínimo</p>
-        <div className="space-y-3 bg-g-50 p-4 rounded-xl">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-g-500 w-28 flex-shrink-0">Deuda actual</span>
-            <input type="range" min="500000" max="10000000" step="100000" value={deuda}
-              onChange={e => setDeuda(+e.target.value)} className="flex-1 accent-g-600" />
-            <span className="text-xs font-medium text-g-900 w-24 text-right">${(deuda/1000000).toFixed(1)}M</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-g-500 w-28 flex-shrink-0">Tasa EA</span>
-            <input type="range" min="15" max="35" step="1" value={tasa}
-              onChange={e => setTasa(+e.target.value)} className="flex-1 accent-g-600" />
-            <span className="text-xs font-medium text-g-900 w-24 text-right">{tasa}%</span>
-          </div>
-          <div className="bg-g-800 rounded-lg p-3 flex justify-between items-center">
-            <div>
-              <p className="text-xs text-white/40">Si solo pagas el mínimo, en 1 año habrás pagado en intereses</p>
+        <div className="space-y-4 bg-g-50 p-4 rounded-xl">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-g-500">Deuda actual</span>
+              <span className="text-sm font-medium text-g-900">${(deuda/1000000).toFixed(1)}M</span>
             </div>
-            <p className="text-base font-medium text-red-400">${(intAnual).toLocaleString('es-CO')}</p>
+            <input type="range" min="500000" max="10000000" step="100000" value={deuda}
+              onChange={e => setDeuda(+e.target.value)} className="w-full accent-g-600" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-g-500">Tasa EA</span>
+              <span className="text-sm font-medium text-g-900">{tasa}%</span>
+            </div>
+            <input type="range" min="15" max="35" step="1" value={tasa}
+              onChange={e => setTasa(+e.target.value)} className="w-full accent-g-600" />
+          </div>
+          <div className="bg-g-800 rounded-lg p-3 flex flex-col gap-1">
+            <p className="text-xs text-white/40">Si solo pagas el mínimo, en 1 año habrás pagado en intereses</p>
+            <p className="text-lg font-medium text-red-400">${(intAnual).toLocaleString('es-CO')}</p>
           </div>
         </div>
       </div>
@@ -185,11 +187,13 @@ function ICLesson() {
           { label: 'Tasa anual', val: `${rate}%`, min: 5, max: 25, step: 1, v: rate, set: setRate },
           { label: 'Años', val: `${years} años`, min: 1, max: 20, step: 1, v: years, set: setYears },
         ].map(s => (
-          <div key={s.label} className="flex items-center gap-3">
-            <span className="text-xs text-g-500 w-28 flex-shrink-0">{s.label}</span>
+          <div key={s.label}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-g-500">{s.label}</span>
+              <span className="text-sm font-medium text-g-900">{s.val}</span>
+            </div>
             <input type="range" min={s.min} max={s.max} step={s.step} value={s.v}
-              onChange={e => s.set(+e.target.value)} className="flex-1 accent-g-600" />
-            <span className="text-xs font-medium text-g-900 w-16 text-right">{s.val}</span>
+              onChange={e => s.set(+e.target.value)} className="w-full accent-g-600" />
           </div>
         ))}
       </div>
@@ -256,7 +260,7 @@ export default function Academia() {
       </div>
 
       {/* Módulos */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {MODULOS.map(m => {
           const hecho = m.lecciones.filter((_, i) => completadas.has(`${m.id}-${i}`)).length;
           return (
