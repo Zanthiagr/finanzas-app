@@ -166,7 +166,7 @@ export default function Layout({ children }) {
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-5 pb-24 md:pb-5 page-enter">
+        <main className="flex-1 overflow-y-auto p-4 md:p-5 pb-28 md:pb-5 page-enter" style={{ paddingBottom: 'max(7rem, calc(5rem + env(safe-area-inset-bottom)))' }}>
           {children}
         </main>
 
@@ -206,7 +206,7 @@ export default function Layout({ children }) {
         )}
 
         {/* ── BOTTOM NAV MÓVIL ── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50 safe-bottom-nav">
           <div className="flex items-center">
             {NAV_MOBILE_MAIN.map((n, i) => {
               const isCenter = i === 2;
