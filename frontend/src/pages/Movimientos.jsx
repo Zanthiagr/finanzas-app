@@ -220,8 +220,8 @@ export default function Movimientos() {
                   <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
                 </div>
               </div>
-              {/* Botones — fijos abajo, siempre visibles */}
-              <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0">
+              {/* Botones — fijos abajo con safe area para iPhone */}
+              <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom">
                 <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button type="submit" className="btn-primary flex-1">{editing?'Guardar':'Registrar'}</button>
               </div>
