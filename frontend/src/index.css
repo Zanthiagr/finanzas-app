@@ -30,17 +30,27 @@
     @apply w-full border border-g-200/60 rounded-xl px-3 py-2 text-sm
            focus:outline-none focus:border-g-400 bg-white;
   }
-  .badge-ok  { @apply text-xs px-2.5 py-0.5 rounded-full bg-g-50 text-g-700; }
+  .badge-ok   { @apply text-xs px-2.5 py-0.5 rounded-full bg-g-50 text-g-700; }
   .badge-warn { @apply text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700; }
   .badge-bad  { @apply text-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700; }
-  .text-pos  { @apply text-g-600 font-medium; }
-  .text-neg  { @apply text-red-600 font-medium; }
-  .section-label { @apply text-[10px] uppercase tracking-widest text-g-400 font-medium mb-2; }
+  .text-pos   { @apply text-g-600 font-medium; }
+  .text-neg   { @apply text-red-600 font-medium; }
+  .section-label { @apply text-[10px] uppercase tracking-widest text-g-400 font-medium; }
+
+  /* Safe area para elementos fijos — crítico en iPhone con notch */
+  .safe-bottom {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+  .safe-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
+/* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: #9ED4B8; border-radius: 4px; }
 
+/* Animaciones */
 .page-enter { animation: fadeUp 0.2s ease; }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
