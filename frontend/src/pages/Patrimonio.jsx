@@ -25,7 +25,7 @@ function BottomModal({ open, onClose, title, children, footer }) {
         </div>
         <div className="p-5 overflow-y-auto flex-1">{children}</div>
         {footer && (
-          <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0">{footer}</div>
+          <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom">{footer}</div>
         )}
       </div>
     </div>
