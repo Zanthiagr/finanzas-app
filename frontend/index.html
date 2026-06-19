@@ -2,14 +2,49 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Fintual — Tu camino a la libertad financiera</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1A3A2A"/>
+    <meta name="mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="apple-mobile-web-app-title" content="Fintual"/>
+    <meta name="description" content="Tu camino a la libertad financiera. Control, aprendizaje y coach IA."/>
+
+    <!-- PWA Icons -->
+    <link rel="manifest" href="/manifest.json"/>
+    <link rel="apple-touch-icon" href="/icon-192.png"/>
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
+
+    <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+
+    <style>
+      /* Safe area para iPhone con notch */
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Registrar Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registrado:', reg.scope))
+            .catch(err => console.log('SW error:', err));
+        });
+      }
+    </script>
   </body>
 </html>
