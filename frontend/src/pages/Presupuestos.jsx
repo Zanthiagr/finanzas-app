@@ -154,7 +154,7 @@ export default function Presupuestos() {
                   value={form.monto_limite} onChange={e => setForm(f => ({ ...f, monto_limite: e.target.value }))} required/>
               </div>
             </form>
-            <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0">
+            <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom">
               <button type="button" onClick={() => setModal(false)} className="btn-secondary flex-1">Cancelar</button>
               <button type="submit" form="form-presupuesto" className="btn-primary flex-1">Guardar</button>
             </div>
