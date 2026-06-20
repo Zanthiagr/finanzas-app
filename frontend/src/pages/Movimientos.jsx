@@ -178,7 +178,7 @@ export default function Movimientos() {
       {/* Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-0 md:p-4">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[88dvh] md:max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl h-[88dvh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden min-h-0">
             {/* Handle móvil — fijo */}
             <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-g-200"/>
@@ -189,8 +189,8 @@ export default function Movimientos() {
               <button onClick={()=>setModal(false)} className="text-g-400"><i className="ti ti-x"/></button>
             </div>
             {/* Body — con scroll propio */}
-            <form onSubmit={submit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-5 space-y-4 overflow-y-auto flex-1">
+            <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
                 <div className="grid grid-cols-2 gap-2">
                   {['gasto','ingreso'].map(t=>(
                     <button key={t} type="button"
@@ -221,7 +221,7 @@ export default function Movimientos() {
                 </div>
               </div>
               {/* Botones — fijos abajo con safe area para iPhone */}
-              <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom">
+              <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom bg-white">
                 <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button type="submit" className="btn-primary flex-1">{editing?'Guardar':'Registrar'}</button>
               </div>
