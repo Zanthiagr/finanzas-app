@@ -33,6 +33,7 @@ const NAV_MOBILE_MAS = [
   { to: '/activos',      icon: 'ti-building-bank',    label: 'Activos',      color: '#185FA5', bg: '#E6F1FB' },
   { to: '/deudas',       icon: 'ti-credit-card',      label: 'Deudas',       color: '#A32D2D', bg: '#FCEBEB' },
   { to: '/reporte',      icon: 'ti-file-download',    label: 'Reporte PDF',  color: '#534AB7', bg: '#EEEDFE' },
+  { to: '/perfil',       icon: 'ti-user-circle',      label: 'Mi perfil',    color: '#2D6B4A', bg: '#EDFAF3' },
 ];
 
 const groups = [
@@ -53,6 +54,7 @@ const PAGE_TITLES = {
   '/mental':        'Mentalidad',
   '/academia':      'Academia',
   '/coach':         'Coach IA',
+  '/perfil':        'Mi perfil',
 };
 
 export default function Layout({ children }) {
@@ -108,7 +110,7 @@ export default function Layout({ children }) {
           ))}
         </nav>
         <div className="px-5 py-4 border-t border-white/10">
-          <div className="flex items-center gap-2.5">
+          <button onClick={() => navigate('/perfil')} className="flex items-center gap-2.5 w-full text-left hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-g-900 text-xs font-semibold flex-shrink-0">
               {initials}
             </div>
@@ -116,10 +118,7 @@ export default function Layout({ children }) {
               <p className="text-white/80 text-xs font-medium truncate">{perfil?.nombre || user?.user_metadata?.full_name}</p>
               <p className="text-white/35 text-[10px]">{perfil?.puntos_xp || 0} XP</p>
             </div>
-            <button onClick={() => { logout(); navigate('/login'); }} className="text-white/30 hover:text-white/70">
-              <i className="ti ti-logout text-sm"/>
-            </button>
-          </div>
+          </button>
         </div>
       </aside>
 
@@ -147,9 +146,10 @@ export default function Layout({ children }) {
               <span className="text-[11px] px-2 py-1 rounded-full bg-white/10 text-white/55">
                 {new Date().toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}
               </span>
-              <div className="w-7 h-7 rounded-full bg-gold flex items-center justify-center text-g-900 text-[11px] font-semibold">
+              <button onClick={() => navigate('/perfil')}
+                className="w-7 h-7 rounded-full bg-gold flex items-center justify-center text-g-900 text-[11px] font-semibold active:scale-90 transition-transform">
                 {initials}
-              </div>
+              </button>
             </div>
           </div>
         </header>
@@ -181,6 +181,7 @@ export default function Layout({ children }) {
                 <div className="w-10 h-1 rounded-full bg-g-200"/>
               </div>
               <p className="text-xs text-g-400 uppercase tracking-widest mb-3">Más secciones</p>
+              <p className="text-[9px] text-g-200 mb-2">build 2026-06-19 18:28</p>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {NAV_MOBILE_MAS.map(n => (
                   <button key={n.to} onClick={() => irA(n.to)}
