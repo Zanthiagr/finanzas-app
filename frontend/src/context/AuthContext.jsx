@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
     if (data) setPerfil(data);
   };
 
-  const crearPerfilSiNoExiste = async (userId, nombre) => {
+  const crearPerfilSiNoExiste = async (userId, nombre, email) => {
     const { data: existe } = await supabase
       .from('perfiles')
       .select('id')
@@ -28,8 +28,11 @@ export const AuthProvider = ({ children }) => {
       await supabase.from('perfiles').insert({
         id: userId,
         nombre: nombre || 'Usuario',
+        email: email || null,
         moneda: 'COP',
         puntos_xp: 0,
+        notif_cierre: true,
+        notif_diario: false,
       });
       await supabase.from('habitos').insert([
         { usuario_id: userId, nombre: 'Leer 10 min sobre finanzas', momento: 'manana', puntos: 20 },
@@ -42,18 +45,42 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        crearPerfilSiNoExiste(session.user.id, session.user.user_metadata?.full_name);
-      }
+    // Salvaguarda: si por cualquier razón la sesión nunca resuelve
+    // (token corrupto, red lenta, etc.), forzamos salir del estado de carga
+    // a los 6 segundos para que el usuario nunca quede atrapado en blanco.
+    const timeoutDeSeguridad = setTimeout(() => {
       setLoading(false);
-    });
+    }, 6000);
+
+    supabase.auth.getSession()
+      .then(async ({ data: { session }, error }) => {
+        if (error) {
+          // Sesión corrupta o token inválido — limpiamos y dejamos pasar al login
+          console.warn('Error de sesión, limpiando:', error.message);
+          await supabase.auth.signOut().catch(() => {});
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        if (session?.user) {
+          setUser(session.user);
+          await crearPerfilSiNoExiste(session.user.id, session.user.user_metadata?.full_name, session.user.email);
+        }
+        setLoading(false);
+      })
+      .catch(async (err) => {
+        // Cualquier fallo de red o de la promesa — no dejamos la app colgada
+        console.warn('Fallo al obtener sesión:', err);
+        await supabase.auth.signOut().catch(() => {});
+        setUser(null);
+        setLoading(false);
+      })
+      .finally(() => clearTimeout(timeoutDeSeguridad));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setUser(session.user);
-        await crearPerfilSiNoExiste(session.user.id, session.user.user_metadata?.full_name);
+        await crearPerfilSiNoExiste(session.user.id, session.user.user_metadata?.full_name, session.user.email);
       } else {
         setUser(null);
         setPerfil(null);
@@ -61,7 +88,10 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutDeSeguridad);
+    };
   }, []);
 
   const loginConGoogle = async () => {
