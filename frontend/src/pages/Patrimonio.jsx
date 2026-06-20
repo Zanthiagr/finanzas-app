@@ -15,7 +15,7 @@ function BottomModal({ open, onClose, title, children, footer }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[88dvh] md:max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl h-[88dvh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden min-h-0">
         <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
           <div className="w-10 h-1 rounded-full bg-g-200"/>
         </div>
@@ -23,9 +23,9 @@ function BottomModal({ open, onClose, title, children, footer }) {
           <h3 className="font-medium text-g-900">{title}</h3>
           <button onClick={onClose}><i className="ti ti-x text-g-400"/></button>
         </div>
-        <div className="p-5 overflow-y-auto flex-1">{children}</div>
+        <div className="p-5 overflow-y-auto flex-1 min-h-0">{children}</div>
         {footer && (
-          <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom">{footer}</div>
+          <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom bg-white">{footer}</div>
         )}
       </div>
     </div>
