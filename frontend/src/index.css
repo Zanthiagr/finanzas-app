@@ -37,11 +37,9 @@
   .text-neg   { @apply text-red-600 font-medium; }
   .section-label { @apply text-[10px] uppercase tracking-widest text-g-400 font-medium; }
 
-  /* Safe area para elementos fijos — crítico en iPhone con notch/home indicator.
-     Solo añade el extra de seguridad SOBRE el padding normal, sin duplicar espacio. */
-  .safe-bottom {
-    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  }
+  /* Safe area SOLO para la barra de navegación inferior — es el único
+     elemento pegado al borde físico del iPhone. Los modales usan
+     padding fijo (pb-6) para evitar acumulación de safe-area en cascada. */
   .safe-bottom-nav {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
