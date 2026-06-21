@@ -4,32 +4,12 @@ import { getActivos, crearActivo, eliminarActivo,
          getMetas, crearMeta, actualizarMeta, eliminarMeta } from '../utils/api';
 import { fmt, fmtDate, fmtShort } from '../utils/helpers';
 import CalculadoraLibertad from '../components/CalculadoraLibertad';
+import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
 const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','Vehículo','Inmueble','Negocio','Otro'];
 const TIPOS_DEUDA  = ['Tarjeta de crédito','Crédito bancario','Préstamo personal','Hipoteca','Gota a gota','Otro'];
 const ICONOS_META  = ['ti-target','ti-plane','ti-home','ti-device-laptop','ti-car','ti-heart','ti-shield','ti-coin'];
-
-// Modal base reutilizable — estructura simple, sin flex anidado,
-// para máxima compatibilidad con Safari/iOS. El botón "footer" es parte
-// del flujo normal del formulario, garantizado a ser visible.
-function BottomModal({ open, onClose, title, children }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50">
-      <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto" style={{ maxHeight: '75vh', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
-        <div className="flex justify-center pt-3 pb-1 md:hidden">
-          <div className="w-10 h-1 rounded-full bg-g-200"/>
-        </div>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-g-100">
-          <h3 className="font-medium text-g-900">{title}</h3>
-          <button onClick={onClose}><i className="ti ti-x text-g-400"/></button>
-        </div>
-        <div className="p-5 pb-4">{children}</div>
-      </div>
-    </div>
-  );
-}
 
 // ─── ACTIVOS ────────────────────────────────────────────
 export function Activos() {
@@ -90,7 +70,8 @@ export function Activos() {
           );
         })}
       </div>
-      <BottomModal open={modal} onClose={()=>setModal(false)} title="Nuevo activo">
+      {modal && (
+      <PantallaCompleta title="Nuevo activo" onClose={()=>setModal(false)}>
         <form onSubmit={submit} className="space-y-3">
           <input className="input" placeholder="Nombre del activo" value={form.nombre} onChange={set('nombre')} required/>
           <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_ACTIVO.map(t=><option key={t}>{t}</option>)}</select>
@@ -104,7 +85,8 @@ export function Activos() {
             <button type="submit" className="btn-primary flex-1">Guardar</button>
           </div>
         </form>
-      </BottomModal>
+      </PantallaCompleta>
+      )}
     </div>
   );
 }
@@ -178,7 +160,8 @@ export function Deudas() {
           );
         })}
       </div>
-      <BottomModal open={modal} onClose={()=>setModal(false)} title="Nueva deuda">
+      {modal && (
+      <PantallaCompleta title="Nueva deuda" onClose={()=>setModal(false)}>
         <form onSubmit={submit} className="space-y-3">
           <input className="input" placeholder="Nombre de la deuda" value={form.nombre} onChange={set('nombre')} required/>
           <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_DEUDA.map(t=><option key={t}>{t}</option>)}</select>
@@ -192,7 +175,8 @@ export function Deudas() {
             <button type="submit" className="btn-primary flex-1">Guardar</button>
           </div>
         </form>
-      </BottomModal>
+      </PantallaCompleta>
+      )}
     </div>
   );
 }
@@ -264,7 +248,8 @@ export function Metas() {
 
       <CalculadoraLibertad/>
 
-      <BottomModal open={modal} onClose={()=>setModal(false)} title="Nueva meta">
+      {modal && (
+      <PantallaCompleta title="Nueva meta" onClose={()=>setModal(false)}>
         <form onSubmit={submit} className="space-y-3">
           <input className="input" placeholder="Nombre de tu meta" value={form.nombre} onChange={set('nombre')} required/>
           <input className="input" placeholder="Descripción (opcional)" value={form.descripcion} onChange={set('descripcion')}/>
@@ -288,7 +273,8 @@ export function Metas() {
             <button type="submit" className="btn-primary flex-1">Crear meta</button>
           </div>
         </form>
-      </BottomModal>
+      </PantallaCompleta>
+      )}
     </div>
   );
 }
