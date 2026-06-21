@@ -221,7 +221,7 @@ export default function Movimientos() {
                 </div>
               </div>
               {/* Botones — fijos abajo con safe area para iPhone */}
-              <div className="flex gap-2 p-5 pt-3 border-t border-g-100 flex-shrink-0 safe-bottom bg-white">
+              <div className="flex gap-2 p-5 pb-6 border-t border-g-100 flex-shrink-0 bg-white">
                 <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button type="submit" className="btn-primary flex-1">{editing?'Guardar':'Registrar'}</button>
               </div>
