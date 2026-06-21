@@ -166,7 +166,7 @@ export default function Layout({ children }) {
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-5 pb-28 md:pb-5 page-enter" style={{ paddingBottom: 'max(7rem, calc(5rem + env(safe-area-inset-bottom)))' }}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-5 pb-32 md:pb-5 page-enter">
           {children}
         </main>
 
@@ -181,7 +181,7 @@ export default function Layout({ children }) {
                 <div className="w-10 h-1 rounded-full bg-g-200"/>
               </div>
               <p className="text-xs text-g-400 uppercase tracking-widest mb-3">Más secciones</p>
-              <p className="text-[9px] text-g-200 mb-2">build 2026-06-19 19:40 — fix safe-area padding</p>
+              <p className="text-[9px] text-g-200 mb-2">build 2026-06-19 20:15 — rediseño simple</p>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {NAV_MOBILE_MAS.map(n => (
                   <button key={n.to} onClick={() => irA(n.to)}
