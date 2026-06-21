@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getPresupuestos, guardarPresupuesto, eliminarPresupuesto, getResumen } from '../utils/api';
 import { fmt, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
 const CATEGORIAS_GASTO = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas'];
@@ -132,34 +133,25 @@ export default function Presupuestos() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto" style={{ maxHeight: '75vh', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
-            <div className="flex justify-center pt-3 pb-1 md:hidden">
-              <div className="w-10 h-1 rounded-full bg-g-200"/>
+        <PantallaCompleta title="Nuevo presupuesto" onClose={() => setModal(false)}>
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="section-label block mb-1">Categoría</label>
+              <select className="select" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
+                {categoriasDisponibles.map(c => <option key={c}>{c}</option>)}
+              </select>
             </div>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-g-100">
-              <h3 className="font-medium text-g-900">Nuevo presupuesto</h3>
-              <button onClick={() => setModal(false)}><i className="ti ti-x text-g-400"/></button>
+            <div>
+              <label className="section-label block mb-1">Límite mensual (COP)</label>
+              <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
+                value={form.monto_limite} onChange={e => setForm(f => ({ ...f, monto_limite: e.target.value }))} required/>
             </div>
-            <form onSubmit={submit} className="p-5 space-y-4">
-              <div>
-                <label className="section-label block mb-1">Categoría</label>
-                <select className="select" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
-                  {categoriasDisponibles.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Límite mensual (COP)</label>
-                <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
-                  value={form.monto_limite} onChange={e => setForm(f => ({ ...f, monto_limite: e.target.value }))} required/>
-              </div>
-              <div className="flex gap-2 pt-2 pb-4">
-                <button type="button" onClick={() => setModal(false)} className="btn-secondary flex-1">Cancelar</button>
-                <button type="submit" className="btn-primary flex-1">Guardar</button>
-              </div>
-            </form>
-          </div>
-        </div>
+            <div className="flex gap-2 pt-2 pb-4">
+              <button type="button" onClick={() => setModal(false)} className="btn-secondary flex-1">Cancelar</button>
+              <button type="submit" className="btn-primary flex-1">Guardar</button>
+            </div>
+          </form>
+        </PantallaCompleta>
       )}
     </div>
   );
