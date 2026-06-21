@@ -25,10 +25,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
     <style>
-      /* Safe area para iPhone con notch */
-      body {
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
+      /* Reset base — el safe-area se maneja por componente, NO globalmente,
+         para evitar que se acumule en cascada con paddings internos. */
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overscroll-behavior-y: none;
       }
     </style>
   </head>
