@@ -26,14 +26,12 @@ function MovRow({ m, onEdit, onDelete }) {
 
   return (
     <div className="relative overflow-hidden">
-      {/* Fondo rojo delete */}
       <div className="absolute right-0 top-0 bottom-0 w-20 bg-red-500 flex items-center justify-center rounded-r-xl">
         <button onClick={() => onDelete(m.id)} className="text-white flex flex-col items-center gap-0.5">
           <i className="ti ti-trash text-lg"/>
           <span className="text-[10px]">Eliminar</span>
         </button>
       </div>
-      {/* Fila principal */}
       <div
         className="relative bg-white flex items-center gap-3 px-4 py-3 transition-transform"
         style={{ transform: `translateX(${swipeX}px)` }}
@@ -54,6 +52,68 @@ function MovRow({ m, onEdit, onDelete }) {
           {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
         </span>
         <i className="ti ti-chevron-right text-g-300 text-xs hidden md:block"/>
+      </div>
+    </div>
+  );
+}
+
+// ── PANTALLA COMPLETA para crear/editar — NO es un modal flotante.
+// Se renderiza como una página normal, sin position:fixed ni overflow
+// especiales. Esto evita por completo los bugs de scroll táctil de iOS
+// que afectan a los modales superpuestos.
+function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit }) {
+  return (
+    <div className="fixed inset-0 bg-white z-[60] flex flex-col">
+      {/* Header fijo simple — sin cálculos de safe-area complejos */}
+      <div className="flex items-center justify-between px-4 pt-12 pb-4 border-b border-g-100 flex-shrink-0 bg-white">
+        <button onClick={onCancel} className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center">
+          <i className="ti ti-arrow-left text-g-700"/>
+        </button>
+        <h3 className="font-medium text-g-900">{editing?'Editar movimiento':'Nuevo movimiento'}</h3>
+        <div className="w-9"/>
+      </div>
+
+      {/* Contenido — scroll normal del documento, sin overflow anidado */}
+      <div className="flex-1 overflow-y-scroll px-5 py-5">
+        <form id="form-movimiento" onSubmit={onSubmit} className="space-y-4 pb-8">
+          <div className="grid grid-cols-2 gap-2">
+            {['gasto','ingreso'].map(t=>(
+              <button key={t} type="button"
+                onClick={()=>setForm(f=>({...f,tipo:t,categoria:t==='ingreso'?'Salario':'Alimentación'}))}
+                className={`py-3 rounded-xl text-sm font-medium border transition-all ${form.tipo===t?(t==='gasto'?'bg-red-50 border-red-300 text-red-700':'bg-g-50 border-g-300 text-g-700'):'bg-white border-g-200/60 text-g-500'}`}>
+                {t==='gasto'?'↑ Gasto':'↓ Ingreso'}
+              </button>
+            ))}
+          </div>
+          <div>
+            <label className="section-label block mb-1">Monto (COP)</label>
+            <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
+              value={form.monto} onChange={set('monto')} required min="1"/>
+          </div>
+          <div>
+            <label className="section-label block mb-1">Categoría</label>
+            <select className="select" value={form.categoria} onChange={set('categoria')}>
+              {(form.tipo==='ingreso'?CATS_INGRESO:CATS_GASTO).map(c=><option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="section-label block mb-1">Descripción (opcional)</label>
+            <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
+          </div>
+          <div>
+            <label className="section-label block mb-1">Fecha</label>
+            <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
+          </div>
+
+          {/* Botón DENTRO del flujo normal — siempre alcanzable haciendo scroll,
+              sin depender de overflow especiales ni position fixed anidados */}
+          <button type="submit" className="btn-primary w-full py-4 text-base mt-4">
+            {editing?'Guardar cambios':'Registrar movimiento'}
+          </button>
+          <button type="button" onClick={onCancel} className="btn-secondary w-full py-3.5">
+            Cancelar
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -114,7 +174,6 @@ export default function Movimientos() {
   return (
     <div className="space-y-4 page-enter">
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-medium text-g-900">Movimientos</h2>
@@ -125,7 +184,6 @@ export default function Movimientos() {
         </button>
       </div>
 
-      {/* Totals */}
       <div className="grid grid-cols-3 gap-3">
         <div className="card p-3 md:p-4">
           <p className="section-label">Ingresos</p>
@@ -143,7 +201,6 @@ export default function Movimientos() {
         </div>
       </div>
 
-      {/* Filtros */}
       <div className="flex gap-2">
         {[['','Todos'],['ingreso','Ingresos'],['gasto','Gastos']].map(([v,l])=>(
           <button key={v} onClick={()=>setFiltroTipo(v)}
@@ -153,7 +210,6 @@ export default function Movimientos() {
         ))}
       </div>
 
-      {/* Lista */}
       <div className="card overflow-hidden divide-y divide-g-100/60">
         {loading ? (
           <div className="flex justify-center items-center h-40"><i className="ti ti-loader animate-spin text-2xl text-g-400"/></div>
@@ -168,64 +224,22 @@ export default function Movimientos() {
         ))}
       </div>
 
-      {/* Tip swipe móvil */}
       {movs.length > 0 && (
         <p className="text-center text-[11px] text-g-400 md:hidden">
           ← Desliza una fila para eliminar
         </p>
       )}
 
-      {/* Modal */}
+      {/* Pantalla completa, fuera del flujo normal pero SIN modal flotante */}
       {modal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto" style={{ maxHeight: '75vh', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
-            {/* Handle móvil */}
-            <div className="flex justify-center pt-3 pb-1 md:hidden">
-              <div className="w-10 h-1 rounded-full bg-g-200"/>
-            </div>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-g-100">
-              <h3 className="font-medium text-g-900">{editing?'Editar movimiento':'Nuevo movimiento'}</h3>
-              <button onClick={()=>setModal(false)} className="text-g-400"><i className="ti ti-x"/></button>
-            </div>
-            {/* Body + botones, todo en el flujo normal, SIN flex anidado */}
-            <form onSubmit={submit} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                {['gasto','ingreso'].map(t=>(
-                  <button key={t} type="button"
-                    onClick={()=>setForm(f=>({...f,tipo:t,categoria:t==='ingreso'?'Salario':'Alimentación'}))}
-                    className={`py-3 rounded-xl text-sm font-medium border transition-all ${form.tipo===t?(t==='gasto'?'bg-red-50 border-red-300 text-red-700':'bg-g-50 border-g-300 text-g-700'):'bg-white border-g-200/60 text-g-500'}`}>
-                    {t==='gasto'?'↑ Gasto':'↓ Ingreso'}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <label className="section-label block mb-1">Monto (COP)</label>
-                <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
-                  value={form.monto} onChange={set('monto')} required min="1"/>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Categoría</label>
-                <select className="select" value={form.categoria} onChange={set('categoria')}>
-                  {(form.tipo==='ingreso'?CATS_INGRESO:CATS_GASTO).map(c=><option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Descripción (opcional)</label>
-                <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Fecha</label>
-                <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
-              </div>
-              {/* Botones — parte normal del formulario, sin position especial */}
-              <div className="flex gap-2 pt-2 pb-4">
-                <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
-                <button type="submit" className="btn-primary flex-1">{editing?'Guardar':'Registrar'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <FormularioMovimiento
+          editing={editing}
+          form={form}
+          setForm={setForm}
+          set={set}
+          onCancel={() => setModal(false)}
+          onSubmit={submit}
+        />
       )}
     </div>
   );
