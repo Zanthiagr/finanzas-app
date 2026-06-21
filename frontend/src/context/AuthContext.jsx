@@ -45,47 +45,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // Salvaguarda: si por cualquier razón la sesión nunca resuelve
-    // (token corrupto, red lenta, etc.), forzamos salir del estado de carga
-    // a los 6 segundos para que el usuario nunca quede atrapado en blanco.
-    const timeoutDeSeguridad = setTimeout(() => {
-      setLoading(false);
-    }, 6000);
+    // Salvaguarda: si por cualquier razón la app nunca recibe respuesta de
+    // Supabase (red lenta, sesión corrupta), forzamos salir del estado de
+    // carga a los 6 segundos para que el usuario nunca quede atrapado.
+    const timeoutDeSeguridad = setTimeout(() => setLoading(false), 6000);
 
-    supabase.auth.getSession()
-      .then(async ({ data: { session }, error }) => {
-        if (error) {
-          // Sesión corrupta o token inválido — limpiamos y dejamos pasar al login
-          console.warn('Error de sesión, limpiando:', error.message);
-          await supabase.auth.signOut().catch(() => {});
-          setUser(null);
-          setLoading(false);
-          return;
-        }
+    // onAuthStateChange por sí solo ya dispara con la sesión inicial al
+    // montar (evento INITIAL_SESSION) — no necesitamos llamar getSession()
+    // por separado, eso causaba dos peticiones compitiendo entre sí.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
         if (session?.user) {
           setUser(session.user);
           await crearPerfilSiNoExiste(session.user.id, session.user.user_metadata?.full_name, session.user.email);
+        } else {
+          setUser(null);
+          setPerfil(null);
         }
+      } catch (err) {
+        console.warn('Error procesando sesión:', err);
+      } finally {
         setLoading(false);
-      })
-      .catch(async (err) => {
-        // Cualquier fallo de red o de la promesa — no dejamos la app colgada
-        console.warn('Fallo al obtener sesión:', err);
-        await supabase.auth.signOut().catch(() => {});
-        setUser(null);
-        setLoading(false);
-      })
-      .finally(() => clearTimeout(timeoutDeSeguridad));
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        await crearPerfilSiNoExiste(session.user.id, session.user.user_metadata?.full_name, session.user.email);
-      } else {
-        setUser(null);
-        setPerfil(null);
+        clearTimeout(timeoutDeSeguridad);
       }
-      setLoading(false);
     });
 
     return () => {
