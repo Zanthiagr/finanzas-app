@@ -10,6 +10,14 @@
     color: #0F2318;
     -webkit-font-smoothing: antialiased;
   }
+  /* CRÍTICO para iOS Safari: sin esto, el scroll táctil NO funciona dentro
+     de contenedores con overflow-y-auto que están anidados en un elemento
+     position:fixed (como los modales). Este es el fix real del bug donde
+     los modales no scrollean y el contenido/botones del final son
+     inalcanzables en iPhone, aunque sí estén renderizados en el DOM. */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @layer components {
