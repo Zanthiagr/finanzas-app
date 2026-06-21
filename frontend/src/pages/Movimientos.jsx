@@ -178,7 +178,7 @@ export default function Movimientos() {
       {/* Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto" style={{ maxHeight: '80vh' }}>
+          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto" style={{ maxHeight: '75vh', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
             {/* Handle móvil */}
             <div className="flex justify-center pt-3 pb-1 md:hidden">
               <div className="w-10 h-1 rounded-full bg-g-200"/>
