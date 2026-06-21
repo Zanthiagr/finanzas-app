@@ -37,12 +37,13 @@
   .text-neg   { @apply text-red-600 font-medium; }
   .section-label { @apply text-[10px] uppercase tracking-widest text-g-400 font-medium; }
 
-  /* Safe area para elementos fijos — crítico en iPhone con notch */
+  /* Safe area para elementos fijos — crítico en iPhone con notch/home indicator.
+     Solo añade el extra de seguridad SOBRE el padding normal, sin duplicar espacio. */
   .safe-bottom {
-    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
   .safe-bottom-nav {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
