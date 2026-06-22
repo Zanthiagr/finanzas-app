@@ -211,16 +211,22 @@ export const toggleHabito = async (habitoId, puntos) => {
   let completado;
   if (existing) {
     completado = !existing.completado;
-    await supabase.from('habitos_log').update({ completado })
+    const { error } = await supabase.from('habitos_log').update({ completado })
       .eq('usuario_id', userId).eq('habito_id', habitoId).eq('fecha', hoy);
+    if (error) throw error;
   } else {
     completado = true;
-    await supabase.from('habitos_log').insert({ usuario_id: userId, habito_id: habitoId, fecha: hoy, completado: true });
+    const { error } = await supabase.from('habitos_log')
+      .insert({ usuario_id: userId, habito_id: habitoId, fecha: hoy, completado: true });
+    if (error) throw error;
   }
 
-  if (completado) {
-    await supabase.rpc('incrementar_xp', { user_id: userId, puntos_a_sumar: puntos })
-      .catch(() => {}); // Si la función no existe, no bloquea
+  // Actualizar XP en perfiles directamente, sin RPC
+  if (completado && puntos > 0) {
+    const { data: perfil } = await supabase.from('perfiles').select('puntos_xp').eq('id', userId).single();
+    if (perfil) {
+      await supabase.from('perfiles').update({ puntos_xp: (perfil.puntos_xp || 0) + puntos }).eq('id', userId);
+    }
   }
 
   return { completado };
@@ -300,4 +306,131 @@ export const guardarPresupuesto = async ({ categoria, monto_limite }) => {
 export const eliminarPresupuesto = async (id) => {
   const { error } = await supabase.from('presupuestos').delete().eq('id', id);
   if (error) throw error;
+};
+
+// ── RESUMEN POR MEDIO DE PAGO ────────────────────────────
+export const getResumenMedioPago = async ({ mes, anio } = {}) => {
+  const userId = await getUserId();
+  const mesActual  = mes  || new Date().getMonth() + 1;
+  const anioActual = anio || new Date().getFullYear();
+
+  const { data, error } = await supabase
+    .from('movimientos')
+    .select('tipo, monto, medio_pago')
+    .eq('usuario_id', userId)
+    .eq('mes_num', mesActual)
+    .eq('anio_num', anioActual);
+
+  if (error) throw error;
+
+  const medios = ['efectivo', 'nequi', 'daviplata', 'bancolombia', 'otro_banco'];
+  const resumen = {};
+  medios.forEach(m => { resumen[m] = { ingresos: 0, gastos: 0 }; });
+
+  data.forEach(mov => {
+    const medio = mov.medio_pago || 'efectivo';
+    if (resumen[medio]) {
+      if (mov.tipo === 'ingreso') resumen[medio].ingresos += parseFloat(mov.monto);
+      else resumen[medio].gastos += parseFloat(mov.monto);
+    }
+  });
+
+  return resumen;
+};
+
+// ── RENDIMIENTO DE ACTIVOS ───────────────────────────────
+export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, mes, anio }) => {
+  const userId = await getUserId();
+
+  // Actualizar valor_actual del activo
+  const { data: activo } = await supabase.from('activos').select('*').eq('id', activo_id).single();
+  if (!activo) throw new Error('Activo no encontrado');
+
+  const nuevoValor = parseFloat(activo.valor_actual) + parseFloat(rendimiento_monto);
+  await supabase.from('activos').update({
+    valor_actual: nuevoValor,
+    ultimo_rendimiento_fecha: new Date().toISOString().split('T')[0],
+  }).eq('id', activo_id);
+
+  // Registrar como ingreso en movimientos
+  await crearMovimiento({
+    tipo: 'ingreso',
+    monto: rendimiento_monto,
+    categoria: 'Rendimiento',
+    descripcion: `Rendimiento: ${activo.nombre}`,
+    fecha: new Date().toISOString().split('T')[0],
+    medio_pago: 'otro_banco',
+  });
+
+  return nuevoValor;
+};
+
+// ── PAGOS PROGRAMADOS ────────────────────────────────────
+export const getPagosProgramados = async () => {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('pagos_programados')
+    .select('*')
+    .eq('usuario_id', userId)
+    .order('dia_mes');
+  if (error) throw error;
+  return data;
+};
+
+export const crearPagoProgramado = async (pago) => {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('pagos_programados')
+    .insert({ ...pago, usuario_id: userId })
+    .select().single();
+  if (error) throw error;
+  return data;
+};
+
+export const eliminarPagoProgramado = async (id) => {
+  const { error } = await supabase.from('pagos_programados').delete().eq('id', id);
+  if (error) throw error;
+};
+
+export const procesarPagosPendientes = async () => {
+  const userId = await getUserId();
+  const hoy = new Date();
+  const diaHoy = hoy.getDate();
+  const mes = hoy.getMonth() + 1;
+  const anio = hoy.getFullYear();
+  const fechaStr = hoy.toISOString().split('T')[0];
+
+  const { data: pagos } = await supabase
+    .from('pagos_programados')
+    .select('*')
+    .eq('usuario_id', userId)
+    .eq('dia_mes', diaHoy)
+    .eq('activo', true);
+
+  if (!pagos?.length) return 0;
+
+  let procesados = 0;
+  for (const pago of pagos) {
+    // Verificar si ya se registró hoy
+    const { data: yaExiste } = await supabase
+      .from('movimientos')
+      .select('id')
+      .eq('usuario_id', userId)
+      .eq('descripcion', `[Auto] ${pago.nombre}`)
+      .eq('fecha', fechaStr)
+      .single();
+
+    if (yaExiste) continue;
+
+    await crearMovimiento({
+      tipo: 'gasto',
+      monto: pago.monto,
+      categoria: pago.categoria,
+      descripcion: `[Auto] ${pago.nombre}`,
+      fecha: fechaStr,
+      medio_pago: pago.medio_pago || 'otro_banco',
+    });
+    procesados++;
+  }
+  return procesados;
 };
