@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 const MODULOS = [
   {
@@ -242,9 +243,27 @@ export default function Academia() {
   const modulo = MODULOS.find(m => m.id === moduloActivo);
   const leccion = modulo?.lecciones[leccionIdx];
 
+  const MODULOS_IDS = MODULOS.map(m => m.id);
+
   const completarLeccion = () => {
-    setCompletadas(c => new Set([...c, `${moduloActivo}-${leccionIdx}`]));
-    if (leccionIdx < modulo.lecciones.length - 1) setLeccionIdx(leccionIdx + 1);
+    const key = `${moduloActivo}-${leccionIdx}`;
+    setCompletadas(c => new Set([...c, key]));
+
+    if (leccionIdx < modulo.lecciones.length - 1) {
+      setLeccionIdx(leccionIdx + 1);
+      setQuizResp({});
+    } else {
+      toast.success('¡Módulo completado! 🎓');
+      const idxActual = MODULOS_IDS.indexOf(moduloActivo);
+      const siguiente = MODULOS_IDS[idxActual + 1];
+      if (siguiente) {
+        setTimeout(() => {
+          setModuloActivo(siguiente);
+          setLeccionIdx(0);
+          setQuizResp({});
+        }, 800);
+      }
+    }
   };
 
   const responder = (qi, oi) => {
