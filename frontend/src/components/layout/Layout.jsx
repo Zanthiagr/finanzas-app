@@ -6,6 +6,7 @@ const NAV_DESKTOP = [
   { to: '/',             icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
   { to: '/movimientos',  icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
   { to: '/cierre',       icon: 'ti-calendar-stats',   label: 'Cierre semanal', group: 'principal' },
+  { to: '/calendario',  icon: 'ti-calendar-month',   label: 'Calendario',     group: 'principal' },
   { to: '/presupuestos', icon: 'ti-wallet',           label: 'Presupuestos',   group: 'principal' },
   { to: '/reporte',      icon: 'ti-file-download',    label: 'Reporte PDF',    group: 'principal' },
   { to: '/activos',      icon: 'ti-building-bank',    label: 'Activos',        group: 'patrimonio' },
@@ -26,6 +27,7 @@ const NAV_MOBILE_MAIN = [
 
 // Secciones en el menú "Más"
 const NAV_MOBILE_MAS = [
+  { to: '/calendario',   icon: 'ti-calendar-month',   label: 'Calendario',   color: '#185FA5', bg: '#E6F1FB' },
   { to: '/academia',     icon: 'ti-school',           label: 'Academia',     color: '#BA7517', bg: '#FAEEDA' },
   { to: '/metas',        icon: 'ti-target',           label: 'Metas',        color: '#0F6E56', bg: '#E1F5EE' },
   { to: '/presupuestos', icon: 'ti-wallet',           label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
@@ -54,6 +56,7 @@ const PAGE_TITLES = {
   '/mental':        'Mentalidad',
   '/academia':      'Academia',
   '/coach':         'Coach IA',
+  '/calendario':    'Calendario',
   '/perfil':        'Mi perfil',
 };
 
@@ -181,7 +184,7 @@ export default function Layout({ children }) {
                 <div className="w-10 h-1 rounded-full bg-g-200"/>
               </div>
               <p className="text-xs text-g-400 uppercase tracking-widest mb-3">Más secciones</p>
-              <p className="text-[9px] text-g-200 mb-2">build pantalla completa v2</p>
+              <p className="text-[9px] text-g-200 mb-2">v3 — calendario + fixes</p>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {NAV_MOBILE_MAS.map(n => (
                   <button key={n.to} onClick={() => irA(n.to)}
