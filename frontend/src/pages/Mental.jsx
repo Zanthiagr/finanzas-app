@@ -38,11 +38,19 @@ export default function Mental() {
   }, []);
 
   const handleToggle = async h => {
+    // Actualización optimista — el check cambia inmediatamente sin esperar la BD
+    const nuevoEstado = !h.completado_hoy;
+    setHabitos(prev => prev.map(x => x.id===h.id ? {...x, completado_hoy: nuevoEstado} : x));
     try {
       const r = await toggleHabito(h.id, h.puntos);
+      // Sincronizar con el valor real devuelto por la BD
       setHabitos(prev => prev.map(x => x.id===h.id ? {...x, completado_hoy: r.completado} : x));
       if (r.completado) toast.success(`+${h.puntos} XP 🎉`);
-    } catch { toast.error('Error'); }
+    } catch (err) {
+      // Revertir si falló
+      setHabitos(prev => prev.map(x => x.id===h.id ? {...x, completado_hoy: h.completado_hoy} : x));
+      toast.error('Error actualizando hábito');
+    }
   };
 
   const guardarDiario = async () => {
