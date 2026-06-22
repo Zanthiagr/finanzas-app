@@ -14,14 +14,19 @@ import Mental from './pages/Mental';
 import Academia from './pages/Academia';
 import Coach from './pages/Coach';
 import Reporte from './pages/Reporte';
+import Perfil from './pages/Perfil';
+import Calendario from './pages/Calendario';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
+
+  // Problema 1: loading=true puede persistir si onAuthStateChange tarda.
+  // Mostramos un spinner SIMPLE sin bloquear la interfaz completa.
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-g-50">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-g-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
-        <p className="text-g-400 text-sm">Cargando...</p>
+        <p className="text-g-400 text-sm">Un momento...</p>
       </div>
     </div>
   );
@@ -46,29 +51,31 @@ function AppRoutes() {
 
   return (
     <>
-      {mostrarOnboarding && user && <Onboarding onComplete={completarOnboarding} />}
+      {mostrarOnboarding && user && <Onboarding onComplete={completarOnboarding}/>}
       <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
+        <Route path="/login" element={user ? <Navigate to="/" replace/> : <AuthPage/>}/>
         <Route path="/*" element={
           <PrivateRoute>
             <Layout>
               <Routes>
-                <Route path="/"             element={<Dashboard />} />
-                <Route path="/movimientos"  element={<Movimientos />} />
-                <Route path="/cierre"       element={<CierreSemanal />} />
-                <Route path="/presupuestos" element={<Presupuestos />} />
-                <Route path="/activos"      element={<Activos />} />
-                <Route path="/deudas"       element={<Deudas />} />
-                <Route path="/metas"        element={<Metas />} />
-                <Route path="/mental"       element={<Mental />} />
-                <Route path="/academia"     element={<Academia />} />
-                <Route path="/coach"        element={<Coach />} />
-                <Route path="/reporte"      element={<Reporte />} />
-                <Route path="*"             element={<Navigate to="/" replace />} />
+                <Route path="/"             element={<Dashboard/>}/>
+                <Route path="/movimientos"  element={<Movimientos/>}/>
+                <Route path="/cierre"       element={<CierreSemanal/>}/>
+                <Route path="/presupuestos" element={<Presupuestos/>}/>
+                <Route path="/activos"      element={<Activos/>}/>
+                <Route path="/deudas"       element={<Deudas/>}/>
+                <Route path="/metas"        element={<Metas/>}/>
+                <Route path="/mental"       element={<Mental/>}/>
+                <Route path="/academia"     element={<Academia/>}/>
+                <Route path="/coach"        element={<Coach/>}/>
+                <Route path="/reporte"      element={<Reporte/>}/>
+                <Route path="/perfil"       element={<Perfil/>}/>
+                <Route path="/calendario"   element={<Calendario/>}/>
+                <Route path="*"             element={<Navigate to="/" replace/>}/>
               </Routes>
             </Layout>
           </PrivateRoute>
-        } />
+        }/>
       </Routes>
     </>
   );
@@ -78,7 +85,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <AppRoutes />
+        <AppRoutes/>
         <Toaster
           position="top-right"
           toastOptions={{
