@@ -1,11 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
-import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento } from '../utils/api';
+import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getResumenMedioPago } from '../utils/api';
 import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas'];
-const CATS_INGRESO = ['Salario','Freelance','Negocio'];
-const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0] };
+const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento'];
+const MEDIOS_PAGO  = [
+  { value: 'efectivo',     label: '💵 Efectivo' },
+  { value: 'nequi',        label: '🟣 Nequi' },
+  { value: 'daviplata',    label: '🔴 Daviplata' },
+  { value: 'bancolombia',  label: '🟡 Bancolombia' },
+  { value: 'otro_banco',   label: '🏦 Otro banco' },
+];
+const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0], medio_pago: 'efectivo' };
 
 // Componente fila con swipe para eliminar
 function MovRow({ m, onEdit, onDelete }) {
@@ -101,6 +108,18 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit 
             <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
           </div>
           <div>
+            <label className="section-label block mb-2">Medio de pago</label>
+            <div className="grid grid-cols-3 gap-2">
+              {MEDIOS_PAGO.map(m => (
+                <button key={m.value} type="button"
+                  onClick={() => setForm(f => ({...f, medio_pago: m.value}))}
+                  className={`py-2.5 px-2 rounded-xl text-xs font-medium border transition-all text-center ${form.medio_pago===m.value?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label className="section-label block mb-1">Fecha</label>
             <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
           </div>
@@ -126,13 +145,19 @@ export default function Movimientos() {
   const [form, setForm]         = useState(initForm);
   const [editing, setEditing]   = useState(null);
   const [filtroTipo, setFiltroTipo] = useState('');
+  const [resumenMedio, setResumenMedio] = useState(null);
+  const [verMedios, setVerMedios] = useState(false);
   const now = new Date();
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await getMovimientos({ mes: now.getMonth()+1, anio: now.getFullYear(), tipo: filtroTipo||undefined });
+      const [data, medio] = await Promise.all([
+        getMovimientos({ mes: now.getMonth()+1, anio: now.getFullYear(), tipo: filtroTipo||undefined }),
+        getResumenMedioPago({ mes: now.getMonth()+1, anio: now.getFullYear() }),
+      ]);
       setMovs(data);
+      setResumenMedio(medio);
     } catch { toast.error('Error cargando movimientos'); }
     finally { setLoading(false); }
   };
@@ -208,7 +233,37 @@ export default function Movimientos() {
             {l}
           </button>
         ))}
+        <button onClick={()=>setVerMedios(!verMedios)}
+          className={`text-xs px-3 py-1.5 rounded-full border transition-all ml-auto ${verMedios?'bg-g-700 text-white border-g-700':'bg-white text-g-600 border-g-200/60'}`}>
+          <i className="ti ti-wallet text-xs mr-1"/>Medios
+        </button>
       </div>
+
+      {verMedios && resumenMedio && (
+        <div className="card p-4">
+          <p className="text-sm font-medium text-g-900 mb-3">Saldo por medio de pago</p>
+          <div className="space-y-2">
+            {MEDIOS_PAGO.map(m => {
+              const d = resumenMedio[m.value];
+              if (!d || (d.ingresos === 0 && d.gastos === 0)) return null;
+              const saldo = d.ingresos - d.gastos;
+              return (
+                <div key={m.value} className="flex items-center justify-between py-2 border-b border-g-100 last:border-0">
+                  <span className="text-sm text-g-700">{m.label}</span>
+                  <div className="text-right">
+                    <p className={`text-sm font-medium ${saldo >= 0 ? 'text-g-600' : 'text-red-600'}`}>
+                      {saldo >= 0 ? '+' : ''}{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(saldo)}
+                    </p>
+                    <p className="text-[10px] text-g-400">
+                      ↓{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(d.ingresos)} ↑{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(d.gastos)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="card overflow-hidden divide-y divide-g-100/60">
         {loading ? (
