@@ -45,19 +45,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // Salvaguarda: si por cualquier razón la app nunca recibe respuesta de
-    // Supabase (red lenta, sesión corrupta), forzamos salir del estado de
-    // carga a los 6 segundos para que el usuario nunca quede atrapado.
     const timeoutDeSeguridad = setTimeout(() => setLoading(false), 6000);
 
-    // onAuthStateChange por sí solo ya dispara con la sesión inicial al
-    // montar (evento INITIAL_SESSION) — no necesitamos llamar getSession()
-    // por separado, eso causaba dos peticiones compitiendo entre sí.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
+        // TOKEN_REFRESHED y USER_UPDATED no requieren recargar el perfil completo
+        // — son renovaciones silenciosas del token, no cambios de sesión real.
+        // Procesarlos igual causaba congelamiento de la UI al volver del background.
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          if (session?.user) setUser(session.user);
+          setLoading(false);
+          clearTimeout(timeoutDeSeguridad);
+          return;
+        }
+
         if (session?.user) {
           setUser(session.user);
-          await crearPerfilSiNoExiste(session.user.id, session.user.user_metadata?.full_name, session.user.email);
+          // Solo crear/cargar perfil en eventos de login real, no en refresh de token
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            await crearPerfilSiNoExiste(
+              session.user.id,
+              session.user.user_metadata?.full_name,
+              session.user.email
+            );
+          }
         } else {
           setUser(null);
           setPerfil(null);
@@ -70,9 +81,32 @@ export const AuthProvider = ({ children }) => {
       }
     });
 
+    // Listener para cuando la app vuelve al primer plano (visibilitychange).
+    // iOS congela las tabs en background — cuando vuelven, el token puede
+    // estar expirado pero onAuthStateChange no siempre dispara solo.
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setUser(session.user);
+            if (!perfil) await cargarPerfil(session.user.id);
+          } else {
+            setUser(null);
+            setPerfil(null);
+          }
+        } catch (err) {
+          console.warn('Error al reactivar sesión:', err);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       subscription.unsubscribe();
       clearTimeout(timeoutDeSeguridad);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
