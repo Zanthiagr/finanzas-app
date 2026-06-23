@@ -20,8 +20,13 @@ import Calendario from './pages/Calendario';
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
 
-  // Problema 1: loading=true puede persistir si onAuthStateChange tarda.
-  // Mostramos un spinner SIMPLE sin bloquear la interfaz completa.
+  // Si ya tenemos usuario, mostrar contenido inmediatamente aunque loading sea true.
+  // Esto evita que al renovar el token (cada hora) la app muestre el spinner
+  // y congele la interfaz — el usuario ya está autenticado, no hay razón para bloquearlo.
+  if (user) return children;
+
+  // Solo bloqueamos con el spinner en la carga completamente inicial
+  // (cuando no sabemos aún si hay sesión o no).
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-g-50">
       <div className="text-center">
@@ -30,7 +35,8 @@ function PrivateRoute({ children }) {
       </div>
     </div>
   );
-  return user ? children : <Navigate to="/login" replace />;
+
+  return <Navigate to="/login" replace />;
 }
 
 function AppRoutes() {
