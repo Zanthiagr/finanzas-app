@@ -3,16 +3,25 @@ import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimien
 import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
-const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas'];
-const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento'];
-const MEDIOS_PAGO  = [
-  { value: 'efectivo',     label: '💵 Efectivo' },
-  { value: 'nequi',        label: '🟣 Nequi' },
-  { value: 'daviplata',    label: '🔴 Daviplata' },
-  { value: 'bancolombia',  label: '🟡 Bancolombia' },
-  { value: 'otro_banco',   label: '🏦 Otro banco' },
+const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
+const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Otro'];
+const BANCOS = [
+  { value: 'bancolombia',   label: '🟡 Bancolombia' },
+  { value: 'davivienda',    label: '🔴 Davivienda' },
+  { value: 'bogota',        label: '🔵 Banco de Bogotá' },
+  { value: 'nequi',         label: '🟣 Nequi' },
+  { value: 'daviplata',     label: '🟠 Daviplata' },
+  { value: 'bbva',          label: '🔷 BBVA' },
+  { value: 'occidente',     label: '🟤 Banco de Occidente' },
+  { value: 'popular',       label: '⚫ Banco Popular' },
+  { value: 'itau',          label: '🔶 Itaú' },
+  { value: 'scotiabank',    label: '🔴 Scotiabank Colpatria' },
+  { value: 'falabella',     label: '🟢 Banco Falabella' },
+  { value: 'nu',            label: '🟣 Nu (Nubank)' },
+  { value: 'lulo',          label: '🟡 Lulo Bank' },
+  { value: 'otro_banco',    label: '🏦 Otro banco' },
 ];
-const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0], medio_pago: 'efectivo' };
+const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0], medio_pago: 'efectivo', banco: '' };
 
 // Componente fila con swipe para eliminar
 function MovRow({ m, onEdit, onDelete }) {
@@ -109,15 +118,29 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit 
           </div>
           <div>
             <label className="section-label block mb-2">Medio de pago</label>
-            <div className="grid grid-cols-3 gap-2">
-              {MEDIOS_PAGO.map(m => (
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {[{value:'efectivo',label:'💵 Efectivo'},{value:'transferencia',label:'🏦 Transferencia bancaria'}].map(m => (
                 <button key={m.value} type="button"
-                  onClick={() => setForm(f => ({...f, medio_pago: m.value}))}
+                  onClick={() => setForm(f => ({...f, medio_pago: m.value, banco: m.value==='efectivo'?'':f.banco}))}
                   className={`py-2.5 px-2 rounded-xl text-xs font-medium border transition-all text-center ${form.medio_pago===m.value?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
                   {m.label}
                 </button>
               ))}
             </div>
+            {form.medio_pago==='transferencia' && (
+              <div>
+                <label className="section-label block mb-2">Banco</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {BANCOS.map(b => (
+                    <button key={b.value} type="button"
+                      onClick={() => setForm(f => ({...f, banco: b.value}))}
+                      className={`py-2 px-2 rounded-xl text-xs font-medium border transition-all text-left ${form.banco===b.value?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <label className="section-label block mb-1">Fecha</label>
@@ -174,7 +197,7 @@ export default function Movimientos() {
   };
 
   const openNew  = () => { setEditing(null); setForm(initForm); setModal(true); };
-  const openEdit = m  => { setEditing(m.id); setForm({tipo:m.tipo,monto:m.monto,categoria:m.categoria,descripcion:m.descripcion||'',fecha:m.fecha}); setModal(true); };
+  const openEdit = m  => { setEditing(m.id); setForm({tipo:m.tipo,monto:m.monto,categoria:m.categoria,descripcion:m.descripcion||'',fecha:m.fecha,medio_pago:m.medio_pago||'efectivo',banco:m.banco||''}); setModal(true); };
 
   const submit = async e => {
     e.preventDefault();
@@ -243,7 +266,7 @@ export default function Movimientos() {
         <div className="card p-4">
           <p className="text-sm font-medium text-g-900 mb-3">Saldo por medio de pago</p>
           <div className="space-y-2">
-            {MEDIOS_PAGO.map(m => {
+            {[{value:'efectivo',label:'💵 Efectivo'},{value:'transferencia',label:'🏦 Transferencia (total)'},...BANCOS].map(m => {
               const d = resumenMedio[m.value];
               if (!d || (d.ingresos === 0 && d.gastos === 0)) return null;
               const saldo = d.ingresos - d.gastos;
