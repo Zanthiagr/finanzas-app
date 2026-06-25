@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import CalculadoraFinanciera from '../components/CalculadoraFinanciera';
 
 const MODULOS = [
   {
@@ -364,6 +365,10 @@ export default function Academia() {
           ))}
         </div>
       </div>
+
+      {/* Calculadoras financieras */}
+      <CalculadoraFinanciera/>
+
     </div>
   );
 }
