@@ -339,17 +339,18 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
 };
 
 // ── RENDIMIENTO DE ACTIVOS ───────────────────────────────
-export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, mes, anio }) => {
+export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, mes, anio, fecha }) => {
   const userId = await getUserId();
 
   // Actualizar valor_actual del activo
   const { data: activo } = await supabase.from('activos').select('*').eq('id', activo_id).single();
   if (!activo) throw new Error('Activo no encontrado');
 
+  const fechaRegistro = fecha || new Date().toISOString().split('T')[0];
   const nuevoValor = parseFloat(activo.valor_actual) + parseFloat(rendimiento_monto);
   await supabase.from('activos').update({
     valor_actual: nuevoValor,
-    ultimo_rendimiento_fecha: new Date().toISOString().split('T')[0],
+    ultimo_rendimiento_fecha: fechaRegistro,
   }).eq('id', activo_id);
 
   // Registrar como ingreso en movimientos
@@ -358,8 +359,8 @@ export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto,
     monto: rendimiento_monto,
     categoria: 'Rendimiento',
     descripcion: `Rendimiento: ${activo.nombre}`,
-    fecha: new Date().toISOString().split('T')[0],
-    medio_pago: 'otro_banco',
+    fecha: fechaRegistro,
+    medio_pago: 'transferencia',
   });
 
   return nuevoValor;
