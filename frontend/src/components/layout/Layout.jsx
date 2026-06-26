@@ -14,6 +14,7 @@ const NAV_DESKTOP = [
   { to: '/metas',        icon: 'ti-target',           label: 'Metas',          group: 'patrimonio' },
   { to: '/mental',       icon: 'ti-brain',            label: 'Mentalidad',     group: 'crecimiento' },
   { to: '/academia',     icon: 'ti-school',           label: 'Academia',       group: 'crecimiento' },
+  { to: '/calculadora',  icon: 'ti-calculator',       label: 'Calculadoras',   group: 'crecimiento' },
   { to: '/coach',        icon: 'ti-robot',            label: 'Coach IA',       group: 'crecimiento' },
 ];
 
@@ -29,6 +30,7 @@ const NAV_MOBILE_MAIN = [
 const NAV_MOBILE_MAS = [
   { to: '/calendario',   icon: 'ti-calendar-month',   label: 'Calendario',   color: '#185FA5', bg: '#E6F1FB' },
   { to: '/academia',     icon: 'ti-school',           label: 'Academia',     color: '#BA7517', bg: '#FAEEDA' },
+  { to: '/calculadora',  icon: 'ti-calculator',       label: 'Calculadoras', color: '#534AB7', bg: '#EEEDFE' },
   { to: '/metas',        icon: 'ti-target',           label: 'Metas',        color: '#0F6E56', bg: '#E1F5EE' },
   { to: '/presupuestos', icon: 'ti-wallet',           label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
   { to: '/cierre',       icon: 'ti-calendar-stats',   label: 'Cierre',       color: '#2D6B4A', bg: '#EDFAF3' },
@@ -55,6 +57,7 @@ const PAGE_TITLES = {
   '/metas':         'Metas',
   '/mental':        'Mentalidad',
   '/academia':      'Academia',
+  '/calculadora':   'Calculadoras',
   '/coach':         'Coach IA',
   '/calendario':    'Calendario',
   '/perfil':        'Mi perfil',
