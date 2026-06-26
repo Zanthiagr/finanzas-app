@@ -15,6 +15,7 @@ import Academia from './pages/Academia';
 import Coach from './pages/Coach';
 import Reporte from './pages/Reporte';
 import Perfil from './pages/Perfil';
+import NuevoMovimiento from './pages/NuevoMovimiento';
 import Calculadora from './pages/Calculadora';
 import Calendario from './pages/Calendario';
 
@@ -66,7 +67,8 @@ function AppRoutes() {
             <Layout>
               <Routes>
                 <Route path="/"             element={<Dashboard/>}/>
-                <Route path="/movimientos"  element={<Movimientos/>}/>
+                <Route path="/movimientos"       element={<Movimientos/>}/>
+                <Route path="/movimientos/nuevo" element={<NuevoMovimiento/>}/>
                 <Route path="/cierre"       element={<CierreSemanal/>}/>
                 <Route path="/presupuestos" element={<Presupuestos/>}/>
                 <Route path="/activos"      element={<Activos/>}/>
