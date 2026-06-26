@@ -165,7 +165,7 @@ export function Activos() {
             </div>
             <div>
               <label className="section-label block mb-1">Monto del rendimiento (COP)</label>
-              <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
                 value={rendMonto} onChange={e=>setRendMonto(e.target.value)}/>
               <p className="text-xs text-g-400 mt-1">Se sumará al valor del activo y se registrará como ingreso</p>
             </div>
@@ -201,8 +201,8 @@ export function Activos() {
               <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_ACTIVO.map(t=><option key={t}>{t}</option>)}</select>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="section-label block mb-1">Capital inicial</label><input type="number" inputMode="numeric" className="input" placeholder="0" value={form.valor_inicial} onChange={set('valor_inicial')} required/></div>
-              <div><label className="section-label block mb-1">Valor actual</label><input type="number" inputMode="numeric" className="input" placeholder="= capital inicial" value={form.valor_actual} onChange={set('valor_actual')}/></div>
+              <div className="min-w-0"><label className="section-label block mb-1">Capital inicial</label><input type="text" inputMode="numeric" className="input" placeholder="0" value={form.valor_inicial} onChange={set('valor_inicial')} required/></div>
+              <div className="min-w-0"><label className="section-label block mb-1">Valor actual</label><input type="text" inputMode="numeric" className="input" placeholder="= capital inicial" value={form.valor_actual} onChange={set('valor_actual')}/></div>
             </div>
             <div>
               <label className="section-label block mb-1">Fecha de adquisición</label>
@@ -226,7 +226,7 @@ export function Activos() {
                 <label className="section-label block mb-1">
                   {form.tipo_rendimiento==='fija_capital' ? 'Tasa mensual sobre capital inicial (%)' : 'Tasa anual EA (%)'}
                 </label>
-                <input type="number" inputMode="decimal" className="input"
+                <input type="text" inputMode="decimal" className="input"
                   placeholder={form.tipo_rendimiento==='fija_capital' ? 'Ej: 2.5 → genera 2.5% del capital/mes' : 'Ej: 12.5'}
                   value={form.tasa_rendimiento} onChange={set('tasa_rendimiento')} step="0.01"/>
                 {form.tipo_rendimiento==='fija_capital' && form.tasa_rendimiento && form.valor_inicial && (
@@ -326,8 +326,8 @@ export function Deudas() {
           <input className="input" placeholder="Nombre de la deuda" value={form.nombre} onChange={set('nombre')} required/>
           <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_DEUDA.map(t=><option key={t}>{t}</option>)}</select>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="section-label block mb-1">Monto total</label><input type="number" inputMode="numeric" className="input" placeholder="0" value={form.monto_total} onChange={set('monto_total')} required/></div>
-            <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="number" className="input" placeholder="0" value={form.tasa_interes} onChange={set('tasa_interes')} step="0.1"/></div>
+            <div><label className="section-label block mb-1">Monto total</label><input type="text" inputMode="numeric" className="input" placeholder="0" value={form.monto_total} onChange={set('monto_total')} required/></div>
+            <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="text" inputMode="decimal" className="input" placeholder="0" value={form.tasa_interes} onChange={set('tasa_interes')} step="0.1"/></div>
           </div>
           <input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/>
           <div className="flex gap-2 pt-2 pb-4">
@@ -414,7 +414,7 @@ export function Metas() {
           <input className="input" placeholder="Nombre de tu meta" value={form.nombre} onChange={set('nombre')} required/>
           <input className="input" placeholder="Descripción (opcional)" value={form.descripcion} onChange={set('descripcion')}/>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="section-label block mb-1">Monto objetivo</label><input type="number" inputMode="numeric" className="input" placeholder="0" value={form.monto_objetivo} onChange={set('monto_objetivo')} required/></div>
+            <div><label className="section-label block mb-1">Monto objetivo</label><input type="text" inputMode="numeric" className="input" placeholder="0" value={form.monto_objetivo} onChange={set('monto_objetivo')} required/></div>
             <div><label className="section-label block mb-1">Fecha límite</label><input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/></div>
           </div>
           <div>
