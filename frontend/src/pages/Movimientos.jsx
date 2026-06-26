@@ -1,6 +1,206 @@
 import { useEffect, useState, useRef } from 'react';
-import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getResumenMedioPago } from '../utils/api';
+import { useNavigate } from 'react-router-dom';
+import { getMovimientos, eliminarMovimiento, getResumenMedioPago } from '../utils/api';
 import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import toast from 'react-hot-toast';
+
+const BANCOS = [
+  { value: 'bancolombia', label: '🟡 Bancolombia' },
+  { value: 'davivienda',  label: '🔴 Davivienda' },
+  { value: 'bogota',      label: '🔵 Banco de Bogotá' },
+  { value: 'nequi',       label: '🟣 Nequi' },
+  { value: 'daviplata',   label: '🟠 Daviplata' },
+  { value: 'bbva',        label: '🔷 BBVA' },
+  { value: 'occidente',   label: '🟤 Banco de Occidente' },
+  { value: 'popular',     label: '⚫ Banco Popular' },
+  { value: 'itau',        label: '🔶 Itaú' },
+  { value: 'scotiabank',  label: '🔴 Scotiabank' },
+  { value: 'falabella',   label: '🟢 Falabella' },
+  { value: 'nu',          label: '🟣 Nu' },
+  { value: 'lulo',        label: '🟡 Lulo' },
+  { value: 'otro_banco',  label: '🏦 Otro banco' },
+];
+
+function MovRow({ m, onEdit, onDelete }) {
+  const [swipeX, setSwipeX] = useState(0);
+  const startX = useRef(null);
+
+  const onTouchStart = e => { startX.current = e.touches[0].clientX; };
+  const onTouchMove  = e => {
+    if (startX.current === null) return;
+    const diff = e.touches[0].clientX - startX.current;
+    if (diff < 0) setSwipeX(Math.max(diff, -80));
+  };
+  const onTouchEnd = () => {
+    if (swipeX < -60) { /* queda abierto */ }
+    else setSwipeX(0);
+    startX.current = null;
+  };
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="absolute right-0 top-0 bottom-0 w-20 bg-red-500 flex items-center justify-center rounded-r-xl">
+        <button onClick={() => onDelete(m.id)} className="text-white flex flex-col items-center gap-0.5">
+          <i className="ti ti-trash text-lg"/>
+          <span className="text-[10px]">Eliminar</span>
+        </button>
+      </div>
+      <div
+        className="relative bg-white flex items-center gap-3 px-4 py-3 transition-transform"
+        style={{ transform: `translateX(${swipeX}px)` }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClick={() => swipeX === 0 && onEdit(m)}
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+          style={{ background: (CATEGORIAS_COLORES[m.categoria]||'#9ED4B8')+'25', color: CATEGORIAS_COLORES[m.categoria]||'#2D6B4A' }}>
+          <i className={`ti ${CATEGORIAS_ICONOS[m.categoria]||'ti-tag'}`}/>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-g-900 truncate">{m.descripcion||m.categoria}</p>
+          <p className="text-[11px] text-g-400">{m.categoria} · {fmtDate(m.fecha)}</p>
+        </div>
+        <span className={`text-sm font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-g-600':'text-g-900'}`}>
+          {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export default function Movimientos() {
+  const navigate = useNavigate();
+  const [movs, setMovs]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [resumenMedio, setResumenMedio] = useState(null);
+  const [verMedios, setVerMedios] = useState(false);
+  const now = new Date();
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await getMovimientos({
+        mes: now.getMonth()+1,
+        anio: now.getFullYear(),
+        tipo: filtroTipo || undefined,
+      });
+      setMovs(data);
+    } catch { toast.error('Error cargando movimientos'); }
+    finally { setLoading(false); }
+    // Resumen por medio de pago: separado para que un fallo no bloquee la lista
+    try {
+      const medio = await getResumenMedioPago({ mes: now.getMonth()+1, anio: now.getFullYear() });
+      setResumenMedio(medio);
+    } catch { /* silencioso */ }
+  };
+
+  useEffect(() => { load(); }, [filtroTipo]);
+
+  const remove = async id => {
+    await eliminarMovimiento(id);
+    toast.success('Eliminado');
+    load();
+  };
+
+  const totalIngresos = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+parseFloat(m.monto),0);
+  const totalGastos   = movs.filter(m=>m.tipo==='gasto').reduce((a,m)=>a+parseFloat(m.monto),0);
+
+  return (
+    <div className="space-y-4 page-enter">
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-medium text-g-900">Movimientos</h2>
+          <p className="text-sm text-g-400">{now.toLocaleDateString('es-CO',{month:'long',year:'numeric'})}</p>
+        </div>
+        <button onClick={() => navigate('/movimientos/nuevo')} className="btn-primary flex items-center gap-2">
+          <i className="ti ti-plus text-sm"/> Nuevo
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="card p-3">
+          <p className="section-label">Ingresos</p>
+          <p className="text-base font-medium text-g-600">{fmtShort(totalIngresos)}</p>
+        </div>
+        <div className="card p-3">
+          <p className="section-label">Gastos</p>
+          <p className="text-base font-medium text-red-500">{fmtShort(totalGastos)}</p>
+        </div>
+        <div className="card p-3">
+          <p className="section-label">Balance</p>
+          <p className={`text-base font-medium ${totalIngresos-totalGastos>=0?'text-g-600':'text-red-500'}`}>
+            {fmtShort(totalIngresos-totalGastos)}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {[['','Todos'],['ingreso','Ingresos'],['gasto','Gastos']].map(([v,l])=>(
+          <button key={v} onClick={()=>setFiltroTipo(v)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${filtroTipo===v?'bg-g-700 text-white border-g-700':'bg-white text-g-600 border-g-200/60'}`}>
+            {l}
+          </button>
+        ))}
+        <button onClick={()=>setVerMedios(!verMedios)}
+          className={`text-xs px-3 py-1.5 rounded-full border transition-all ml-auto ${verMedios?'bg-g-700 text-white border-g-700':'bg-white text-g-600 border-g-200/60'}`}>
+          <i className="ti ti-wallet text-xs mr-1"/>Medios
+        </button>
+      </div>
+
+      {verMedios && resumenMedio && (
+        <div className="card p-4">
+          <p className="text-sm font-medium text-g-900 mb-3">Saldo por medio de pago</p>
+          <div className="space-y-2">
+            {[{value:'efectivo',label:'💵 Efectivo'},{value:'transferencia',label:'🏦 Transferencia (total)'},...BANCOS].map(m => {
+              const d = resumenMedio[m.value];
+              if (!d || (d.ingresos===0 && d.gastos===0)) return null;
+              const saldo = d.ingresos - d.gastos;
+              return (
+                <div key={m.value} className="flex items-center justify-between py-2 border-b border-g-100 last:border-0">
+                  <span className="text-sm text-g-700">{m.label}</span>
+                  <div className="text-right">
+                    <p className={`text-sm font-medium ${saldo>=0?'text-g-600':'text-red-600'}`}>
+                      {saldo>=0?'+':''}{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(saldo)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="card overflow-hidden divide-y divide-g-100/60">
+        {loading ? (
+          <div className="flex justify-center items-center h-40">
+            <i className="ti ti-loader animate-spin text-2xl text-g-400"/>
+          </div>
+        ) : movs.length===0 ? (
+          <div className="text-center py-16">
+            <i className="ti ti-inbox text-4xl text-g-200 block mb-2"/>
+            <p className="text-g-400 text-sm">No hay movimientos este mes</p>
+            <button onClick={()=>navigate('/movimientos/nuevo')}
+              className="text-xs text-g-600 underline mt-2 block mx-auto">
+              Registrar el primero
+            </button>
+          </div>
+        ) : movs.map(m => (
+          <MovRow key={m.id} m={m}
+            onEdit={mov => navigate('/movimientos/nuevo', { state: { editar: mov } })}
+            onDelete={remove}/>
+        ))}
+      </div>
+
+      {movs.length > 0 && (
+        <p className="text-center text-[11px] text-g-400 md:hidden">← Desliza para eliminar</p>
+      )}
+    </div>
+  );
+}
+
 import toast from 'react-hot-toast';
 
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
