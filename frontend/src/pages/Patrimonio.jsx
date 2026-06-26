@@ -4,7 +4,6 @@ import { getActivos, crearActivo, eliminarActivo, actualizarActivo,
          getMetas, crearMeta, actualizarMeta, eliminarMeta,
          registrarRendimientoActivo } from '../utils/api';
 import { fmt, fmtDate, fmtShort } from '../utils/helpers';
-import CalculadoraLibertad from '../components/CalculadoraLibertad';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
@@ -29,7 +28,7 @@ export function Activos() {
     nombre:'', tipo:'Inversión', valor_inicial:'', valor_actual:'',
     fecha_adquisicion:'', descripcion:'', tasa_rendimiento:'', tipo_rendimiento:'manual'
   });
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
+  const set = k => e => setForm(f=>({...f,[k]:e.target.value.replace(',','.')}));
   const load = () => getActivos().then(setItems).catch(()=>toast.error('Error cargando activos'));
   useEffect(()=>{ load(); },[]);
 
@@ -256,7 +255,7 @@ export function Deudas() {
   const [items, setItems] = useState([]);
   const [modal, setModal] = useState(false);
   const [form, setForm]   = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:''});
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
+  const set = k => e => setForm(f=>({...f,[k]:e.target.value.replace(',','.')}));
   const load = () => getDeudas().then(setItems).catch(()=>toast.error('Error cargando deudas'));
   useEffect(()=>{load();},[]);
 
@@ -346,7 +345,7 @@ export function Metas() {
   const [items, setItems] = useState([]);
   const [modal, setModal] = useState(false);
   const [form, setForm]   = useState({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
+  const set = k => e => setForm(f=>({...f,[k]:e.target.value.replace(',','.')}));
   const load = () => getMetas().then(setItems).catch(()=>toast.error('Error cargando metas'));
   useEffect(()=>{load();},[]);
 
