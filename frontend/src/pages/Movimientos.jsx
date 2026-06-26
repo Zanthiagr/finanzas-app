@@ -79,19 +79,20 @@ function MovRow({ m, onEdit, onDelete }) {
 // que afectan a los modales superpuestos.
 function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit }) {
   return (
-    <div className="fixed inset-0 bg-white z-[60] flex flex-col">
-      {/* Header fijo simple — sin cálculos de safe-area complejos */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-4 border-b border-g-100 flex-shrink-0 bg-white">
-        <button onClick={onCancel} className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-white z-[60] flex flex-col" style={{maxWidth:'100vw',overflowX:'hidden'}}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 border-b border-g-100 flex-shrink-0 bg-white"
+        style={{paddingTop:'calc(env(safe-area-inset-top, 0px) + 16px)', paddingBottom:'16px'}}>
+        <button onClick={onCancel} className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center flex-shrink-0">
           <i className="ti ti-arrow-left text-g-700"/>
         </button>
         <h3 className="font-medium text-g-900">{editing?'Editar movimiento':'Nuevo movimiento'}</h3>
-        <div className="w-9"/>
+        <div className="w-9 flex-shrink-0"/>
       </div>
 
-      {/* Contenido — scroll normal del documento, sin overflow anidado */}
-      <div className="flex-1 overflow-y-scroll px-5 py-5">
-        <form id="form-movimiento" onSubmit={onSubmit} className="space-y-4 pb-8">
+      {/* Contenido scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden w-full" style={{WebkitOverflowScrolling:'touch'}}>
+        <form id="form-movimiento" onSubmit={onSubmit} className="space-y-4 px-4 py-5 pb-10 w-full box-border">
           <div className="grid grid-cols-2 gap-2">
             {['gasto','ingreso'].map(t=>(
               <button key={t} type="button"
@@ -103,7 +104,7 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit 
           </div>
           <div>
             <label className="section-label block mb-1">Monto (COP)</label>
-            <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
+            <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
               value={form.monto} onChange={set('monto')} required min="1"/>
           </div>
           <div>
