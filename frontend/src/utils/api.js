@@ -211,11 +211,6 @@ export const actualizarMeta = async (id, meta) => {
   if (error) throw error;
   return data;
 };
-  const { data, error } = await supabase.from('metas')
-    .update(meta).eq('id', id).select().single();
-  if (error) throw error;
-  return data;
-};
 
 export const eliminarMeta = async (id) => {
   const { error } = await supabase.from('metas').delete().eq('id', id);
