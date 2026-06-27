@@ -32,7 +32,6 @@ export const crearMovimiento = async (mov) => {
 
   const { data, error } = await supabase.from('movimientos').insert({
     ...mov,
-    monto: parseFloat(String(mov.monto).replace(',', '.')),
     usuario_id: userId,
     fecha: fecha.toISOString().split('T')[0],
     semana_num: semana,
@@ -109,14 +108,7 @@ export const getDeudas = async () => {
 export const crearDeuda = async (deuda) => {
   const userId = await getUserId();
   const { data, error } = await supabase.from('deudas')
-    .insert({
-      ...deuda,
-      monto_total:   parseFloat(String(deuda.monto_total).replace(',', '.')),
-      monto_actual:  parseFloat(String(deuda.monto_actual || deuda.monto_total).replace(',', '.')),
-      tasa_interes:  deuda.tasa_interes ? parseFloat(String(deuda.tasa_interes).replace(',', '.')) : null,
-      cuota_mensual: deuda.cuota_mensual ? parseFloat(String(deuda.cuota_mensual).replace(',', '.')) : null,
-      usuario_id: userId,
-    }).select().single();
+    .insert({ ...deuda, usuario_id: userId }).select().single();
   if (error) throw error;
   return data;
 };
@@ -145,15 +137,7 @@ export const getActivos = async () => {
 export const crearActivo = async (activo) => {
   const userId = await getUserId();
   const { data, error } = await supabase.from('activos')
-    .insert({
-      ...activo,
-      valor_inicial: parseFloat(String(activo.valor_inicial).replace(',', '.')),
-      valor_actual:  parseFloat(String(activo.valor_actual || activo.valor_inicial).replace(',', '.')),
-      tasa_rendimiento: activo.tasa_rendimiento
-        ? parseFloat(String(activo.tasa_rendimiento).replace(',', '.'))
-        : null,
-      usuario_id: userId,
-    }).select().single();
+    .insert({ ...activo, usuario_id: userId }).select().single();
   if (error) throw error;
   return data;
 };
@@ -182,12 +166,7 @@ export const getMetas = async () => {
 export const crearMeta = async (meta) => {
   const userId = await getUserId();
   const { data, error } = await supabase.from('metas')
-    .insert({
-      ...meta,
-      monto_objetivo: parseFloat(String(meta.monto_objetivo).replace(',', '.')),
-      monto_actual:   meta.monto_actual ? parseFloat(String(meta.monto_actual).replace(',', '.')) : 0,
-      usuario_id: userId,
-    }).select().single();
+    .insert({ ...meta, usuario_id: userId }).select().single();
   if (error) throw error;
   return data;
 };
@@ -337,44 +316,40 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
 
   const { data, error } = await supabase
     .from('movimientos')
-    .select('tipo, monto, medio_pago, banco')
+    .select('tipo, monto, medio_pago')
     .eq('usuario_id', userId)
     .eq('mes_num', mesActual)
     .eq('anio_num', anioActual);
 
   if (error) throw error;
 
+  const medios = ['efectivo', 'nequi', 'daviplata', 'bancolombia', 'otro_banco'];
   const resumen = {};
+  medios.forEach(m => { resumen[m] = { ingresos: 0, gastos: 0 }; });
 
   data.forEach(mov => {
     const medio = mov.medio_pago || 'efectivo';
-    // Para transferencias, agregar tanto al total 'transferencia' como al banco específico
-    const claves = [medio];
-    if (medio === 'transferencia' && mov.banco) claves.push(mov.banco);
-
-    claves.forEach(clave => {
-      if (!resumen[clave]) resumen[clave] = { ingresos: 0, gastos: 0 };
-      if (mov.tipo === 'ingreso') resumen[clave].ingresos += parseFloat(mov.monto);
-      else resumen[clave].gastos += parseFloat(mov.monto);
-    });
+    if (resumen[medio]) {
+      if (mov.tipo === 'ingreso') resumen[medio].ingresos += parseFloat(mov.monto);
+      else resumen[medio].gastos += parseFloat(mov.monto);
+    }
   });
 
   return resumen;
 };
 
 // ── RENDIMIENTO DE ACTIVOS ───────────────────────────────
-export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, mes, anio, fecha }) => {
+export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, mes, anio }) => {
   const userId = await getUserId();
 
   // Actualizar valor_actual del activo
   const { data: activo } = await supabase.from('activos').select('*').eq('id', activo_id).single();
   if (!activo) throw new Error('Activo no encontrado');
 
-  const fechaRegistro = fecha || new Date().toISOString().split('T')[0];
   const nuevoValor = parseFloat(activo.valor_actual) + parseFloat(rendimiento_monto);
   await supabase.from('activos').update({
     valor_actual: nuevoValor,
-    ultimo_rendimiento_fecha: fechaRegistro,
+    ultimo_rendimiento_fecha: new Date().toISOString().split('T')[0],
   }).eq('id', activo_id);
 
   // Registrar como ingreso en movimientos
@@ -383,8 +358,8 @@ export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto,
     monto: rendimiento_monto,
     categoria: 'Rendimiento',
     descripcion: `Rendimiento: ${activo.nombre}`,
-    fecha: fechaRegistro,
-    medio_pago: 'transferencia',
+    fecha: new Date().toISOString().split('T')[0],
+    medio_pago: 'otro_banco',
   });
 
   return nuevoValor;
