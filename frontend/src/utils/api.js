@@ -32,6 +32,7 @@ export const crearMovimiento = async (mov) => {
 
   const { data, error } = await supabase.from('movimientos').insert({
     ...mov,
+    monto: parseFloat(String(mov.monto).replace(',','.')),
     usuario_id: userId,
     fecha: fecha.toISOString().split('T')[0],
     semana_num: semana,
@@ -44,7 +45,10 @@ export const crearMovimiento = async (mov) => {
 
 export const actualizarMovimiento = async (id, mov) => {
   const { data, error } = await supabase
-    .from('movimientos').update(mov).eq('id', id).select().single();
+    .from('movimientos').update({
+      ...mov,
+      monto: parseFloat(String(mov.monto).replace(',','.')),
+    }).eq('id', id).select().single();
   if (error) throw error;
   return data;
 };
@@ -108,14 +112,25 @@ export const getDeudas = async () => {
 export const crearDeuda = async (deuda) => {
   const userId = await getUserId();
   const { data, error } = await supabase.from('deudas')
-    .insert({ ...deuda, usuario_id: userId }).select().single();
+    .insert({
+      ...deuda,
+      monto_total:  parseFloat(String(deuda.monto_total).replace(',','.')),
+      tasa_interes: deuda.tasa_interes
+        ? parseFloat(String(deuda.tasa_interes).replace(',','.'))
+        : null,
+      usuario_id: userId,
+    }).select().single();
   if (error) throw error;
   return data;
 };
 
 export const actualizarDeuda = async (id, deuda) => {
   const { data, error } = await supabase.from('deudas')
-    .update(deuda).eq('id', id).select().single();
+    .update({
+      ...deuda,
+      monto_total:  parseFloat(String(deuda.monto_total).replace(',','.')),
+      monto_pagado: parseFloat(String(deuda.monto_pagado).replace(',','.')),
+    }).eq('id', id).select().single();
   if (error) throw error;
   return data;
 };
@@ -137,7 +152,15 @@ export const getActivos = async () => {
 export const crearActivo = async (activo) => {
   const userId = await getUserId();
   const { data, error } = await supabase.from('activos')
-    .insert({ ...activo, usuario_id: userId }).select().single();
+    .insert({
+      ...activo,
+      valor_inicial:    parseFloat(String(activo.valor_inicial).replace(',','.')),
+      valor_actual:     parseFloat(String(activo.valor_actual || activo.valor_inicial).replace(',','.')),
+      tasa_rendimiento: activo.tasa_rendimiento
+        ? parseFloat(String(activo.tasa_rendimiento).replace(',','.'))
+        : null,
+      usuario_id: userId,
+    }).select().single();
   if (error) throw error;
   return data;
 };
@@ -166,12 +189,28 @@ export const getMetas = async () => {
 export const crearMeta = async (meta) => {
   const userId = await getUserId();
   const { data, error } = await supabase.from('metas')
-    .insert({ ...meta, usuario_id: userId }).select().single();
+    .insert({
+      ...meta,
+      monto_objetivo: parseFloat(String(meta.monto_objetivo).replace(',','.')),
+      monto_actual:   meta.monto_actual
+        ? parseFloat(String(meta.monto_actual).replace(',','.'))
+        : 0,
+      usuario_id: userId,
+    }).select().single();
   if (error) throw error;
   return data;
 };
 
 export const actualizarMeta = async (id, meta) => {
+  const { data, error } = await supabase.from('metas')
+    .update({
+      ...meta,
+      monto_objetivo: parseFloat(String(meta.monto_objetivo).replace(',','.')),
+      monto_actual:   parseFloat(String(meta.monto_actual).replace(',','.')),
+    }).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+};
   const { data, error } = await supabase.from('metas')
     .update(meta).eq('id', id).select().single();
   if (error) throw error;
@@ -316,22 +355,24 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
 
   const { data, error } = await supabase
     .from('movimientos')
-    .select('tipo, monto, medio_pago')
+    .select('tipo, monto, medio_pago, banco')
     .eq('usuario_id', userId)
     .eq('mes_num', mesActual)
     .eq('anio_num', anioActual);
 
   if (error) throw error;
 
-  const medios = ['efectivo', 'nequi', 'daviplata', 'bancolombia', 'otro_banco'];
   const resumen = {};
-  medios.forEach(m => { resumen[m] = { ingresos: 0, gastos: 0 }; });
-
   data.forEach(mov => {
     const medio = mov.medio_pago || 'efectivo';
-    if (resumen[medio]) {
-      if (mov.tipo === 'ingreso') resumen[medio].ingresos += parseFloat(mov.monto);
-      else resumen[medio].gastos += parseFloat(mov.monto);
+    if (!resumen[medio]) resumen[medio] = { ingresos: 0, gastos: 0 };
+    if (mov.tipo === 'ingreso') resumen[medio].ingresos += parseFloat(mov.monto);
+    else resumen[medio].gastos += parseFloat(mov.monto);
+    // También agrupa por banco específico si hay transferencia
+    if (medio === 'transferencia' && mov.banco) {
+      if (!resumen[mov.banco]) resumen[mov.banco] = { ingresos: 0, gastos: 0 };
+      if (mov.tipo === 'ingreso') resumen[mov.banco].ingresos += parseFloat(mov.monto);
+      else resumen[mov.banco].gastos += parseFloat(mov.monto);
     }
   });
 
@@ -339,27 +380,26 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
 };
 
 // ── RENDIMIENTO DE ACTIVOS ───────────────────────────────
-export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, mes, anio }) => {
+export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, fecha }) => {
   const userId = await getUserId();
 
-  // Actualizar valor_actual del activo
   const { data: activo } = await supabase.from('activos').select('*').eq('id', activo_id).single();
   if (!activo) throw new Error('Activo no encontrado');
 
+  const fechaRegistro = fecha || new Date().toISOString().split('T')[0];
   const nuevoValor = parseFloat(activo.valor_actual) + parseFloat(rendimiento_monto);
   await supabase.from('activos').update({
     valor_actual: nuevoValor,
-    ultimo_rendimiento_fecha: new Date().toISOString().split('T')[0],
+    ultimo_rendimiento_fecha: fechaRegistro,
   }).eq('id', activo_id);
 
-  // Registrar como ingreso en movimientos
   await crearMovimiento({
     tipo: 'ingreso',
-    monto: rendimiento_monto,
+    monto: parseFloat(rendimiento_monto),
     categoria: 'Rendimiento',
     descripcion: `Rendimiento: ${activo.nombre}`,
-    fecha: new Date().toISOString().split('T')[0],
-    medio_pago: 'otro_banco',
+    fecha: fechaRegistro,
+    medio_pago: 'efectivo',
   });
 
   return nuevoValor;
