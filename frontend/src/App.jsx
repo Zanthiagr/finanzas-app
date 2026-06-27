@@ -16,6 +16,7 @@ import Coach from './pages/Coach';
 import Reporte from './pages/Reporte';
 import Perfil from './pages/Perfil';
 import Calendario from './pages/Calendario';
+import Calculadora from './pages/Calculadora';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -77,6 +78,7 @@ function AppRoutes() {
                 <Route path="/reporte"      element={<Reporte/>}/>
                 <Route path="/perfil"       element={<Perfil/>}/>
                 <Route path="/calendario"   element={<Calendario/>}/>
+                <Route path="/calculadora"  element={<Calculadora/>}/>
                 <Route path="*"             element={<Navigate to="/" replace/>}/>
               </Routes>
             </Layout>
