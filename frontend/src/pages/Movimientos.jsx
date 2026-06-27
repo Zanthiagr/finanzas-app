@@ -1,18 +1,28 @@
 import { useEffect, useState, useRef } from 'react';
 import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getResumenMedioPago } from '../utils/api';
 import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
-const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas'];
-const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento'];
-const MEDIOS_PAGO  = [
-  { value: 'efectivo',     label: '💵 Efectivo' },
-  { value: 'nequi',        label: '🟣 Nequi' },
-  { value: 'daviplata',    label: '🔴 Daviplata' },
-  { value: 'bancolombia',  label: '🟡 Bancolombia' },
-  { value: 'otro_banco',   label: '🏦 Otro banco' },
+const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
+const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Otro'];
+const BANCOS = [
+  { value: 'bancolombia', label: '🟡 Bancolombia' },
+  { value: 'davivienda',  label: '🔴 Davivienda' },
+  { value: 'bogota',      label: '🔵 Banco de Bogotá' },
+  { value: 'nequi',       label: '🟣 Nequi' },
+  { value: 'daviplata',   label: '🟠 Daviplata' },
+  { value: 'bbva',        label: '🔷 BBVA' },
+  { value: 'occidente',   label: '🟤 Banco de Occidente' },
+  { value: 'popular',     label: '⚫ Banco Popular' },
+  { value: 'itau',        label: '🔶 Itaú' },
+  { value: 'scotiabank',  label: '🔴 Scotiabank' },
+  { value: 'falabella',   label: '🟢 Falabella' },
+  { value: 'nu',          label: '🟣 Nu (Nubank)' },
+  { value: 'lulo',        label: '🟡 Lulo Bank' },
+  { value: 'otro_banco',  label: '🏦 Otro banco' },
 ];
-const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0], medio_pago: 'efectivo' };
+const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0], medio_pago: 'efectivo', banco: '' };
 
 // Componente fila con swipe para eliminar
 function MovRow({ m, onEdit, onDelete }) {
@@ -70,71 +80,67 @@ function MovRow({ m, onEdit, onDelete }) {
 // que afectan a los modales superpuestos.
 function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit }) {
   return (
-    <div className="fixed inset-0 bg-white z-[60] flex flex-col">
-      {/* Header fijo simple — sin cálculos de safe-area complejos */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-4 border-b border-g-100 flex-shrink-0 bg-white">
-        <button onClick={onCancel} className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center">
-          <i className="ti ti-arrow-left text-g-700"/>
-        </button>
-        <h3 className="font-medium text-g-900">{editing?'Editar movimiento':'Nuevo movimiento'}</h3>
-        <div className="w-9"/>
-      </div>
-
-      {/* Contenido — scroll normal del documento, sin overflow anidado */}
-      <div className="flex-1 overflow-y-scroll px-5 py-5">
-        <form id="form-movimiento" onSubmit={onSubmit} className="space-y-4 pb-8">
-          <div className="grid grid-cols-2 gap-2">
-            {['gasto','ingreso'].map(t=>(
-              <button key={t} type="button"
-                onClick={()=>setForm(f=>({...f,tipo:t,categoria:t==='ingreso'?'Salario':'Alimentación'}))}
-                className={`py-3 rounded-xl text-sm font-medium border transition-all ${form.tipo===t?(t==='gasto'?'bg-red-50 border-red-300 text-red-700':'bg-g-50 border-g-300 text-g-700'):'bg-white border-g-200/60 text-g-500'}`}>
-                {t==='gasto'?'↑ Gasto':'↓ Ingreso'}
+    <PantallaCompleta title={editing ? 'Editar movimiento' : 'Nuevo movimiento'} onClose={onCancel}>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          {['gasto','ingreso'].map(t=>(
+            <button key={t} type="button"
+              onClick={()=>setForm(f=>({...f,tipo:t,categoria:t==='ingreso'?'Salario':'Alimentación'}))}
+              className={`py-3 rounded-xl text-sm font-medium border transition-all ${form.tipo===t?(t==='gasto'?'bg-red-50 border-red-300 text-red-700':'bg-g-50 border-g-300 text-g-700'):'bg-white border-g-200/60 text-g-500'}`}>
+              {t==='gasto'?'↑ Gasto':'↓ Ingreso'}
+            </button>
+          ))}
+        </div>
+        <div>
+          <label className="section-label block mb-1">Monto (COP)</label>
+          <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
+            value={form.monto} onChange={set('monto')} required/>
+        </div>
+        <div>
+          <label className="section-label block mb-1">Categoría</label>
+          <select className="select" value={form.categoria} onChange={set('categoria')}>
+            {(form.tipo==='ingreso'?CATS_INGRESO:CATS_GASTO).map(c=><option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="section-label block mb-1">Descripción (opcional)</label>
+          <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
+        </div>
+        <div>
+          <label className="section-label block mb-2">Medio de pago</label>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {[{value:'efectivo',label:'💵 Efectivo'},{value:'transferencia',label:'🏦 Transferencia'}].map(m => (
+              <button key={m.value} type="button"
+                onClick={() => setForm(f => ({...f, medio_pago: m.value, banco: m.value==='efectivo'?'':f.banco}))}
+                className={`py-2.5 px-2 rounded-xl text-xs font-medium border transition-all text-center ${form.medio_pago===m.value?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
+                {m.label}
               </button>
             ))}
           </div>
-          <div>
-            <label className="section-label block mb-1">Monto (COP)</label>
-            <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
-              value={form.monto} onChange={set('monto')} required min="1"/>
-          </div>
-          <div>
-            <label className="section-label block mb-1">Categoría</label>
-            <select className="select" value={form.categoria} onChange={set('categoria')}>
-              {(form.tipo==='ingreso'?CATS_INGRESO:CATS_GASTO).map(c=><option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="section-label block mb-1">Descripción (opcional)</label>
-            <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
-          </div>
-          <div>
-            <label className="section-label block mb-2">Medio de pago</label>
-            <div className="grid grid-cols-3 gap-2">
-              {MEDIOS_PAGO.map(m => (
-                <button key={m.value} type="button"
-                  onClick={() => setForm(f => ({...f, medio_pago: m.value}))}
-                  className={`py-2.5 px-2 rounded-xl text-xs font-medium border transition-all text-center ${form.medio_pago===m.value?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
-                  {m.label}
+          {form.medio_pago==='transferencia' && (
+            <div className="grid grid-cols-2 gap-2">
+              {BANCOS.map(b => (
+                <button key={b.value} type="button"
+                  onClick={() => setForm(f => ({...f, banco: b.value}))}
+                  className={`py-2 px-2 rounded-xl text-xs font-medium border transition-all text-left ${form.banco===b.value?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
+                  {b.label}
                 </button>
               ))}
             </div>
-          </div>
-          <div>
-            <label className="section-label block mb-1">Fecha</label>
-            <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
-          </div>
-
-          {/* Botón DENTRO del flujo normal — siempre alcanzable haciendo scroll,
-              sin depender de overflow especiales ni position fixed anidados */}
-          <button type="submit" className="btn-primary w-full py-4 text-base mt-4">
-            {editing?'Guardar cambios':'Registrar movimiento'}
-          </button>
-          <button type="button" onClick={onCancel} className="btn-secondary w-full py-3.5">
-            Cancelar
-          </button>
-        </form>
-      </div>
-    </div>
+          )}
+        </div>
+        <div>
+          <label className="section-label block mb-1">Fecha</label>
+          <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
+        </div>
+        <button type="submit" className="btn-primary w-full py-4 text-base">
+          {editing ? 'Guardar cambios' : 'Registrar movimiento'}
+        </button>
+        <button type="button" onClick={onCancel} className="btn-secondary w-full py-3.5">
+          Cancelar
+        </button>
+      </form>
+    </PantallaCompleta>
   );
 }
 
@@ -152,14 +158,13 @@ export default function Movimientos() {
   const load = async () => {
     setLoading(true);
     try {
-      const [data, medio] = await Promise.all([
-        getMovimientos({ mes: now.getMonth()+1, anio: now.getFullYear(), tipo: filtroTipo||undefined }),
-        getResumenMedioPago({ mes: now.getMonth()+1, anio: now.getFullYear() }),
-      ]);
+      const data = await getMovimientos({ mes: now.getMonth()+1, anio: now.getFullYear(), tipo: filtroTipo||undefined });
       setMovs(data);
-      setResumenMedio(medio);
     } catch { toast.error('Error cargando movimientos'); }
     finally { setLoading(false); }
+    // Resumen de medios separado — si falla no bloquea la lista
+    getResumenMedioPago({ mes: now.getMonth()+1, anio: now.getFullYear() })
+      .then(setResumenMedio).catch(() => {});
   };
 
   useEffect(() => { load(); }, [filtroTipo]);
@@ -174,7 +179,7 @@ export default function Movimientos() {
   };
 
   const openNew  = () => { setEditing(null); setForm(initForm); setModal(true); };
-  const openEdit = m  => { setEditing(m.id); setForm({tipo:m.tipo,monto:m.monto,categoria:m.categoria,descripcion:m.descripcion||'',fecha:m.fecha}); setModal(true); };
+  const openEdit = m  => { setEditing(m.id); setForm({tipo:m.tipo,monto:m.monto,categoria:m.categoria,descripcion:m.descripcion||'',fecha:m.fecha,medio_pago:m.medio_pago||'efectivo',banco:m.banco||''}); setModal(true); };
 
   const submit = async e => {
     e.preventDefault();
@@ -243,13 +248,15 @@ export default function Movimientos() {
         <div className="card p-4">
           <p className="text-sm font-medium text-g-900 mb-3">Saldo por medio de pago</p>
           <div className="space-y-2">
-            {MEDIOS_PAGO.map(m => {
-              const d = resumenMedio[m.value];
+            {Object.entries(resumenMedio).map(([key, d]) => {
               if (!d || (d.ingresos === 0 && d.gastos === 0)) return null;
               const saldo = d.ingresos - d.gastos;
+              const label = key === 'efectivo' ? '💵 Efectivo'
+                : key === 'transferencia' ? '🏦 Transferencia'
+                : (BANCOS.find(b=>b.value===key)?.label || key);
               return (
-                <div key={m.value} className="flex items-center justify-between py-2 border-b border-g-100 last:border-0">
-                  <span className="text-sm text-g-700">{m.label}</span>
+                <div key={key} className="flex items-center justify-between py-2 border-b border-g-100 last:border-0">
+                  <span className="text-sm text-g-700">{label}</span>
                   <div className="text-right">
                     <p className={`text-sm font-medium ${saldo >= 0 ? 'text-g-600' : 'text-red-600'}`}>
                       {saldo >= 0 ? '+' : ''}{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(saldo)}
