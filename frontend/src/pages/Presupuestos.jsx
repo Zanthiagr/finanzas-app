@@ -143,7 +143,7 @@ export default function Presupuestos() {
             </div>
             <div>
               <label className="section-label block mb-1">Límite mensual (COP)</label>
-              <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
                 value={form.monto_limite} onChange={e => setForm(f => ({ ...f, monto_limite: e.target.value }))} required/>
             </div>
             <div className="flex gap-2 pt-2 pb-4">
