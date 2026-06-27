@@ -238,10 +238,6 @@ export function Activos() {
                 )}
               </div>
             )}
-            <div>
-              <label className="section-label block mb-1">Descripción (opcional)</label>
-              <input className="input" placeholder="Notas adicionales..." value={form.descripcion} onChange={set('descripcion')}/>
-            </div>
             <div className="flex gap-2 pb-4">
               <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
               <button type="submit" className="btn-primary flex-1">Guardar activo</button>
