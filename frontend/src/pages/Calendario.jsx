@@ -45,14 +45,17 @@ export default function Calendario() {
       setCierres(cierresData.filter(c => c.mes_num === mesNum));
       setPagos(pagosData);
 
-      const { data: logs } = await supabase
-        .from('habitos_log')
-        .select('fecha, completado, habito_id')
-        .eq('usuario_id', userId)
-        .gte('fecha', inicio)
-        .lte('fecha', fin)
-        .eq('completado', true);
-      setHabLogs(logs || []);
+      // Hábitos log — opcional, no rompe si la tabla no tiene la columna
+      try {
+        const { data: logs } = await supabase
+          .from('habitos_log')
+          .select('fecha, completado, habito_id')
+          .eq('usuario_id', userId)
+          .gte('fecha', inicio)
+          .lte('fecha', fin)
+          .eq('completado', true);
+        setHabLogs(logs || []);
+      } catch { setHabLogs([]); }
 
       // Procesar pagos automáticos si es el mes actual
       if (mesNum === hoy.getMonth()+1 && año === hoy.getFullYear()) {
