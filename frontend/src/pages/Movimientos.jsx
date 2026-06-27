@@ -262,7 +262,7 @@ export default function Movimientos() {
                       {saldo >= 0 ? '+' : ''}{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(saldo)}
                     </p>
                     <p className="text-[10px] text-g-400">
-                      ↓{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(d.ingresos)} ↑{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(d.gastos)}
+                      ↓ {new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(d.ingresos)} &nbsp; ↑ {new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(d.gastos)}
                     </p>
                   </div>
                 </div>
