@@ -4,50 +4,66 @@ import { getActivos, crearActivo, eliminarActivo, actualizarActivo,
          getMetas, crearMeta, actualizarMeta, eliminarMeta,
          registrarRendimientoActivo } from '../utils/api';
 import { fmt, fmtDate, fmtShort } from '../utils/helpers';
-import CalculadoraLibertad from '../components/CalculadoraLibertad';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
-const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','Vehículo','Inmueble','Negocio','Otro'];
+const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','CDT','Vehículo','Inmueble','Negocio','Préstamo otorgado','Otro'];
 const TIPOS_DEUDA  = ['Tarjeta de crédito','Crédito bancario','Préstamo personal','Hipoteca','Gota a gota','Otro'];
 const ICONOS_META  = ['ti-target','ti-plane','ti-home','ti-device-laptop','ti-car','ti-heart','ti-shield','ti-coin'];
+const TIPOS_REND   = [
+  { value:'manual',         label:'Manual',               desc:'Actualizo el valor yo mismo' },
+  { value:'fija_capital',   label:'Fijo sobre capital',   desc:'Ej: préstamo que paga % fijo del capital inicial' },
+  { value:'fija_compuesto', label:'Tasa fija compuesto',  desc:'Ej: CDT, reinversión automática' },
+  { value:'variable',       label:'Variable / irregular', desc:'Ingresos variables en fechas distintas' },
+];
 
 // ─── ACTIVOS ────────────────────────────────────────────
 export function Activos() {
   const [items, setItems]         = useState([]);
   const [modal, setModal]         = useState(false);
-  const [modalRend, setModalRend] = useState(null); // activo seleccionado para rendimiento
+  const [modalRend, setModalRend] = useState(null);
   const [rendMonto, setRendMonto] = useState('');
-  const [form, setForm]           = useState({nombre:'',tipo:'Inversión',valor_inicial:'',valor_actual:'',fecha_adquisicion:'',descripcion:'',tasa_rendimiento:'',tipo_rendimiento:'manual'});
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
+  const [rendFecha, setRendFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [form, setForm] = useState({
+    nombre:'', tipo:'Inversión', valor_inicial:'', valor_actual:'',
+    fecha_adquisicion:'', descripcion:'', tasa_rendimiento:'', tipo_rendimiento:'manual'
+  });
+  const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
   const load = () => getActivos().then(setItems).catch(()=>toast.error('Error cargando activos'));
   useEffect(()=>{ load(); },[]);
 
-  // Calcular rendimiento automático para activos con tasa fija
-  const rendimientoMensual = (a) => {
-    if (a.tipo_rendimiento !== 'fija' || !a.tasa_rendimiento) return 0;
-    const tasaMensual = parseFloat(a.tasa_rendimiento) / 100 / 12;
-    return parseFloat(a.valor_actual) * tasaMensual;
+  const rendEst = (a) => {
+    const tasa = parseFloat(a.tasa_rendimiento);
+    if (!tasa) return 0;
+    if (a.tipo_rendimiento==='fija_capital')   return parseFloat(a.valor_inicial||a.valor_actual) * (tasa/100);
+    if (a.tipo_rendimiento==='fija_compuesto') return parseFloat(a.valor_actual) * (tasa/100/12);
+    return 0;
   };
 
   const submit = async e => {
     e.preventDefault();
     try {
-      await crearActivo({...form, valor_actual: form.valor_actual||form.valor_inicial});
+      await crearActivo({
+        ...form,
+        valor_inicial: parseFloat(String(form.valor_inicial).replace(',','.')),
+        valor_actual:  parseFloat(String(form.valor_actual||form.valor_inicial).replace(',','.')),
+        tasa_rendimiento: (form.tipo_rendimiento==='manual'||form.tipo_rendimiento==='variable')
+          ? null
+          : (parseFloat(String(form.tasa_rendimiento).replace(',','.')) || null),
+      });
       toast.success('Activo registrado');
       setModal(false);
       setForm({nombre:'',tipo:'Inversión',valor_inicial:'',valor_actual:'',fecha_adquisicion:'',descripcion:'',tasa_rendimiento:'',tipo_rendimiento:'manual'});
       load();
-    } catch { toast.error('Error guardando'); }
+    } catch(err) { toast.error('Error guardando'); console.error(err); }
   };
 
   const registrarRend = async () => {
-    if (!rendMonto || parseFloat(rendMonto) <= 0) return toast.error('Ingresa un monto válido');
+    if (!rendMonto || parseFloat(rendMonto)<=0) return toast.error('Ingresa un monto válido');
     try {
-      await registrarRendimientoActivo({ activo_id: modalRend.id, rendimiento_monto: parseFloat(rendMonto) });
+      await registrarRendimientoActivo({ activo_id: modalRend.id, rendimiento_monto: parseFloat(String(rendMonto).replace(',','.')), fecha: rendFecha });
       toast.success('Rendimiento registrado 📈');
-      setModalRend(null);
-      setRendMonto('');
+      setModalRend(null); setRendMonto('');
       load();
     } catch { toast.error('Error registrando rendimiento'); }
   };
@@ -57,8 +73,8 @@ export function Activos() {
     await eliminarActivo(id); toast.success('Eliminado'); load();
   };
 
-  const total = items.reduce((a,i)=>a+parseFloat(i.valor_actual),0);
-  const rendTotal = items.reduce((a,i)=>a+rendimientoMensual(i),0);
+  const total    = items.reduce((a,i)=>a+parseFloat(i.valor_actual),0);
+  const rendTotal = items.reduce((a,i)=>a+rendEst(i),0);
 
   return (
     <div className="space-y-4 page-enter">
@@ -92,7 +108,8 @@ export function Activos() {
         )}
         {items.map(a=>{
           const g    = parseFloat(a.valor_actual)-parseFloat(a.valor_inicial);
-          const rend = rendimientoMensual(a);
+          const rend = rendEst(a);
+          const tipoRend = TIPOS_REND.find(t=>t.value===a.tipo_rendimiento);
           return (
             <div key={a.id} className="card p-4">
               <div className="flex items-start justify-between mb-2">
@@ -100,93 +117,129 @@ export function Activos() {
                   <p className="font-medium text-g-900">{a.nombre}</p>
                   <div className="flex gap-1.5 mt-0.5 flex-wrap">
                     <span className="badge-ok text-[10px]">{a.tipo}</span>
-                    {a.tipo_rendimiento==='fija' && a.tasa_rendimiento > 0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold/10 text-gold">{a.tasa_rendimiento}% EA</span>
+                    {tipoRend && tipoRend.value!=='manual' && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold/10 text-gold">{tipoRend.label}</span>
+                    )}
+                    {(a.tipo_rendimiento==='fija_capital'||a.tipo_rendimiento==='fija_compuesto') && a.tasa_rendimiento>0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-g-100 text-g-600">
+                        {a.tasa_rendimiento}%{a.tipo_rendimiento==='fija_compuesto'?' EA':'/mes'}
+                      </span>
                     )}
                   </div>
                 </div>
                 <button onClick={()=>del(a.id)} className="text-g-300 hover:text-red-500 p-1"><i className="ti ti-trash text-sm"/></button>
               </div>
               <p className="text-2xl font-medium text-g-900">{fmt(a.valor_actual)}</p>
-              <p className={`text-xs mt-0.5 ${g>=0?'text-g-500':'text-red-500'}`}>{g>=0?'+':''}{fmt(g)} total</p>
-              {rend > 0 && <p className="text-xs text-gold mt-0.5">≈ +{fmt(rend)}/mes</p>}
-              <div className="flex gap-2 mt-3">
-                <button onClick={()=>{ setModalRend(a); setRendMonto(rend>0?Math.round(rend).toString():''); }}
-                  className="flex-1 btn-secondary text-xs py-2 flex items-center justify-center gap-1">
-                  <i className="ti ti-trending-up text-xs"/> Registrar rendimiento
-                </button>
-              </div>
+              <p className={`text-xs mt-0.5 ${g>=0?'text-g-500':'text-red-500'}`}>{g>=0?'+':''}{fmt(g)} vs capital inicial</p>
+              {rend>0 && (
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="text-xs text-gold">≈ +{fmt(rend)}/mes</span>
+                  {a.tipo_rendimiento==='fija_capital' && <span className="text-[10px] text-g-400">(sobre capital inicial)</span>}
+                </div>
+              )}
+              {a.tipo_rendimiento==='variable' && <p className="text-xs text-g-400 mt-1">Ingresos variables — registra cada rendimiento</p>}
+              <button onClick={()=>{ setModalRend(a); setRendMonto(rend>0?Math.round(rend).toString():''); setRendFecha(new Date().toISOString().split('T')[0]); }}
+                className="w-full btn-secondary text-xs py-2 mt-3 flex items-center justify-center gap-1">
+                <i className="ti ti-trending-up text-xs"/> Registrar rendimiento
+              </button>
             </div>
           );
         })}
       </div>
 
-      {/* Pantalla registrar rendimiento */}
+      {/* Modal rendimiento */}
       {modalRend && (
         <PantallaCompleta title={`Rendimiento: ${modalRend.nombre}`} onClose={()=>{setModalRend(null);setRendMonto('');}}>
           <div className="space-y-4">
             <div className="card p-4 bg-g-50">
-              <p className="section-label mb-1">Valor actual del activo</p>
+              <p className="section-label mb-1">Valor actual</p>
               <p className="text-2xl font-medium text-g-900">{fmt(modalRend.valor_actual)}</p>
-              {rendimientoMensual(modalRend) > 0 && (
-                <p className="text-xs text-gold mt-1">Rendimiento estimado: {fmt(rendimientoMensual(modalRend))}/mes</p>
-              )}
+              {rendEst(modalRend)>0 && <p className="text-xs text-gold mt-1">Estimado: {fmt(rendEst(modalRend))}/mes</p>}
             </div>
             <div>
-              <label className="section-label block mb-1">Monto del rendimiento este mes (COP)</label>
-              <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
-                value={rendMonto} onChange={e=>setRendMonto(e.target.value)}/>
+              <label className="section-label block mb-1">Monto del rendimiento (COP)</label>
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
+                value={rendMonto} onChange={e=>setRendMonto(e.target.value.replace(',','.'))}/>
               <p className="text-xs text-g-400 mt-1">Se sumará al valor del activo y se registrará como ingreso</p>
             </div>
-            <div className="card p-3 bg-amber-50 border-amber-200">
-              <p className="text-xs text-amber-700">
-                <i className="ti ti-info-circle mr-1"/>
-                Si el activo bajó de valor, deja el monto en 0 y actualiza el valor manualmente.
-              </p>
+            <div>
+              <label className="section-label block mb-1">Fecha</label>
+              <input type="date" className="input" value={rendFecha} onChange={e=>setRendFecha(e.target.value)}/>
             </div>
-            <button onClick={registrarRend} className="btn-primary w-full py-4">
-              Registrar rendimiento 📈
-            </button>
-            <button onClick={()=>{setModalRend(null);setRendMonto('');}} className="btn-secondary w-full py-3.5">
-              Cancelar
-            </button>
+            {modalRend.tipo_rendimiento==='variable' && (
+              <p className="text-xs text-g-500 card p-3 bg-g-50">Activo con ingresos variables — registra cada vez que lo recibes.</p>
+            )}
+            <button onClick={registrarRend} className="btn-primary w-full py-4">Registrar rendimiento 📈</button>
+            <button onClick={()=>{setModalRend(null);setRendMonto('');}} className="btn-secondary w-full py-3.5">Cancelar</button>
           </div>
         </PantallaCompleta>
       )}
 
+      {/* Modal nuevo activo */}
       {modal && (
-      <PantallaCompleta title="Nuevo activo" onClose={()=>setModal(false)}>
-        <form onSubmit={submit} className="space-y-3">
-          <input className="input" placeholder="Nombre del activo" value={form.nombre} onChange={set('nombre')} required/>
-          <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_ACTIVO.map(t=><option key={t}>{t}</option>)}</select>
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="section-label block mb-1">Valor inicial</label><input type="number" inputMode="numeric" className="input" placeholder="0" value={form.valor_inicial} onChange={set('valor_inicial')} required/></div>
-            <div><label className="section-label block mb-1">Valor actual</label><input type="number" inputMode="numeric" className="input" placeholder="0" value={form.valor_actual} onChange={set('valor_actual')}/></div>
-          </div>
-          <input type="date" className="input" value={form.fecha_adquisicion} onChange={set('fecha_adquisicion')}/>
-          <div>
-            <label className="section-label block mb-1">Tipo de rendimiento</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[['manual','Manual (actualizo yo)'],['fija','Tasa fija (CDT, etc.)']].map(([v,l])=>(
-                <button key={v} type="button" onClick={()=>setForm(f=>({...f,tipo_rendimiento:v}))}
-                  className={`py-2.5 rounded-xl text-xs font-medium border transition-all ${form.tipo_rendimiento===v?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-          {form.tipo_rendimiento==='fija' && (
+        <PantallaCompleta title="Nuevo activo" onClose={()=>setModal(false)}>
+          <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="section-label block mb-1">Tasa de rendimiento anual (%)</label>
-              <input type="number" inputMode="decimal" className="input" placeholder="Ej: 12.5" value={form.tasa_rendimiento} onChange={set('tasa_rendimiento')} step="0.1"/>
+              <label className="section-label block mb-1">Nombre del activo</label>
+              <input className="input" placeholder="Ej: CDT Bancolombia, Préstamo a Juan..." value={form.nombre} onChange={set('nombre')} required/>
             </div>
-          )}
-          <div className="flex gap-2 pt-2 pb-4">
-            <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
-            <button type="submit" className="btn-primary flex-1">Guardar</button>
-          </div>
-        </form>
-      </PantallaCompleta>
+            <div>
+              <label className="section-label block mb-1">Tipo de activo</label>
+              <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_ACTIVO.map(t=><option key={t}>{t}</option>)}</select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="section-label block mb-1">Capital inicial</label>
+                <input type="text" inputMode="numeric" className="input" placeholder="0" value={form.valor_inicial} onChange={set('valor_inicial')} required/>
+              </div>
+              <div>
+                <label className="section-label block mb-1">Valor actual</label>
+                <input type="text" inputMode="numeric" className="input" placeholder="= capital inicial" value={form.valor_actual} onChange={set('valor_actual')}/>
+              </div>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Fecha de adquisición</label>
+              <input type="date" className="input" value={form.fecha_adquisicion} onChange={set('fecha_adquisicion')}/>
+            </div>
+            <div>
+              <label className="section-label block mb-2">Tipo de rendimiento</label>
+              <div className="space-y-2">
+                {TIPOS_REND.map(t=>(
+                  <button key={t.value} type="button"
+                    onClick={()=>setForm(f=>({...f,tipo_rendimiento:t.value,tasa_rendimiento:''}))}
+                    className={`w-full text-left py-3 px-3 rounded-xl border transition-all ${form.tipo_rendimiento===t.value?'bg-g-50 border-g-400':'bg-white border-g-200/60'}`}>
+                    <p className={`text-sm font-medium ${form.tipo_rendimiento===t.value?'text-g-800':'text-g-600'}`}>{t.label}</p>
+                    <p className="text-[11px] text-g-400 mt-0.5">{t.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(form.tipo_rendimiento==='fija_capital'||form.tipo_rendimiento==='fija_compuesto') && (
+              <div>
+                <label className="section-label block mb-1">
+                  {form.tipo_rendimiento==='fija_capital' ? 'Tasa mensual sobre capital inicial (%)' : 'Tasa anual EA (%)'}
+                </label>
+                <input type="text" inputMode="decimal" className="input"
+                  placeholder={form.tipo_rendimiento==='fija_capital' ? 'Ej: 2.5' : 'Ej: 12.5'}
+                  value={form.tasa_rendimiento} onChange={set('tasa_rendimiento')}/>
+                {form.tipo_rendimiento==='fija_capital' && form.tasa_rendimiento && form.valor_inicial && (
+                  <p className="text-xs text-gold mt-1">= {fmt(parseFloat(form.valor_inicial) * parseFloat(form.tasa_rendimiento)/100)} fijos/mes</p>
+                )}
+                {form.tipo_rendimiento==='fija_compuesto' && form.tasa_rendimiento && form.valor_inicial && (
+                  <p className="text-xs text-gold mt-1">≈ {fmt(parseFloat(form.valor_actual||form.valor_inicial) * parseFloat(form.tasa_rendimiento)/100/12)}/mes</p>
+                )}
+              </div>
+            )}
+            <div>
+              <label className="section-label block mb-1">Descripción (opcional)</label>
+              <input className="input" placeholder="Notas adicionales..." value={form.descripcion} onChange={set('descripcion')}/>
+            </div>
+            <div className="flex gap-2 pb-4">
+              <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
+              <button type="submit" className="btn-primary flex-1">Guardar activo</button>
+            </div>
+          </form>
+        </PantallaCompleta>
       )}
     </div>
   );
@@ -194,25 +247,37 @@ export function Activos() {
 
 
 export function Deudas() {
-  const [items, setItems] = useState([]);
-  const [modal, setModal] = useState(false);
-  const [form, setForm]   = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:''});
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
+  const [items, setItems]       = useState([]);
+  const [modal, setModal]       = useState(false);
+  const [modalAbono, setModalAbono] = useState(null); // deuda seleccionada para abonar
+  const [abonoMonto, setAbonoMonto] = useState('');
+  const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:''});
+  const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
   const load = () => getDeudas().then(setItems).catch(()=>toast.error('Error cargando deudas'));
   useEffect(()=>{load();},[]);
 
   const submit = async e => {
     e.preventDefault();
-    try { await crearDeuda(form); toast.success('Deuda registrada'); setModal(false); setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:''}); load(); }
-    catch { toast.error('Error guardando'); }
+    try {
+      await crearDeuda({
+        ...form,
+        monto_total:  parseFloat(String(form.monto_total).replace(',','.')),
+        tasa_interes: form.tasa_interes ? parseFloat(String(form.tasa_interes).replace(',','.')) : null,
+      });
+      toast.success('Deuda registrada'); setModal(false);
+      setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:''});
+      load();
+    } catch { toast.error('Error guardando'); }
   };
 
-  const pagar = async d => {
-    const abono = prompt(`¿Cuánto abonas a "${d.nombre}"?`);
-    if (!abono) return;
-    const nuevo = Math.min(parseFloat(d.monto_pagado)+parseFloat(abono), parseFloat(d.monto_total));
-    await actualizarDeuda(d.id, {...d, monto_pagado:nuevo, activa: nuevo<d.monto_total});
-    toast.success('Abono registrado'); load();
+  const confirmarAbono = async () => {
+    const abono = parseFloat(String(abonoMonto).replace(',','.'));
+    if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
+    const nuevo = Math.min(parseFloat(modalAbono.monto_pagado) + abono, parseFloat(modalAbono.monto_total));
+    await actualizarDeuda(modalAbono.id, {...modalAbono, monto_pagado: nuevo, activa: nuevo < modalAbono.monto_total});
+    toast.success('Abono registrado');
+    setModalAbono(null); setAbonoMonto('');
+    load();
   };
 
   const del = async id => { if (!confirm('¿Eliminar?')) return; await eliminarDeuda(id); toast.success('Eliminada'); load(); };
@@ -245,7 +310,7 @@ export function Deudas() {
                   <p className="text-[11px] text-g-400">{d.tipo}{d.tasa_interes>0?` · ${d.tasa_interes}% EA`:''}</p>
                 </div>
                 <div className="flex gap-2">
-                  {d.activa && <button onClick={()=>pagar(d)} className="text-xs btn-secondary py-1.5 px-3">Abonar</button>}
+                  {d.activa && <button onClick={()=>{ setModalAbono(d); setAbonoMonto(''); }} className="text-xs btn-secondary py-1.5 px-3">Abonar</button>}
                   <button onClick={()=>del(d.id)} className="text-g-300 hover:text-red-500 p-1.5"><i className="ti ti-trash text-sm"/></button>
                 </div>
               </div>
@@ -261,14 +326,34 @@ export function Deudas() {
           );
         })}
       </div>
+      {modalAbono && (
+        <PantallaCompleta title={`Abonar a: ${modalAbono.nombre}`} onClose={()=>{setModalAbono(null);setAbonoMonto('');}}>
+          <div className="space-y-4">
+            <div className="card p-4 bg-g-50">
+              <p className="section-label mb-1">Pendiente</p>
+              <p className="text-2xl font-medium text-red-600">
+                {fmt(parseFloat(modalAbono.monto_total)-parseFloat(modalAbono.monto_pagado))}
+              </p>
+              <p className="text-xs text-g-400 mt-1">Total: {fmt(modalAbono.monto_total)}</p>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto del abono (COP)</label>
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
+                value={abonoMonto} onChange={e=>setAbonoMonto(e.target.value.replace(',','.'))}/>
+            </div>
+            <button onClick={confirmarAbono} className="btn-primary w-full py-4">Registrar abono</button>
+            <button onClick={()=>{setModalAbono(null);setAbonoMonto('');}} className="btn-secondary w-full py-3.5">Cancelar</button>
+          </div>
+        </PantallaCompleta>
+      )}
       {modal && (
       <PantallaCompleta title="Nueva deuda" onClose={()=>setModal(false)}>
         <form onSubmit={submit} className="space-y-3">
           <input className="input" placeholder="Nombre de la deuda" value={form.nombre} onChange={set('nombre')} required/>
           <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_DEUDA.map(t=><option key={t}>{t}</option>)}</select>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="section-label block mb-1">Monto total</label><input type="number" inputMode="numeric" className="input" placeholder="0" value={form.monto_total} onChange={set('monto_total')} required/></div>
-            <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="number" className="input" placeholder="0" value={form.tasa_interes} onChange={set('tasa_interes')} step="0.1"/></div>
+            <div><label className="section-label block mb-1">Monto total</label><input type="text" inputMode="numeric" className="input" placeholder="0" value={form.monto_total} onChange={set('monto_total')} required/></div>
+            <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="text" inputMode="decimal" className="input" placeholder="0" value={form.tasa_interes} onChange={set('tasa_interes')}/></div>
           </div>
           <input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/>
           <div className="flex gap-2 pt-2 pb-4">
@@ -284,25 +369,36 @@ export function Deudas() {
 
 // ─── METAS ────────────────────────────────────────────
 export function Metas() {
-  const [items, setItems] = useState([]);
-  const [modal, setModal] = useState(false);
-  const [form, setForm]   = useState({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
+  const [items, setItems]         = useState([]);
+  const [modal, setModal]         = useState(false);
+  const [modalAporte, setModalAporte] = useState(null);
+  const [aporteMonto, setAporteMonto] = useState('');
+  const [form, setForm]           = useState({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
+  const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
   const load = () => getMetas().then(setItems).catch(()=>toast.error('Error cargando metas'));
   useEffect(()=>{load();},[]);
 
   const submit = async e => {
     e.preventDefault();
-    try { await crearMeta(form); toast.success('Meta creada 🎯'); setModal(false); setForm({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'}); load(); }
-    catch { toast.error('Error guardando'); }
+    try {
+      await crearMeta({
+        ...form,
+        monto_objetivo: parseFloat(String(form.monto_objetivo).replace(',','.')),
+      });
+      toast.success('Meta creada 🎯'); setModal(false);
+      setForm({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
+      load();
+    } catch { toast.error('Error guardando'); }
   };
 
-  const abonar = async m => {
-    const abono = prompt(`¿Cuánto aportas a "${m.nombre}"?`);
-    if (!abono) return;
-    const nuevo = Math.min(parseFloat(m.monto_actual)+parseFloat(abono), parseFloat(m.monto_objetivo));
-    await actualizarMeta(m.id, {...m, monto_actual:nuevo, completada: nuevo>=m.monto_objetivo});
-    toast.success(nuevo>=m.monto_objetivo?'¡Meta lograda! 🎉':'Aporte registrado'); load();
+  const confirmarAporte = async () => {
+    const abono = parseFloat(String(aporteMonto).replace(',','.'));
+    if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
+    const nuevo = Math.min(parseFloat(modalAporte.monto_actual) + abono, parseFloat(modalAporte.monto_objetivo));
+    await actualizarMeta(modalAporte.id, {...modalAporte, monto_actual: nuevo, completada: nuevo >= modalAporte.monto_objetivo});
+    toast.success(nuevo >= modalAporte.monto_objetivo ? '¡Meta lograda! 🎉' : 'Aporte registrado');
+    setModalAporte(null); setAporteMonto('');
+    load();
   };
 
   const del = async id => { if (!confirm('¿Eliminar?')) return; await eliminarMeta(id); toast.success('Eliminada'); load(); };
@@ -339,7 +435,7 @@ export function Metas() {
               </div>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-sm font-medium text-g-700">{pct}%</p>
-                {!m.completada && <button onClick={()=>abonar(m)} className="text-xs btn-secondary py-1.5 px-3">Aportar</button>}
+                {!m.completada && <button onClick={()=>{ setModalAporte(m); setAporteMonto(''); }} className="text-xs btn-secondary py-1.5 px-3">Aportar</button>}
               </div>
               {m.fecha_limite && <p className="text-[10px] text-g-400 mt-1">Meta: {fmtDate(m.fecha_limite)}</p>}
             </div>
@@ -347,7 +443,28 @@ export function Metas() {
         })}
       </div>
 
-      <CalculadoraLibertad/>
+      {modalAporte && (
+        <PantallaCompleta title={`Aportar a: ${modalAporte.nombre}`} onClose={()=>{setModalAporte(null);setAporteMonto('');}}>
+          <div className="space-y-4">
+            <div className="card p-4 bg-g-50">
+              <p className="section-label mb-1">Progreso actual</p>
+              <p className="text-2xl font-medium text-g-900">{fmt(modalAporte.monto_actual)}</p>
+              <p className="text-xs text-g-400 mt-1">de {fmt(modalAporte.monto_objetivo)}</p>
+              <div className="mt-2 h-2 bg-g-100 rounded-full">
+                <div className="h-full bg-g-600 rounded-full transition-all"
+                  style={{width:`${Math.min((modalAporte.monto_actual/modalAporte.monto_objetivo)*100,100)}%`}}/>
+              </div>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto del aporte (COP)</label>
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
+                value={aporteMonto} onChange={e=>setAporteMonto(e.target.value.replace(',','.'))}/>
+            </div>
+            <button onClick={confirmarAporte} className="btn-primary w-full py-4">Registrar aporte 🎯</button>
+            <button onClick={()=>{setModalAporte(null);setAporteMonto('');}} className="btn-secondary w-full py-3.5">Cancelar</button>
+          </div>
+        </PantallaCompleta>
+      )}
 
       {modal && (
       <PantallaCompleta title="Nueva meta" onClose={()=>setModal(false)}>
@@ -355,7 +472,7 @@ export function Metas() {
           <input className="input" placeholder="Nombre de tu meta" value={form.nombre} onChange={set('nombre')} required/>
           <input className="input" placeholder="Descripción (opcional)" value={form.descripcion} onChange={set('descripcion')}/>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="section-label block mb-1">Monto objetivo</label><input type="number" inputMode="numeric" className="input" placeholder="0" value={form.monto_objetivo} onChange={set('monto_objetivo')} required/></div>
+            <div><label className="section-label block mb-1">Monto objetivo</label><input type="text" inputMode="numeric" className="input" placeholder="0" value={form.monto_objetivo} onChange={set('monto_objetivo')} required/></div>
             <div><label className="section-label block mb-1">Fecha límite</label><input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/></div>
           </div>
           <div>
