@@ -343,7 +343,10 @@ export default function Calendario() {
             <div>
               <label className="section-label block mb-1">Día del mes en que se paga</label>
               <input type="text" inputMode="numeric" className="input" placeholder="Ej: 5"
-                value={formPago.dia_mes} onChange={e=>setFormPago(f=>({...f,dia_mes:parseInt(e.target.value)}))} required/>
+                value={formPago.dia_mes} onChange={e=>{
+                  const v = parseInt(e.target.value);
+                  setFormPago(f=>({...f,dia_mes:isNaN(v)?'':Math.min(Math.max(v,1),28)}));
+                }} required/>
               <p className="text-xs text-g-400 mt-1">Se registrará automáticamente como gasto cada mes ese día</p>
             </div>
             <div>
