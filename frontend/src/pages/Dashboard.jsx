@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { getMovimientos, getResumen } from '../utils/api';
+import { getMovimientos, getResumen, getPagosProgramados } from '../utils/api';
 import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const { user, perfil } = useAuth();
-  const [resumen, setResumen]       = useState(null);
+  const [resumen, setResumen]           = useState(null);
   const [movRecientes, setMovRecientes] = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [pagosHoy, setPagosHoy]         = useState([]);
+  const [loading, setLoading]           = useState(true);
   const now  = new Date();
   const mes  = now.getMonth() + 1;
   const anio = now.getFullYear();
@@ -22,6 +23,11 @@ export default function Dashboard() {
       setResumen(r);
       setMovRecientes(m.slice(0, 5));
     }).catch(console.error).finally(() => setLoading(false));
+    // Pagos de hoy — separado para no bloquear si falla
+    getPagosProgramados().then(pagos => {
+      const diaHoy = new Date().getDate();
+      setPagosHoy((pagos || []).filter(p => p.activo && p.dia_mes === diaHoy));
+    }).catch(() => {});
   }, []);
 
   const salud = resumen ? calcSaludFinanciera({
@@ -49,6 +55,31 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 page-enter">
+
+      {/* Pagos programados para hoy */}
+      {pagosHoy.length > 0 && (
+        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <i className="ti ti-bell-ringing text-amber-600 text-base"/>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800 mb-1">
+                {pagosHoy.length === 1 ? 'Pago programado para hoy' : `${pagosHoy.length} pagos programados para hoy`}
+              </p>
+              {pagosHoy.map(p => (
+                <div key={p.id} className="flex items-center justify-between">
+                  <span className="text-xs text-amber-700 truncate">{p.nombre}</span>
+                  <span className="text-xs font-medium text-amber-800 ml-2 flex-shrink-0">
+                    {new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(p.monto)}
+                  </span>
+                </div>
+              ))}
+              <Link to="/calendario" className="text-[11px] text-amber-600 underline mt-1.5 inline-block">Ver calendario →</Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Salud financiera */}
       <div className="bg-g-800 rounded-2xl p-4 md:p-5 flex items-center gap-4 md:gap-6">
