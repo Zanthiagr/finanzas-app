@@ -30,25 +30,39 @@ export const crearMovimiento = async (mov) => {
   const fecha = mov.fecha ? new Date(mov.fecha) : new Date();
   const semana = getWeekNumber(fecha);
 
-  const { data, error } = await supabase.from('movimientos').insert({
-    ...mov,
-    monto: parseFloat(String(mov.monto).replace(',','.')),
-    usuario_id: userId,
-    fecha: fecha.toISOString().split('T')[0],
-    semana_num: semana,
-    mes_num: fecha.getMonth() + 1,
-    anio_num: fecha.getFullYear(),
-  }).select().single();
+  // Construir payload — banco es opcional, solo incluirlo si tiene valor
+  const payload = {
+    tipo:        mov.tipo,
+    monto:       parseFloat(String(mov.monto).replace(',','.')),
+    categoria:   mov.categoria,
+    descripcion: mov.descripcion || null,
+    medio_pago:  mov.medio_pago || 'efectivo',
+    usuario_id:  userId,
+    fecha:       fecha.toISOString().split('T')[0],
+    semana_num:  semana,
+    mes_num:     fecha.getMonth() + 1,
+    anio_num:    fecha.getFullYear(),
+  };
+  if (mov.banco) payload.banco = mov.banco;
+
+  const { data, error } = await supabase.from('movimientos').insert(payload).select().single();
   if (error) throw error;
   return data;
 };
 
 export const actualizarMovimiento = async (id, mov) => {
+  const payload = {
+    tipo:        mov.tipo,
+    monto:       parseFloat(String(mov.monto).replace(',','.')),
+    categoria:   mov.categoria,
+    descripcion: mov.descripcion || null,
+    medio_pago:  mov.medio_pago || 'efectivo',
+    fecha:       mov.fecha,
+  };
+  if (mov.banco) payload.banco = mov.banco;
+
   const { data, error } = await supabase
-    .from('movimientos').update({
-      ...mov,
-      monto: parseFloat(String(mov.monto).replace(',','.')),
-    }).eq('id', id).select().single();
+    .from('movimientos').update(payload).eq('id', id).select().single();
   if (error) throw error;
   return data;
 };
@@ -350,7 +364,7 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
 
   const { data, error } = await supabase
     .from('movimientos')
-    .select('tipo, monto, medio_pago, banco')
+    .select('tipo, monto, medio_pago')
     .eq('usuario_id', userId)
     .eq('mes_num', mesActual)
     .eq('anio_num', anioActual);
@@ -363,12 +377,6 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
     if (!resumen[medio]) resumen[medio] = { ingresos: 0, gastos: 0 };
     if (mov.tipo === 'ingreso') resumen[medio].ingresos += parseFloat(mov.monto);
     else resumen[medio].gastos += parseFloat(mov.monto);
-    // También agrupa por banco específico si hay transferencia
-    if (medio === 'transferencia' && mov.banco) {
-      if (!resumen[mov.banco]) resumen[mov.banco] = { ingresos: 0, gastos: 0 };
-      if (mov.tipo === 'ingreso') resumen[mov.banco].ingresos += parseFloat(mov.monto);
-      else resumen[mov.banco].gastos += parseFloat(mov.monto);
-    }
   });
 
   return resumen;
