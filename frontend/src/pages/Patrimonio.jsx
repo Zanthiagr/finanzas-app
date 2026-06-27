@@ -178,14 +178,20 @@ export function Activos() {
       {/* Modal nuevo activo */}
       {modal && (
         <PantallaCompleta title="Nuevo activo" onClose={()=>setModal(false)}>
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className="space-y-3">
             <div>
               <label className="section-label block mb-1">Nombre del activo</label>
               <input className="input" placeholder="Ej: CDT Bancolombia, Préstamo a Juan..." value={form.nombre} onChange={set('nombre')} required/>
             </div>
-            <div>
-              <label className="section-label block mb-1">Tipo de activo</label>
-              <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_ACTIVO.map(t=><option key={t}>{t}</option>)}</select>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="section-label block mb-1">Tipo</label>
+                <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_ACTIVO.map(t=><option key={t}>{t}</option>)}</select>
+              </div>
+              <div>
+                <label className="section-label block mb-1">Fecha adquisición</label>
+                <input type="date" className="input" value={form.fecha_adquisicion} onChange={set('fecha_adquisicion')}/>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -194,22 +200,24 @@ export function Activos() {
               </div>
               <div>
                 <label className="section-label block mb-1">Valor actual</label>
-                <input type="text" inputMode="numeric" className="input" placeholder="= capital inicial" value={form.valor_actual} onChange={set('valor_actual')}/>
+                <input type="text" inputMode="numeric" className="input" placeholder="= capital" value={form.valor_actual} onChange={set('valor_actual')}/>
               </div>
             </div>
             <div>
-              <label className="section-label block mb-1">Fecha de adquisición</label>
-              <input type="date" className="input" value={form.fecha_adquisicion} onChange={set('fecha_adquisicion')}/>
-            </div>
-            <div>
               <label className="section-label block mb-2">Tipo de rendimiento</label>
-              <div className="space-y-2">
-                {TIPOS_REND.map(t=>(
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {value:'manual',         icon:'ti-pencil',       label:'Manual',          sub:'Actualizo yo'},
+                  {value:'fija_capital',   icon:'ti-coin',         label:'Fijo s/ capital', sub:'% capital inicial'},
+                  {value:'fija_compuesto', icon:'ti-trending-up',  label:'Compuesto',       sub:'Reinversión'},
+                  {value:'variable',       icon:'ti-arrows-random',label:'Variable',         sub:'Fechas distintas'},
+                ].map(t=>(
                   <button key={t.value} type="button"
                     onClick={()=>setForm(f=>({...f,tipo_rendimiento:t.value,tasa_rendimiento:''}))}
-                    className={`w-full text-left py-3 px-3 rounded-xl border transition-all ${form.tipo_rendimiento===t.value?'bg-g-50 border-g-400':'bg-white border-g-200/60'}`}>
-                    <p className={`text-sm font-medium ${form.tipo_rendimiento===t.value?'text-g-800':'text-g-600'}`}>{t.label}</p>
-                    <p className="text-[11px] text-g-400 mt-0.5">{t.desc}</p>
+                    className={`flex flex-col items-start p-3 rounded-xl border transition-all ${form.tipo_rendimiento===t.value?'bg-g-50 border-g-400':'bg-white border-g-200/60'}`}>
+                    <i className={`ti ${t.icon} text-base mb-1 ${form.tipo_rendimiento===t.value?'text-g-700':'text-g-400'}`}/>
+                    <p className={`text-xs font-medium leading-tight ${form.tipo_rendimiento===t.value?'text-g-800':'text-g-600'}`}>{t.label}</p>
+                    <p className="text-[10px] text-g-400 leading-tight mt-0.5">{t.sub}</p>
                   </button>
                 ))}
               </div>
@@ -217,7 +225,7 @@ export function Activos() {
             {(form.tipo_rendimiento==='fija_capital'||form.tipo_rendimiento==='fija_compuesto') && (
               <div>
                 <label className="section-label block mb-1">
-                  {form.tipo_rendimiento==='fija_capital' ? 'Tasa mensual sobre capital inicial (%)' : 'Tasa anual EA (%)'}
+                  {form.tipo_rendimiento==='fija_capital' ? 'Tasa mensual (%)' : 'Tasa anual EA (%)'}
                 </label>
                 <input type="text" inputMode="decimal" className="input"
                   placeholder={form.tipo_rendimiento==='fija_capital' ? 'Ej: 2.5' : 'Ej: 12.5'}
