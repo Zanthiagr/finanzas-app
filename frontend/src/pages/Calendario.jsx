@@ -331,7 +331,7 @@ export default function Calendario() {
             </div>
             <div>
               <label className="section-label block mb-1">Monto (COP)</label>
-              <input type="number" inputMode="numeric" className="input text-lg" placeholder="0"
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
                 value={formPago.monto} onChange={e=>setFormPago(f=>({...f,monto:e.target.value}))} required/>
             </div>
             <div>
@@ -342,7 +342,7 @@ export default function Calendario() {
             </div>
             <div>
               <label className="section-label block mb-1">Día del mes en que se paga</label>
-              <input type="number" className="input" min="1" max="28" placeholder="Ej: 5"
+              <input type="text" inputMode="numeric" className="input" placeholder="Ej: 5"
                 value={formPago.dia_mes} onChange={e=>setFormPago(f=>({...f,dia_mes:parseInt(e.target.value)}))} required/>
               <p className="text-xs text-g-400 mt-1">Se registrará automáticamente como gasto cada mes ese día</p>
             </div>
