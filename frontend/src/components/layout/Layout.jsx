@@ -172,8 +172,9 @@ export default function Layout({ children }) {
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 md:pb-6 page-enter">
-          <div className="max-w-2xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 md:pb-6 page-enter"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}>
+          <div className="max-w-2xl mx-auto md:pb-0">
             {children}
           </div>
         </main>
@@ -184,7 +185,8 @@ export default function Layout({ children }) {
             {/* Overlay */}
             <div className="md:hidden fixed inset-0 bg-black/40 z-40" onClick={() => setMasOpen(false)}/>
             {/* Sheet */}
-            <div className="md:hidden fixed bottom-16 left-0 right-0 bg-white rounded-t-2xl z-50 p-5 shadow-2xl">
+            <div className="md:hidden fixed left-0 right-0 bg-white rounded-t-2xl z-50 p-5 shadow-2xl"
+              style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)' }}>
               <div className="flex justify-center mb-4">
                 <div className="w-10 h-1 rounded-full bg-g-200"/>
               </div>
@@ -215,8 +217,9 @@ export default function Layout({ children }) {
         )}
 
         {/* ── BOTTOM NAV MÓVIL ── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50 safe-bottom-nav">
-          <div className="flex items-center">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div className="flex items-center h-16">
             {NAV_MOBILE_MAIN.map((n, i) => {
               const isCenter = i === 2;
               if (isCenter) return (
@@ -250,10 +253,11 @@ export default function Layout({ children }) {
           </div>
         </nav>
 
-        {/* FAB móvil */}
+        {/* FAB móvil — sube sobre la barra + safe area */}
         {!['/movimientos', '/coach', '/reporte'].includes(location.pathname) && !masOpen && (
           <button onClick={() => navigate('/movimientos')}
-            className="md:hidden fixed bottom-20 right-4 w-12 h-12 rounded-full bg-g-700 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform">
+            className="md:hidden fixed right-4 w-12 h-12 rounded-full bg-g-700 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)' }}>
             <i className="ti ti-plus text-xl"/>
           </button>
         )}
