@@ -172,8 +172,10 @@ export default function Layout({ children }) {
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-5 pb-32 md:pb-5 page-enter">
-          {children}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 md:pb-6 page-enter">
+          <div className="max-w-2xl mx-auto">
+            {children}
+          </div>
         </main>
 
         {/* ── MENÚ MÁS (sheet desde abajo) ── */}
