@@ -30,20 +30,24 @@ export const crearMovimiento = async (mov) => {
   const fecha = mov.fecha ? new Date(mov.fecha) : new Date();
   const semana = getWeekNumber(fecha);
 
-  // Construir payload — banco es opcional, solo incluirlo si tiene valor
+  // Construir payload limpio — guardamos banco dentro de medio_pago
+  // para no depender de columna extra en Supabase
+  const medioPago = mov.medio_pago === 'transferencia' && mov.banco
+    ? mov.banco  // guardamos directamente el banco (nequi, bancolombia, etc)
+    : mov.medio_pago || 'efectivo';
+
   const payload = {
     tipo:        mov.tipo,
     monto:       parseFloat(String(mov.monto).replace(',','.')),
     categoria:   mov.categoria,
     descripcion: mov.descripcion || null,
-    medio_pago:  mov.medio_pago || 'efectivo',
+    medio_pago:  medioPago,
     usuario_id:  userId,
     fecha:       fecha.toISOString().split('T')[0],
     semana_num:  semana,
     mes_num:     fecha.getMonth() + 1,
     anio_num:    fecha.getFullYear(),
   };
-  if (mov.banco) payload.banco = mov.banco;
 
   const { data, error } = await supabase.from('movimientos').insert(payload).select().single();
   if (error) throw error;
@@ -51,15 +55,18 @@ export const crearMovimiento = async (mov) => {
 };
 
 export const actualizarMovimiento = async (id, mov) => {
+  const medioPago = mov.medio_pago === 'transferencia' && mov.banco
+    ? mov.banco
+    : mov.medio_pago || 'efectivo';
+
   const payload = {
     tipo:        mov.tipo,
     monto:       parseFloat(String(mov.monto).replace(',','.')),
     categoria:   mov.categoria,
     descripcion: mov.descripcion || null,
-    medio_pago:  mov.medio_pago || 'efectivo',
+    medio_pago:  medioPago,
     fecha:       mov.fecha,
   };
-  if (mov.banco) payload.banco = mov.banco;
 
   const { data, error } = await supabase
     .from('movimientos').update(payload).eq('id', id).select().single();
@@ -371,12 +378,19 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
 
   if (error) throw error;
 
+  const BANCOS_KEYS = ['bancolombia','davivienda','bogota','nequi','daviplata','bbva','occidente','popular','itau','scotiabank','falabella','nu','lulo','otro_banco'];
+
   const resumen = {};
   data.forEach(mov => {
     const medio = mov.medio_pago || 'efectivo';
-    if (!resumen[medio]) resumen[medio] = { ingresos: 0, gastos: 0 };
-    if (mov.tipo === 'ingreso') resumen[medio].ingresos += parseFloat(mov.monto);
-    else resumen[medio].gastos += parseFloat(mov.monto);
+    // Si el medio_pago es un banco específico, agruparlo bajo 'transferencia' también
+    const esBanco = BANCOS_KEYS.includes(medio);
+    const claves = esBanco ? ['transferencia', medio] : [medio];
+    claves.forEach(clave => {
+      if (!resumen[clave]) resumen[clave] = { ingresos: 0, gastos: 0 };
+      if (mov.tipo === 'ingreso') resumen[clave].ingresos += parseFloat(mov.monto);
+      else resumen[clave].gastos += parseFloat(mov.monto);
+    });
   });
 
   return resumen;
