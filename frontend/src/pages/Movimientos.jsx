@@ -252,7 +252,7 @@ export default function Movimientos() {
               if (!d || (d.ingresos === 0 && d.gastos === 0)) return null;
               const saldo = d.ingresos - d.gastos;
               const label = key === 'efectivo' ? '💵 Efectivo'
-                : key === 'transferencia' ? '🏦 Transferencia'
+                : key === 'transferencia' ? '🏦 Transferencia (total)'
                 : (BANCOS.find(b=>b.value===key)?.label || key);
               return (
                 <div key={key} className="flex items-center justify-between py-2 border-b border-g-100 last:border-0">
