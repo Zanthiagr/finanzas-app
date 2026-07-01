@@ -396,6 +396,44 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
   return resumen;
 };
 
+// ── SALDO TOTAL ───────────────────────────────────────────
+// A diferencia de getResumen/getResumenMedioPago (que se filtran por mes),
+// esto es el dinero real acumulado desde siempre: efectivo + cada cuenta
+// bancaria. NUNCA debe filtrarse por mes — el cierre mensual/semanal es
+// solo para generar reportes, el saldo real de la persona sigue existiendo.
+export const getSaldoTotal = async () => {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('movimientos')
+    .select('tipo, monto, medio_pago')
+    .eq('usuario_id', userId);
+  if (error) throw error;
+
+  const BANCOS_KEYS = ['bancolombia','davivienda','bogota','nequi','daviplata','bbva','occidente','popular','itau','scotiabank','falabella','nu','lulo','otro_banco'];
+
+  const porMedio = {};
+  let ingresosTotal = 0, gastosTotal = 0;
+
+  data.forEach(mov => {
+    const medio = mov.medio_pago || 'efectivo';
+    const monto = parseFloat(mov.monto);
+    const esBanco = BANCOS_KEYS.includes(medio);
+    const claves = esBanco ? ['transferencia', medio] : [medio];
+    claves.forEach(clave => {
+      if (!porMedio[clave]) porMedio[clave] = { ingresos: 0, gastos: 0 };
+      if (mov.tipo === 'ingreso') porMedio[clave].ingresos += monto;
+      else porMedio[clave].gastos += monto;
+    });
+    if (mov.tipo === 'ingreso') ingresosTotal += monto; else gastosTotal += monto;
+  });
+
+  return {
+    saldoTotal: ingresosTotal - gastosTotal,
+    ingresosTotal, gastosTotal,
+    porMedio,
+  };
+};
+
 // ── RENDIMIENTO DE ACTIVOS ───────────────────────────────
 export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto, fecha }) => {
   const userId = await getUserId();
