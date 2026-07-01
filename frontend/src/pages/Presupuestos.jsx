@@ -3,6 +3,7 @@ import { getPresupuestos, guardarPresupuesto, eliminarPresupuesto, getResumen } 
 import { fmt, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../utils/confirm';
 
 const CATEGORIAS_GASTO = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas'];
 
@@ -45,11 +46,12 @@ export default function Presupuestos() {
     } catch { toast.error('Error guardando'); }
   };
 
-  const eliminar = async (id) => {
-    if (!confirm('¿Eliminar este presupuesto?')) return;
-    await eliminarPresupuesto(id);
-    toast.success('Eliminado');
-    load();
+  const eliminar = (id) => {
+    confirmToast('¿Eliminar este presupuesto?', async () => {
+      await eliminarPresupuesto(id);
+      toast.success('Eliminado');
+      load();
+    });
   };
 
   const categoriasConPresupuesto = presupuestos.map(p => p.categoria);
