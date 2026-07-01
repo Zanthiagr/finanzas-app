@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getResumenMedioPago } from '../utils/api';
+import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal } from '../utils/api';
 import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
 const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Otro'];
 const BANCOS = [
@@ -28,16 +29,21 @@ const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcio
 function MovRow({ m, onEdit, onDelete }) {
   const [swipeX, setSwipeX] = useState(0);
   const startX = useRef(null);
+  const startSwipe = useRef(0);
 
-  const onTouchStart = e => { startX.current = e.touches[0].clientX; };
-  const onTouchMove  = e => {
+  const onTouchStart = e => {
+    startX.current = e.touches[0].clientX;
+    startSwipe.current = swipeX; // partimos desde la posición actual, no siempre desde 0
+  };
+  const onTouchMove = e => {
     if (startX.current === null) return;
     const diff = e.touches[0].clientX - startX.current;
-    if (diff < 0) setSwipeX(Math.max(diff, -80));
+    const next = Math.min(0, Math.max(startSwipe.current + diff, -80));
+    setSwipeX(next);
   };
   const onTouchEnd = () => {
-    if (swipeX < -60) { /* queda abierto */ }
-    else setSwipeX(0);
+    // se abre si quedó pasada la mitad, si no vuelve a cerrar (incluye deslizar de vuelta a la derecha)
+    setSwipeX(prev => (prev < -40 ? -80 : 0));
     startX.current = null;
   };
 
@@ -145,6 +151,7 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit 
 }
 
 export default function Movimientos() {
+  const hoy = new Date();
   const [movs, setMovs]         = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modal, setModal]       = useState(false);
@@ -153,21 +160,33 @@ export default function Movimientos() {
   const [filtroTipo, setFiltroTipo] = useState('');
   const [resumenMedio, setResumenMedio] = useState(null);
   const [verMedios, setVerMedios] = useState(false);
-  const now = new Date();
+  const [mes, setMes]   = useState(hoy.getMonth() + 1);
+  const [anio, setAnio] = useState(hoy.getFullYear());
+
+  const esMesActual = mes === hoy.getMonth() + 1 && anio === hoy.getFullYear();
+
+  const navMes = (delta) => {
+    let m = mes + delta, a = anio;
+    if (m < 1)  { m = 12; a--; }
+    if (m > 12) { m = 1;  a++; }
+    setMes(m); setAnio(a);
+  };
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await getMovimientos({ mes: now.getMonth()+1, anio: now.getFullYear(), tipo: filtroTipo||undefined });
+      const data = await getMovimientos({ mes, anio, tipo: filtroTipo||undefined });
       setMovs(data);
     } catch { toast.error('Error cargando movimientos'); }
     finally { setLoading(false); }
-    // Resumen de medios separado — si falla no bloquea la lista
-    getResumenMedioPago({ mes: now.getMonth()+1, anio: now.getFullYear() })
-      .then(setResumenMedio).catch(() => {});
+    // Saldo por medio de pago — TOTAL acumulado, no se reinicia por mes.
+    // Separado del listado principal así si falla no bloquea la lista.
+    getSaldoTotal()
+      .then(s => setResumenMedio(s.porMedio))
+      .catch(() => {});
   };
 
-  useEffect(() => { load(); }, [filtroTipo]);
+  useEffect(() => { load(); }, [filtroTipo, mes, anio]);
 
   const set = k => e => {
     const val = e.target.value;
@@ -178,7 +197,16 @@ export default function Movimientos() {
     });
   };
 
-  const openNew  = () => { setEditing(null); setForm(initForm); setModal(true); };
+  const openNew = () => {
+    setEditing(null);
+    // Si estamos viendo un mes distinto al actual, la fecha por defecto
+    // cae en ese mes (día 1) en vez de "hoy" para no registrar en el mes equivocado
+    const fechaDefault = esMesActual
+      ? hoy.toISOString().split('T')[0]
+      : `${anio}-${String(mes).padStart(2,'0')}-01`;
+    setForm({ ...initForm, fecha: fechaDefault });
+    setModal(true);
+  };
   const openEdit = m  => { setEditing(m.id); setForm({tipo:m.tipo,monto:m.monto,categoria:m.categoria,descripcion:m.descripcion||'',fecha:m.fecha,medio_pago:m.medio_pago||'efectivo',banco:m.banco||''}); setModal(true); };
 
   const submit = async e => {
@@ -207,10 +235,28 @@ export default function Movimientos() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-medium text-g-900">Movimientos</h2>
-          <p className="text-sm text-g-400">{now.toLocaleDateString('es-CO',{month:'long',year:'numeric'})}</p>
+          <p className="text-sm text-g-400">Historial completo, mes a mes</p>
         </div>
         <button onClick={openNew} className="btn-primary flex items-center gap-2">
           <i className="ti ti-plus text-sm"/> <span className="hidden md:inline">Registrar</span><span className="md:hidden">Nuevo</span>
+        </button>
+      </div>
+
+      {/* Navegador de mes — el listado de abajo siempre es de ESTE mes seleccionado */}
+      <div className="card p-2.5 flex items-center justify-between">
+        <button onClick={()=>navMes(-1)} className="w-8 h-8 rounded-full bg-g-50 flex items-center justify-center active:scale-90 flex-shrink-0">
+          <i className="ti ti-chevron-left text-g-700 text-sm"/>
+        </button>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-g-900 capitalize">{MESES[mes-1]} {anio}</p>
+          {!esMesActual && (
+            <button onClick={()=>{ setMes(hoy.getMonth()+1); setAnio(hoy.getFullYear()); }}
+              className="text-[10px] text-g-600 underline">Hoy</button>
+          )}
+        </div>
+        <button onClick={()=>navMes(1)} disabled={esMesActual}
+          className="w-8 h-8 rounded-full bg-g-50 flex items-center justify-center active:scale-90 disabled:opacity-30 flex-shrink-0">
+          <i className="ti ti-chevron-right text-g-700 text-sm"/>
         </button>
       </div>
 
@@ -246,7 +292,10 @@ export default function Movimientos() {
 
       {verMedios && resumenMedio && (
         <div className="card p-4">
-          <p className="text-sm font-medium text-g-900 mb-3">Saldo por medio de pago</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-g-900">Saldo por medio de pago</p>
+            <span className="text-[10px] text-g-300">Total acumulado</span>
+          </div>
           <div className="space-y-2">
             {Object.entries(resumenMedio).map(([key, d]) => {
               if (!d || (d.ingresos === 0 && d.gastos === 0)) return null;
