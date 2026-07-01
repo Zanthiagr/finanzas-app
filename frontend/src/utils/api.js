@@ -409,21 +409,44 @@ export const getSaldoTotal = async () => {
     .eq('usuario_id', userId);
   if (error) throw error;
 
+  // Capital inicial: dinero que la persona ya tenía antes de empezar a usar
+  // la app (no es un "ingreso" nuevo). Se suma aparte porque vive en su
+  // propia tabla. Si la tabla todavía no existe (falta correr la migración)
+  // se ignora en silencio para no romper el resto del dashboard.
+  let iniciales = [];
+  try {
+    const { data: dataIni, error: errIni } = await supabase
+      .from('saldos_iniciales')
+      .select('medio_pago, monto')
+      .eq('usuario_id', userId);
+    if (!errIni) iniciales = dataIni || [];
+  } catch { /* tabla no existe aún */ }
+
   const BANCOS_KEYS = ['bancolombia','davivienda','bogota','nequi','daviplata','bbva','occidente','popular','itau','scotiabank','falabella','nu','lulo','otro_banco'];
 
   const porMedio = {};
   let ingresosTotal = 0, gastosTotal = 0;
 
-  data.forEach(mov => {
-    const medio = mov.medio_pago || 'efectivo';
-    const monto = parseFloat(mov.monto);
+  const acumular = (medio, monto, esIngreso) => {
     const esBanco = BANCOS_KEYS.includes(medio);
     const claves = esBanco ? ['transferencia', medio] : [medio];
     claves.forEach(clave => {
       if (!porMedio[clave]) porMedio[clave] = { ingresos: 0, gastos: 0 };
-      if (mov.tipo === 'ingreso') porMedio[clave].ingresos += monto;
+      if (esIngreso) porMedio[clave].ingresos += monto;
       else porMedio[clave].gastos += monto;
     });
+  };
+
+  iniciales.forEach(s => {
+    const monto = parseFloat(s.monto);
+    acumular(s.medio_pago || 'efectivo', monto, true);
+    ingresosTotal += monto;
+  });
+
+  data.forEach(mov => {
+    const medio = mov.medio_pago || 'efectivo';
+    const monto = parseFloat(mov.monto);
+    acumular(medio, monto, mov.tipo === 'ingreso');
     if (mov.tipo === 'ingreso') ingresosTotal += monto; else gastosTotal += monto;
   });
 
@@ -432,6 +455,47 @@ export const getSaldoTotal = async () => {
     ingresosTotal, gastosTotal,
     porMedio,
   };
+};
+
+// ── CAPITAL INICIAL ───────────────────────────────────────
+// Dinero que la persona YA tenía al empezar a usar la app, por medio de
+// pago (efectivo, cada banco). Se guarda aparte de "movimientos" porque
+// NO es un ingreso nuevo — es el punto de partida. getSaldoTotal() lo
+// suma automáticamente al saldo real disponible.
+// Requiere la tabla `saldos_iniciales` en Supabase — ver migración en
+// CONTEXTO_CHAT_NUEVO.md si aún no existe.
+export const getSaldosIniciales = async () => {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('saldos_iniciales')
+    .select('medio_pago, monto')
+    .eq('usuario_id', userId)
+    .order('monto', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const guardarSaldoInicial = async (medio_pago, monto) => {
+  const userId = await getUserId();
+  const payload = {
+    usuario_id: userId,
+    medio_pago,
+    monto: parseFloat(String(monto).replace(',', '.')) || 0,
+  };
+  const { error } = await supabase
+    .from('saldos_iniciales')
+    .upsert(payload, { onConflict: 'usuario_id,medio_pago' });
+  if (error) throw error;
+};
+
+export const eliminarSaldoInicial = async (medio_pago) => {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from('saldos_iniciales')
+    .delete()
+    .eq('usuario_id', userId)
+    .eq('medio_pago', medio_pago);
+  if (error) throw error;
 };
 
 // ── RENDIMIENTO DE ACTIVOS ───────────────────────────────
