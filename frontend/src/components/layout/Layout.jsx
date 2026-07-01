@@ -191,7 +191,6 @@ export default function Layout({ children }) {
                 <div className="w-10 h-1 rounded-full bg-g-200"/>
               </div>
               <p className="text-xs text-g-400 uppercase tracking-widest mb-3">Más secciones</p>
-              <p className="text-[9px] text-g-200 mb-2">v3 — calendario + fixes</p>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {NAV_MOBILE_MAS.map(n => (
                   <button key={n.to} onClick={() => irA(n.to)}
