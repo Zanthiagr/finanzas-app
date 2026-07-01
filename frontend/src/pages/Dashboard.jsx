@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { getMovimientos, getResumen, getPagosProgramados } from '../utils/api';
+import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal } from '../utils/api';
 import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const { user, perfil } = useAuth();
   const [resumen, setResumen]           = useState(null);
+  const [saldo, setSaldo]               = useState(null);
   const [movRecientes, setMovRecientes] = useState([]);
   const [pagosHoy, setPagosHoy]         = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -19,9 +20,11 @@ export default function Dashboard() {
     Promise.all([
       getResumen({ mes, anio }),
       getMovimientos({ mes, anio }),
-    ]).then(([r, m]) => {
+      getSaldoTotal(),
+    ]).then(([r, m, s]) => {
       setResumen(r);
       setMovRecientes(m.slice(0, 5));
+      setSaldo(s);
     }).catch(console.error).finally(() => setLoading(false));
     // Pagos de hoy — separado para no bloquear si falla
     getPagosProgramados().then(pagos => {
@@ -55,6 +58,29 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 page-enter">
+
+      {/* Dinero disponible — saldo real acumulado, NUNCA se reinicia por mes */}
+      <div className="card p-4 md:p-5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="section-label">Dinero disponible</p>
+          <span className="text-[10px] text-g-300">Total acumulado</span>
+        </div>
+        <p className={`text-2xl md:text-3xl font-medium ${saldo?.saldoTotal >= 0 ? 'text-g-900' : 'text-red-500'}`}>
+          {fmt(saldo?.saldoTotal || 0)}
+        </p>
+        {saldo?.porMedio && Object.keys(saldo.porMedio).length > 0 && (
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5">
+            {Object.entries(saldo.porMedio)
+              .filter(([key, d]) => key !== 'transferencia' && d && (d.ingresos !== 0 || d.gastos !== 0))
+              .map(([key, d]) => (
+                <div key={key} className="flex-shrink-0 bg-g-50 rounded-lg px-2.5 py-1.5">
+                  <p className="text-[10px] text-g-500 capitalize">{key === 'efectivo' ? '💵 Efectivo' : key}</p>
+                  <p className="text-xs font-medium text-g-800">{fmtShort(d.ingresos - d.gastos)}</p>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
 
       {/* Pagos programados para hoy */}
       {pagosHoy.length > 0 && (
@@ -104,9 +130,10 @@ export default function Dashboard() {
       </div>
 
       {/* KPIs - 2 columnas en móvil, 4 en desktop */}
+      <p className="section-label -mb-1">Este mes</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Ingresos', value: fmt(resumen?.ingresos), sub: '✓ Este mes', color: 'text-g-400' },
+          { label: 'Ingresos', value: fmt(resumen?.ingresos), sub: 'registrados', color: 'text-g-400' },
           { label: 'Gastos', value: fmt(resumen?.gastos),
             sub: resumen?.gastos > resumen?.ingresos ? '⚠ Supera ingresos' : 'Bajo control',
             color: resumen?.gastos > resumen?.ingresos ? 'text-red-500' : 'text-g-400' },
