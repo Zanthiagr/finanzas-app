@@ -6,6 +6,7 @@ import { getActivos, crearActivo, eliminarActivo, actualizarActivo,
 import { fmt, fmtDate, fmtShort } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../utils/confirm';
 
 const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','CDT','Vehículo','Inmueble','Negocio','Préstamo otorgado','Otro'];
 const TIPOS_DEUDA  = ['Tarjeta de crédito','Crédito bancario','Préstamo personal','Hipoteca','Gota a gota','Otro'];
@@ -68,9 +69,10 @@ export function Activos() {
     } catch { toast.error('Error registrando rendimiento'); }
   };
 
-  const del = async id => {
-    if (!confirm('¿Eliminar este activo?')) return;
-    await eliminarActivo(id); toast.success('Eliminado'); load();
+  const del = id => {
+    confirmToast('¿Eliminar este activo?', async () => {
+      await eliminarActivo(id); toast.success('Eliminado'); load();
+    });
   };
 
   const total    = items.reduce((a,i)=>a+parseFloat(i.valor_actual),0);
@@ -284,7 +286,7 @@ export function Deudas() {
     load();
   };
 
-  const del = async id => { if (!confirm('¿Eliminar?')) return; await eliminarDeuda(id); toast.success('Eliminada'); load(); };
+  const del = id => confirmToast('¿Eliminar esta deuda?', async () => { await eliminarDeuda(id); toast.success('Eliminada'); load(); });
   const totalDeuda = items.filter(d=>d.activa).reduce((a,d)=>a+(parseFloat(d.monto_total)-parseFloat(d.monto_pagado)),0);
 
   return (
@@ -405,7 +407,7 @@ export function Metas() {
     load();
   };
 
-  const del = async id => { if (!confirm('¿Eliminar?')) return; await eliminarMeta(id); toast.success('Eliminada'); load(); };
+  const del = id => confirmToast('¿Eliminar esta meta?', async () => { await eliminarMeta(id); toast.success('Eliminada'); load(); });
 
   return (
     <div className="space-y-4 page-enter">
