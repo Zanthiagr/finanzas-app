@@ -4,6 +4,7 @@ import { supabase } from '../utils/supabase';
 import { fmt, fmtShort } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../utils/confirm';
 
 const DIAS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -117,11 +118,12 @@ export default function Calendario() {
     } catch { toast.error('Error guardando pago'); }
   };
 
-  const eliminarPago = async (id) => {
-    if (!confirm('¿Eliminar este pago programado?')) return;
-    await eliminarPagoProgramado(id);
-    toast.success('Eliminado');
-    cargar();
+  const eliminarPago = (id) => {
+    confirmToast('¿Eliminar este pago programado?', async () => {
+      await eliminarPagoProgramado(id);
+      toast.success('Eliminado');
+      cargar();
+    });
   };
 
   const diaData = getDiaData(diaSelec);
