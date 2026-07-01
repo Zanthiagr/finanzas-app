@@ -54,3 +54,29 @@ export const CATEGORIAS_COLORES = {
   'Salud': '#D4537E', 'Educación': '#BA7517', 'Entretenimiento': '#D85A30',
   'Ropa': '#1D9E75', 'Vivienda': '#5F5E5A', 'Deudas': '#A32D2D',
 };
+
+// Bancos/billeteras digitales disponibles como medio de pago.
+// Compartido entre Movimientos, Onboarding y el editor de capital inicial.
+export const BANCOS = [
+  { value: 'bancolombia', label: '🟡 Bancolombia' },
+  { value: 'davivienda',  label: '🔴 Davivienda' },
+  { value: 'bogota',      label: '🔵 Banco de Bogotá' },
+  { value: 'nequi',       label: '🟣 Nequi' },
+  { value: 'daviplata',   label: '🟠 Daviplata' },
+  { value: 'bbva',        label: '🔷 BBVA' },
+  { value: 'occidente',   label: '🟤 Banco de Occidente' },
+  { value: 'popular',     label: '⚫ Banco Popular' },
+  { value: 'itau',        label: '🔶 Itaú' },
+  { value: 'scotiabank',  label: '🔴 Scotiabank' },
+  { value: 'falabella',   label: '🟢 Falabella' },
+  { value: 'nu',          label: '🟣 Nu (Nubank)' },
+  { value: 'lulo',        label: '🟡 Lulo Bank' },
+  { value: 'otro_banco',  label: '🏦 Otro banco' },
+];
+
+// Todas las claves válidas de medio_pago, incluyendo efectivo — útil para
+// mostrar etiquetas legibles a partir de la clave guardada en Supabase.
+export const MEDIOS_PAGO = [{ value: 'efectivo', label: '💵 Efectivo' }, ...BANCOS];
+
+export const labelMedioPago = (clave) =>
+  MEDIOS_PAGO.find(m => m.value === clave)?.label || clave;
