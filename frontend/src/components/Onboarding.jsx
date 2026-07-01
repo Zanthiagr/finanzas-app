@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { crearMovimiento } from '../utils/api';
+import CapitalInicialForm from './CapitalInicialForm';
 import toast from 'react-hot-toast';
 
 const PASOS = [
@@ -8,6 +9,13 @@ const PASOS = [
     color: '#C9A84C',
     titulo: '¡Bienvenido a Fintual!',
     desc: 'No es solo una app de finanzas. Es tu camino a la libertad — sin importar desde dónde empieces hoy.',
+  },
+  {
+    icon: 'ti-wallet',
+    color: '#C9A84C',
+    titulo: '¿Con cuánto empiezas?',
+    desc: 'Registra el dinero que ya tienes hoy — en efectivo o en tus cuentas. Esto NO se cuenta como ingreso, es tu punto de partida real.',
+    capital: true,
   },
   {
     icon: 'ti-arrows-exchange',
@@ -82,7 +90,14 @@ export default function Onboarding({ onComplete }) {
         <p className="text-white/50 text-sm text-center leading-relaxed mb-8">{actual.desc}</p>
 
         {/* Formulario rápido en el paso de acción */}
-        {actual.accion ? (
+        {actual.capital ? (
+          <div className="mb-6">
+            <CapitalInicialForm dark />
+            <button onClick={siguiente} className="w-full text-white/30 text-xs py-1 mt-4">
+              Omitir por ahora
+            </button>
+          </div>
+        ) : actual.accion ? (
           <div className="space-y-3 mb-6">
             <div className="grid grid-cols-2 gap-2">
               {['ingreso', 'gasto'].map(t => (
@@ -122,7 +137,7 @@ export default function Onboarding({ onComplete }) {
           </button>
         )}
 
-        {!actual.accion && (
+        {!actual.accion && !actual.capital && (
           <button onClick={onComplete} className="w-full text-white/30 text-xs py-1">
             Saltar introducción
           </button>
