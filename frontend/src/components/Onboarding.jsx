@@ -95,11 +95,11 @@ export default function Onboarding({ onComplete }) {
               ))}
             </div>
             <input
-              type="number" inputMode="numeric"
+              type="text" inputMode="decimal"
               className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white text-lg placeholder-white/30 focus:outline-none focus:border-gold/60"
               placeholder="¿Cuánto?"
               value={form.monto}
-              onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, monto: e.target.value.replace(',', '.') }))}
             />
             <input
               className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-gold/60"
