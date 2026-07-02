@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, labelMedioPago } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
+import PantallaCompleta from '../components/PantallaCompleta';
+import CapitalInicialForm from '../components/CapitalInicialForm';
 
 export default function Dashboard() {
   const { user, perfil } = useAuth();
@@ -12,9 +14,12 @@ export default function Dashboard() {
   const [movRecientes, setMovRecientes] = useState([]);
   const [pagosHoy, setPagosHoy]         = useState([]);
   const [loading, setLoading]           = useState(true);
+  const [modalCapital, setModalCapital] = useState(false);
   const now  = new Date();
   const mes  = now.getMonth() + 1;
   const anio = now.getFullYear();
+
+  const cargarSaldo = () => getSaldoTotal().then(setSaldo).catch(console.error);
 
   useEffect(() => {
     Promise.all([
@@ -63,18 +68,21 @@ export default function Dashboard() {
       <div className="card p-4 md:p-5">
         <div className="flex items-center justify-between mb-1">
           <p className="section-label">Dinero disponible</p>
-          <span className="text-[10px] text-g-300">Total acumulado</span>
+          <button onClick={() => setModalCapital(true)} className="text-[10px] text-g-500 flex items-center gap-1">
+            <i className="ti ti-pencil text-[11px]"/> Editar capital
+          </button>
         </div>
         <p className={`text-2xl md:text-3xl font-medium ${saldo?.saldoTotal >= 0 ? 'text-g-900' : 'text-red-500'}`}>
           {fmt(saldo?.saldoTotal || 0)}
         </p>
+        <p className="text-[10px] text-g-300 mt-0.5">Total acumulado — no se reinicia por mes</p>
         {saldo?.porMedio && Object.keys(saldo.porMedio).length > 0 && (
           <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5">
             {Object.entries(saldo.porMedio)
               .filter(([key, d]) => key !== 'transferencia' && d && (d.ingresos !== 0 || d.gastos !== 0))
               .map(([key, d]) => (
                 <div key={key} className="flex-shrink-0 bg-g-50 rounded-lg px-2.5 py-1.5">
-                  <p className="text-[10px] text-g-500 capitalize">{key === 'efectivo' ? '💵 Efectivo' : key}</p>
+                  <p className="text-[10px] text-g-500 whitespace-nowrap">{labelMedioPago(key)}</p>
                   <p className="text-xs font-medium text-g-800">{fmtShort(d.ingresos - d.gastos)}</p>
                 </div>
               ))}
@@ -281,6 +289,12 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {modalCapital && (
+        <PantallaCompleta title="Capital inicial" onClose={() => setModalCapital(false)}>
+          <CapitalInicialForm onChange={cargarSaldo} />
+        </PantallaCompleta>
+      )}
 
     </div>
   );
