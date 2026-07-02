@@ -19,25 +19,50 @@ const NAV_DESKTOP = [
 ];
 
 // Tabs principales móvil — los 4 más usados + "Más"
+// Calendario en el centro: es de uso frecuente (pagos programados,
+// historial por día) y no depende de una función externa como el Coach.
 const NAV_MOBILE_MAIN = [
   { to: '/',            icon: 'ti-layout-dashboard', label: 'Inicio' },
   { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Gastos' },
-  { to: '/coach',       icon: 'ti-robot',            label: 'Coach' },
+  { to: '/calendario',  icon: 'ti-calendar-month',   label: 'Calendario' },
   { to: '/mental',      icon: 'ti-brain',            label: 'Mente' },
 ];
 
-// Secciones en el menú "Más"
-const NAV_MOBILE_MAS = [
-  { to: '/calendario',   icon: 'ti-calendar-month',   label: 'Calendario',   color: '#185FA5', bg: '#E6F1FB' },
-  { to: '/academia',     icon: 'ti-school',           label: 'Academia',     color: '#BA7517', bg: '#FAEEDA' },
-  { to: '/calculadora',  icon: 'ti-calculator',       label: 'Calculadoras', color: '#534AB7', bg: '#EEEDFE' },
-  { to: '/metas',        icon: 'ti-target',           label: 'Metas',        color: '#0F6E56', bg: '#E1F5EE' },
-  { to: '/presupuestos', icon: 'ti-wallet',           label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
-  { to: '/cierre',       icon: 'ti-calendar-stats',   label: 'Cierre',       color: '#2D6B4A', bg: '#EDFAF3' },
-  { to: '/activos',      icon: 'ti-building-bank',    label: 'Activos',      color: '#185FA5', bg: '#E6F1FB' },
-  { to: '/deudas',       icon: 'ti-credit-card',      label: 'Deudas',       color: '#A32D2D', bg: '#FCEBEB' },
-  { to: '/reporte',      icon: 'ti-file-download',    label: 'Reporte PDF',  color: '#534AB7', bg: '#EEEDFE' },
-  { to: '/perfil',       icon: 'ti-user-circle',      label: 'Mi perfil',    color: '#2D6B4A', bg: '#EDFAF3' },
+// Secciones del menú "Más" — agrupadas con el mismo criterio que el
+// sidebar de escritorio (Patrimonio / Seguimiento / Crecimiento), más un
+// grupo de Cuenta. Antes era una sola parrilla plana de 9 iconos sin
+// jerarquía; agrupar reduce la carga cognitiva de escanear el menú.
+const NAV_MOBILE_MAS_GRUPOS = [
+  {
+    label: 'Patrimonio',
+    items: [
+      { to: '/activos',      icon: 'ti-building-bank', label: 'Activos',      color: '#185FA5', bg: '#E6F1FB' },
+      { to: '/deudas',       icon: 'ti-credit-card',   label: 'Deudas',       color: '#A32D2D', bg: '#FCEBEB' },
+      { to: '/metas',        icon: 'ti-target',        label: 'Metas',        color: '#0F6E56', bg: '#E1F5EE' },
+      { to: '/presupuestos', icon: 'ti-wallet',        label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
+    ],
+  },
+  {
+    label: 'Seguimiento',
+    items: [
+      { to: '/cierre',  icon: 'ti-calendar-stats', label: 'Cierre',      color: '#2D6B4A', bg: '#EDFAF3' },
+      { to: '/reporte', icon: 'ti-file-download',  label: 'Reporte PDF', color: '#0F6E56', bg: '#E1F5EE' },
+    ],
+  },
+  {
+    label: 'Crecimiento',
+    items: [
+      { to: '/academia',    icon: 'ti-school',     label: 'Academia',     color: '#BA7517', bg: '#FAEEDA' },
+      { to: '/calculadora', icon: 'ti-calculator', label: 'Calculadoras', color: '#534AB7', bg: '#EEEDFE' },
+      { to: '/coach',       icon: 'ti-robot',      label: 'Coach IA',     color: '#185FA5', bg: '#E6F1FB' },
+    ],
+  },
+  {
+    label: 'Cuenta',
+    items: [
+      { to: '/perfil', icon: 'ti-user-circle', label: 'Mi perfil', color: '#2D6B4A', bg: '#EDFAF3' },
+    ],
+  },
 ];
 
 const groups = [
@@ -73,8 +98,8 @@ export default function Layout({ children }) {
     .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const pageTitle = PAGE_TITLES[location.pathname] || 'Fintual';
 
-  // Saber si la página actual está en el menú "Más"
-  const enMenuMas = NAV_MOBILE_MAS.some(n => n.to === location.pathname);
+  // Saber si la página actual está en el menú "Más" (ahora agrupado)
+  const enMenuMas = NAV_MOBILE_MAS_GRUPOS.some(g => g.items.some(n => n.to === location.pathname));
 
   const irA = (to) => {
     setMasOpen(false);
@@ -180,40 +205,51 @@ export default function Layout({ children }) {
         </main>
 
         {/* ── MENÚ MÁS (sheet desde abajo) ── */}
-        {masOpen && (
-          <>
-            {/* Overlay */}
-            <div className="md:hidden fixed inset-0 bg-black/40 z-40" onClick={() => setMasOpen(false)}/>
-            {/* Sheet */}
-            <div className="md:hidden fixed left-0 right-0 bg-white rounded-t-2xl z-50 p-5 shadow-2xl"
-              style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)' }}>
-              <div className="flex justify-center mb-4">
-                <div className="w-10 h-1 rounded-full bg-g-200"/>
+        {/* Siempre montado (no solo cuando masOpen) para poder animar tanto
+            la apertura como el cierre con transform/opacity — antes aparecía
+            de golpe sin transición. */}
+        <div
+          className={`md:hidden fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ${
+            masOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+          onClick={() => setMasOpen(false)}
+        />
+        <div
+          className={`md:hidden fixed left-0 right-0 bg-white rounded-t-2xl z-50 p-5 shadow-2xl
+            transition-transform duration-300 ease-out ${masOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'}`}
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)', maxHeight: '75vh', overflowY: 'auto' }}>
+          <div className="flex justify-center mb-4">
+            <div className="w-10 h-1 rounded-full bg-g-200"/>
+          </div>
+
+          <div className="space-y-4 mb-4">
+            {NAV_MOBILE_MAS_GRUPOS.map(grupo => (
+              <div key={grupo.label}>
+                <p className="text-[10px] uppercase tracking-widest text-g-400 font-medium mb-2">{grupo.label}</p>
+                <div className="grid grid-cols-4 gap-2.5">
+                  {grupo.items.map(n => (
+                    <button key={n.to} onClick={() => irA(n.to)}
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all active:scale-95 ${
+                        location.pathname === n.to ? 'ring-2 ring-g-400' : ''
+                      }`}
+                      style={{ background: n.bg }}>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: n.color + '20' }}>
+                        <i className={`ti ${n.icon} text-base`} style={{ color: n.color }}/>
+                      </div>
+                      <span className="text-[10px] font-medium text-g-800 text-center leading-tight">{n.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <p className="text-xs text-g-400 uppercase tracking-widest mb-3">Más secciones</p>
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {NAV_MOBILE_MAS.map(n => (
-                  <button key={n.to} onClick={() => irA(n.to)}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all active:scale-95 ${
-                      location.pathname === n.to ? 'ring-2 ring-g-400' : ''
-                    }`}
-                    style={{ background: n.bg }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: n.color + '20' }}>
-                      <i className={`ti ${n.icon} text-lg`} style={{ color: n.color }}/>
-                    </div>
-                    <span className="text-xs font-medium text-g-800">{n.label}</span>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
-                <i className="ti ti-logout text-sm"/>
-                Cerrar sesión
-              </button>
-            </div>
-          </>
-        )}
+            ))}
+          </div>
+
+          <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
+            <i className="ti ti-logout text-sm"/>
+            Cerrar sesión
+          </button>
+        </div>
 
         {/* ── BOTTOM NAV MÓVIL ── */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50"
