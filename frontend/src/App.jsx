@@ -1,22 +1,37 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/layout/Layout';
 import Onboarding from './components/Onboarding';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
-import Movimientos from './pages/Movimientos';
-import CierreSemanal from './pages/CierreSemanal';
-import { Activos, Deudas, Metas } from './pages/Patrimonio';
-import Presupuestos from './pages/Presupuestos';
-import Mental from './pages/Mental';
-import Academia from './pages/Academia';
-import Coach from './pages/Coach';
-import Reporte from './pages/Reporte';
-import Perfil from './pages/Perfil';
-import Calendario from './pages/Calendario';
-import Calculadora from './pages/Calculadora';
+
+// Code-splitting: Dashboard y Auth cargan de inmediato (lo primero que ve
+// el usuario), todo lo demás se descarga bajo demanda al navegar a esa
+// ruta. Reduce el bundle inicial considerablemente (~950kB antes).
+const Movimientos   = lazy(() => import('./pages/Movimientos'));
+const CierreSemanal = lazy(() => import('./pages/CierreSemanal'));
+const Activos    = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Activos })));
+const Deudas     = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Deudas })));
+const Metas      = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Metas })));
+const Presupuestos = lazy(() => import('./pages/Presupuestos'));
+const Mental     = lazy(() => import('./pages/Mental'));
+const Academia   = lazy(() => import('./pages/Academia'));
+const Coach      = lazy(() => import('./pages/Coach'));
+const Reporte    = lazy(() => import('./pages/Reporte'));
+const Perfil     = lazy(() => import('./pages/Perfil'));
+const Calendario = lazy(() => import('./pages/Calendario'));
+const Calculadora = lazy(() => import('./pages/Calculadora'));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64 flex-col gap-3">
+      <i className="ti ti-loader animate-spin text-2xl text-g-400"/>
+      <p className="text-sm text-g-400">Cargando...</p>
+    </div>
+  );
+}
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -64,23 +79,25 @@ function AppRoutes() {
         <Route path="/*" element={
           <PrivateRoute>
             <Layout>
-              <Routes>
-                <Route path="/"             element={<Dashboard/>}/>
-                <Route path="/movimientos"  element={<Movimientos/>}/>
-                <Route path="/cierre"       element={<CierreSemanal/>}/>
-                <Route path="/presupuestos" element={<Presupuestos/>}/>
-                <Route path="/activos"      element={<Activos/>}/>
-                <Route path="/deudas"       element={<Deudas/>}/>
-                <Route path="/metas"        element={<Metas/>}/>
-                <Route path="/mental"       element={<Mental/>}/>
-                <Route path="/academia"     element={<Academia/>}/>
-                <Route path="/coach"        element={<Coach/>}/>
-                <Route path="/reporte"      element={<Reporte/>}/>
-                <Route path="/perfil"       element={<Perfil/>}/>
-                <Route path="/calendario"   element={<Calendario/>}/>
-                <Route path="/calculadora"  element={<Calculadora/>}/>
-                <Route path="*"             element={<Navigate to="/" replace/>}/>
-              </Routes>
+              <Suspense fallback={<PageLoader/>}>
+                <Routes>
+                  <Route path="/"             element={<Dashboard/>}/>
+                  <Route path="/movimientos"  element={<Movimientos/>}/>
+                  <Route path="/cierre"       element={<CierreSemanal/>}/>
+                  <Route path="/presupuestos" element={<Presupuestos/>}/>
+                  <Route path="/activos"      element={<Activos/>}/>
+                  <Route path="/deudas"       element={<Deudas/>}/>
+                  <Route path="/metas"        element={<Metas/>}/>
+                  <Route path="/mental"       element={<Mental/>}/>
+                  <Route path="/academia"     element={<Academia/>}/>
+                  <Route path="/coach"        element={<Coach/>}/>
+                  <Route path="/reporte"      element={<Reporte/>}/>
+                  <Route path="/perfil"       element={<Perfil/>}/>
+                  <Route path="/calendario"   element={<Calendario/>}/>
+                  <Route path="/calculadora"  element={<Calculadora/>}/>
+                  <Route path="*"             element={<Navigate to="/" replace/>}/>
+                </Routes>
+              </Suspense>
             </Layout>
           </PrivateRoute>
         }/>
