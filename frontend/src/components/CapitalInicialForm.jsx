@@ -56,6 +56,20 @@ export default function CapitalInicialForm({ dark = false, onChange }) {
   };
 
   const disponibles = MEDIOS_PAGO.filter(m => !saldos.some(s => s.medio_pago === m.value));
+
+  // Si el medio seleccionado deja de estar disponible (porque ya se guardó,
+  // o porque se eliminó y la lista cambió), lo realineamos con lo que el
+  // <select> realmente está mostrando. Sin esto, el <select> visualmente
+  // muestra la primera opción disponible pero el estado sigue apuntando al
+  // valor viejo — al guardar, se sobreescribe el registro equivocado en vez
+  // de crear uno nuevo (el toast dice "guardado" pero no aparece nada).
+  useEffect(() => {
+    if (disponibles.length > 0 && !disponibles.some(m => m.value === medio)) {
+      setMedio(disponibles[0].value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saldos]);
+
   const inputCls = dark
     ? 'w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-gold/60'
     : 'input';
