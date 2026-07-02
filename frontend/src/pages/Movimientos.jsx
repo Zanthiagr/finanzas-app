@@ -1,28 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal } from '../utils/api';
-import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
 const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Otro'];
-const BANCOS = [
-  { value: 'bancolombia', label: '🟡 Bancolombia' },
-  { value: 'davivienda',  label: '🔴 Davivienda' },
-  { value: 'bogota',      label: '🔵 Banco de Bogotá' },
-  { value: 'nequi',       label: '🟣 Nequi' },
-  { value: 'daviplata',   label: '🟠 Daviplata' },
-  { value: 'bbva',        label: '🔷 BBVA' },
-  { value: 'occidente',   label: '🟤 Banco de Occidente' },
-  { value: 'popular',     label: '⚫ Banco Popular' },
-  { value: 'itau',        label: '🔶 Itaú' },
-  { value: 'scotiabank',  label: '🔴 Scotiabank' },
-  { value: 'falabella',   label: '🟢 Falabella' },
-  { value: 'nu',          label: '🟣 Nu (Nubank)' },
-  { value: 'lulo',        label: '🟡 Lulo Bank' },
-  { value: 'otro_banco',  label: '🏦 Otro banco' },
-];
 const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0], medio_pago: 'efectivo', banco: '' };
 
 // Componente fila con swipe para eliminar
