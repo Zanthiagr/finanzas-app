@@ -48,14 +48,14 @@ function MovRow({ m, onEdit, onDelete }) {
         onClick={() => swipeX === 0 && onEdit(m)}
       >
         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-          style={{ background: (CATEGORIAS_COLORES[m.categoria]||'#9ED4B8')+'25', color: CATEGORIAS_COLORES[m.categoria]||'#2D6B4A' }}>
+          style={{ background: (CATEGORIAS_COLORES[m.categoria]||'#2452FF')+'25', color: CATEGORIAS_COLORES[m.categoria]||'#2452FF' }}>
           <i className={`ti ${CATEGORIAS_ICONOS[m.categoria]||'ti-tag'}`}/>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-g-900 truncate">{m.descripcion||m.categoria}</p>
           <p className="text-[11px] text-g-400">{m.categoria} · {fmtDate(m.fecha)}</p>
         </div>
-        <span className={`text-sm font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-g-600':'text-g-900'}`}>
+        <span className={`text-sm font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-pos':'text-g-900'}`}>
           {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
         </span>
         <i className="ti ti-chevron-right text-g-300 text-xs hidden md:block"/>
@@ -247,7 +247,7 @@ export default function Movimientos() {
       <div className="grid grid-cols-3 gap-3">
         <div className="card p-3 md:p-4">
           <p className="section-label">Ingresos</p>
-          <p className="text-base md:text-xl font-medium text-g-600">{fmtShort(totalIngresos)}</p>
+          <p className="text-base md:text-xl font-medium text-pos">{fmtShort(totalIngresos)}</p>
         </div>
         <div className="card p-3 md:p-4">
           <p className="section-label">Gastos</p>
@@ -255,7 +255,7 @@ export default function Movimientos() {
         </div>
         <div className="card p-3 md:p-4">
           <p className="section-label">Balance</p>
-          <p className={`text-base md:text-xl font-medium ${totalIngresos-totalGastos>=0?'text-g-600':'text-red-500'}`}>
+          <p className={`text-base md:text-xl font-medium ${totalIngresos-totalGastos>=0?'text-pos':'text-red-500'}`}>
             {fmtShort(totalIngresos-totalGastos)}
           </p>
         </div>
@@ -291,7 +291,7 @@ export default function Movimientos() {
                 <div key={key} className="flex items-center justify-between py-2 border-b border-g-100 last:border-0">
                   <span className="text-sm text-g-700">{label}</span>
                   <div className="text-right">
-                    <p className={`text-sm font-medium ${saldo >= 0 ? 'text-g-600' : 'text-red-600'}`}>
+                    <p className={`text-sm font-medium ${saldo >= 0 ? 'text-pos' : 'text-red-600'}`}>
                       {saldo >= 0 ? '+' : ''}{new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(saldo)}
                     </p>
                     <p className="text-[10px] text-g-400">
