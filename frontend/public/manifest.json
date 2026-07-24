@@ -4,8 +4,8 @@
   "description": "Tu camino a la libertad financiera. Control, aprendizaje y coach IA.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1A3A2A",
-  "theme_color": "#1A3A2A",
+  "background_color": "#0B1E4D",
+  "theme_color": "#0B1E4D",
   "orientation": "portrait",
   "icons": [
     {
