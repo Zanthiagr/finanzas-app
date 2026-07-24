@@ -8,19 +8,23 @@ export default {
         // tener que tocar cada archivo — solo cambia el valor hexadecimal.
         g: {
           900: '#0B1220', // ink — texto principal, casi negro con tinte navy
-          800: '#0B1E4D', // navy profundo — paneles oscuros (salud financiera, etc.)
-          700: '#2452FF', // azul eléctrico — color de marca, botones primarios
-          600: '#3E6BFF', // azul medio — hover, links secundarios
-          500: '#667085', // gris medio — texto secundario (antes indefinido: bug)
+          800: '#0B1E4D', // navy profundo — paneles oscuros Y hover de botones
+                          // (el azul se "asoma" solo un instante al interactuar)
+          700: '#151B2E', // tinta casi negra — botones primarios, estados activos
+          600: '#2B3348', // slate oscuro — hover/links secundarios (ya NO es azul)
+          500: '#667085', // gris medio — texto secundario
           400: '#8A93A6', // gris neutro — texto/íconos apagados (chrome estilo Nu)
-          300: '#C7CEDD', // gris claro — bordes sutiles (antes indefinido: bug)
+          300: '#C7CEDD', // gris claro — bordes sutiles
           200: '#DCE1EC', // gris azulado claro — bordes
           100: '#EEF0F5', // relleno sutil
-          50:  '#F6F7FB', // fondo de la app — frío, no verde pálido
+          50:  '#F6F7FB', // fondo de la app
         },
         // Escala navy independiente para gradientes de "tarjeta física"
         navy: { 900: '#060B18', 800: '#0B1E4D', 700: '#10224F' },
-        // Azul de marca — usar directamente cuando se necesite el acento puro
+        // Azul de marca — RESERVADO. Úsalo solo en el hero card y momentos
+        // puntuales de énfasis (ej. indicador activo del nav). Nunca en
+        // botones o filtros de uso frecuente — por eso dejó de estar en la
+        // escala "g". Si el azul aparece en todos lados, deja de ser especial.
         blue: { 600: '#2452FF', 500: '#3E6BFF', 400: '#6E93FF', 100: '#E8EDFF', 50: '#F3F6FF' },
         // Acento cálido puntual (chip de tarjeta, badges "premium") — con cuentagotas
         gold: { DEFAULT: '#C9A84C', light: '#F5E8C0', dark: '#9A7530' },
