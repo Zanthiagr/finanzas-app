@@ -264,12 +264,12 @@ export default function Movimientos() {
       <div className="flex gap-2">
         {[['','Todos'],['ingreso','Ingresos'],['gasto','Gastos']].map(([v,l])=>(
           <button key={v} onClick={()=>setFiltroTipo(v)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${filtroTipo===v?'bg-g-700 text-white border-g-700':'bg-white text-g-600 border-g-200/60'}`}>
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${filtroTipo===v?'bg-g-700 text-white border-g-700':'bg-white text-g-500 border-g-200/60'}`}>
             {l}
           </button>
         ))}
         <button onClick={()=>setVerMedios(!verMedios)}
-          className={`text-xs px-3 py-1.5 rounded-full border transition-all ml-auto ${verMedios?'bg-g-700 text-white border-g-700':'bg-white text-g-600 border-g-200/60'}`}>
+          className={`text-xs px-3 py-1.5 rounded-full border transition-all ml-auto ${verMedios?'bg-g-700 text-white border-g-700':'bg-white text-g-500 border-g-200/60'}`}>
           <i className="ti ti-wallet text-xs mr-1"/>Medios
         </button>
       </div>
