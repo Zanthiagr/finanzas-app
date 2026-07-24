@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [pagosHoy, setPagosHoy]         = useState([]);
   const [loading, setLoading]           = useState(true);
   const [modalCapital, setModalCapital] = useState(false);
+  const [ocultarSaldo, setOcultarSaldo] = useState(false);
   const now  = new Date();
   const mes  = now.getMonth() + 1;
   const anio = now.getFullYear();
@@ -44,7 +45,7 @@ export default function Dashboard() {
   }) : 0;
 
   const saludLabel = salud >= 70 ? 'Excelente mes' : salud >= 50 ? 'Vas bien' : salud >= 30 ? 'Atención' : 'Zona de riesgo';
-  const saludColor = salud >= 70 ? 'text-g-200' : salud >= 50 ? 'text-gold' : 'text-red-400';
+  const saludColor = salud >= 70 ? 'text-blue-100' : salud >= 50 ? 'text-gold' : 'text-red-400';
   const gastosCategoria = resumen?.porCategoria?.filter(c => c.tipo === 'gasto').slice(0, 5) || [];
   const chartData = (resumen?.porSemana || []).reduce((acc, r) => {
     const s = acc.find(a => a.semana === `S${r.semana_num}`);
@@ -64,30 +65,49 @@ export default function Dashboard() {
   return (
     <div className="space-y-4 page-enter">
 
-      {/* Dinero disponible — saldo real acumulado, NUNCA se reinicia por mes */}
-      <div className="card p-4 md:p-5">
-        <div className="flex items-center justify-between mb-1">
-          <p className="section-label">Dinero disponible</p>
-          <button onClick={() => setModalCapital(true)} className="text-[10px] text-g-500 flex items-center gap-1">
-            <i className="ti ti-pencil text-[11px]"/> Editar capital
+      {/* Dinero disponible — saldo real acumulado, NUNCA se reinicia por mes.
+          Tratado como la "tarjeta física" del producto: es el elemento que
+          más se ve cada día, así que lleva el tratamiento más premium. */}
+      <div className="card-premium">
+        {/* brillos decorativos — puramente atmosféricos, no interactivos */}
+        <div className="card-premium-glow -top-24 -right-16 w-64 h-64 bg-blue-500 opacity-20" />
+        <div className="card-premium-glow -bottom-20 -left-10 w-52 h-52 bg-gold opacity-[0.08]" />
+
+        <div className="relative flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/60 font-medium">
+            Dinero disponible
+          </p>
+          {/* chip decorativo — guiño a tarjeta física */}
+          <div className="w-8 h-6 rounded-md bg-gradient-to-br from-gold to-gold-dark opacity-90" />
+        </div>
+
+        <div className="relative mt-3 flex items-center gap-2">
+          <span className={`text-[28px] md:text-[34px] font-semibold tracking-tight tabular-nums ${saldo?.saldoTotal < 0 ? 'text-red-300' : 'text-white'}`}>
+            {ocultarSaldo ? '••••••••' : fmt(saldo?.saldoTotal || 0)}
+          </span>
+          <button onClick={() => setOcultarSaldo(!ocultarSaldo)} className="text-white/50 hover:text-white/80 transition-colors flex-shrink-0">
+            <i className={`ti ${ocultarSaldo ? 'ti-eye' : 'ti-eye-off'} text-lg`} />
           </button>
         </div>
-        <p className={`text-2xl md:text-3xl font-medium ${saldo?.saldoTotal >= 0 ? 'text-g-900' : 'text-red-500'}`}>
-          {fmt(saldo?.saldoTotal || 0)}
-        </p>
-        <p className="text-[10px] text-g-300 mt-0.5">Total acumulado — no se reinicia por mes</p>
+        <p className="relative text-white/40 text-[11px] mt-1">Total acumulado — no se reinicia por mes</p>
+
         {saldo?.porMedio && Object.keys(saldo.porMedio).length > 0 && (
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5">
+          <div className="relative flex gap-2 mt-4 overflow-x-auto pb-0.5">
             {Object.entries(saldo.porMedio)
               .filter(([key, d]) => key !== 'transferencia' && d && (d.ingresos !== 0 || d.gastos !== 0))
               .map(([key, d]) => (
-                <div key={key} className="flex-shrink-0 bg-g-50 rounded-lg px-2.5 py-1.5">
-                  <p className="text-[10px] text-g-500 whitespace-nowrap">{labelMedioPago(key)}</p>
-                  <p className="text-xs font-medium text-g-800">{fmtShort(d.ingresos - d.gastos)}</p>
+                <div key={key} className="flex-shrink-0 bg-white/10 backdrop-blur rounded-lg px-2.5 py-1.5">
+                  <p className="text-[10px] text-white/50 whitespace-nowrap">{labelMedioPago(key)}</p>
+                  <p className="text-xs font-medium text-white">{ocultarSaldo ? '••••' : fmtShort(d.ingresos - d.gastos)}</p>
                 </div>
               ))}
           </div>
         )}
+
+        <button onClick={() => setModalCapital(true)}
+          className="relative mt-4 text-[11px] text-white/50 hover:text-white/80 transition-colors flex items-center gap-1">
+          <i className="ti ti-pencil text-[11px]"/> Editar capital inicial
+        </button>
       </div>
 
       {/* Pagos programados para hoy */}
@@ -115,20 +135,32 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Salud financiera */}
+      {/* Salud financiera — gauge circular: es contenido motivacional, no
+          "chrome" de navegación, así que se permite ser expresivo. */}
       <div className="bg-g-800 rounded-2xl p-4 md:p-5 flex items-center gap-4 md:gap-6">
-        <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-widest text-g-200 mb-1">Salud financiera</p>
-          <p className={`text-base md:text-lg font-medium mb-3 ${saludColor}`}>{saludLabel}</p>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-gold to-g-400 transition-all duration-700"
-              style={{ width: `${salud}%` }} />
+        <div className="relative flex-shrink-0 w-20 h-20 md:w-24 md:h-24">
+          <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="9" />
+            <circle cx="50" cy="50" r="42" fill="none" stroke="url(#saludGradient)" strokeWidth="9"
+              strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 42}`}
+              strokeDashoffset={`${2 * Math.PI * 42 * (1 - salud / 100)}`}
+              className="transition-all duration-700" />
+            <defs>
+              <linearGradient id="saludGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#C9A84C" />
+                <stop offset="100%" stopColor="#6E93FF" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-xl md:text-2xl font-semibold text-white tabular-nums">{salud}</span>
+            <span className="text-[9px] text-white/40 -mt-0.5">de 100</span>
           </div>
-          <p className="text-white/30 text-[11px] mt-1.5 hidden md:block">Basado en ahorro, control de gastos y deuda</p>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-4xl md:text-5xl font-medium text-white">{salud}</p>
-          <p className="text-white/30 text-xs mt-0.5">de 100 pts</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Salud financiera</p>
+          <p className={`text-base md:text-lg font-medium ${saludColor}`}>{saludLabel}</p>
+          <p className="text-white/30 text-[11px] mt-1 hidden md:block">Basado en ahorro, control de gastos y deuda</p>
           {nombre && (
             <p className="text-gold text-xs mt-2 bg-gold/10 px-2.5 py-0.5 rounded-full inline-block">
               Buen trabajo, {nombre}
@@ -146,7 +178,7 @@ export default function Dashboard() {
             sub: resumen?.gastos > resumen?.ingresos ? '⚠ Supera ingresos' : 'Bajo control',
             color: resumen?.gastos > resumen?.ingresos ? 'text-red-500' : 'text-g-400' },
           { label: 'Balance',
-            value: <span className={resumen?.balance >= 0 ? 'text-g-600' : 'text-red-500'}>{fmt(resumen?.balance)}</span>,
+            value: <span className={resumen?.balance >= 0 ? 'text-pos' : 'text-neg'}>{fmt(resumen?.balance)}</span>,
             sub: resumen?.ingresos > 0 ? `${Math.round((resumen.balance / resumen.ingresos) * 100)}% ahorrado` : '',
             color: 'text-g-400' },
           { label: 'Movimientos',
@@ -166,23 +198,23 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-g-900">Ingresos vs Gastos</p>
           <div className="flex gap-3 text-[11px] text-g-400">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-g-400 inline-block"/>Ingresos</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-blue-600 inline-block"/>Ingresos</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gold inline-block"/>Gastos</span>
           </div>
         </div>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={110}>
             <BarChart data={chartData} barSize={10} barGap={3}>
-              <XAxis dataKey="semana" tick={{ fontSize: 10, fill: '#8AA398' }} axisLine={false} tickLine={false}/>
+              <XAxis dataKey="semana" tick={{ fontSize: 10, fill: '#8A93A6' }} axisLine={false} tickLine={false}/>
               <YAxis hide/>
               <Tooltip
                 formatter={(v) => fmt(v)}
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: '0.5px solid #CBF0DC' }}
-                cursor={{ fill: 'rgba(74,158,114,0.08)' }}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '0.5px solid #DCE1EC' }}
+                cursor={{ fill: 'rgba(36,82,255,0.06)' }}
                 isAnimationActive={false}
                 wrapperStyle={{ zIndex: 20 }}
               />
-              <Bar dataKey="ingreso" fill="#4A9E72" radius={[3,3,0,0]}/>
+              <Bar dataKey="ingreso" fill="#2452FF" radius={[3,3,0,0]}/>
               <Bar dataKey="gasto"   fill="#C9A84C" radius={[3,3,0,0]}/>
             </BarChart>
           </ResponsiveContainer>
@@ -255,7 +287,7 @@ export default function Dashboard() {
                   <p className="text-sm font-medium text-g-900 truncate">{m.descripcion || m.categoria}</p>
                   <p className="text-[11px] text-g-400">{m.categoria}</p>
                 </div>
-                <span className={`text-sm font-medium flex-shrink-0 ${m.tipo === 'ingreso' ? 'text-g-600' : 'text-g-900'}`}>
+                <span className={`text-sm font-medium flex-shrink-0 ${m.tipo === 'ingreso' ? 'text-pos' : 'text-g-900'}`}>
                   {m.tipo === 'ingreso' ? '+' : '-'}{fmtShort(m.monto)}
                 </span>
               </div>
@@ -275,10 +307,10 @@ export default function Dashboard() {
         <p className="section-label">Accesos rápidos</p>
         <div className="grid grid-cols-4 gap-2.5">
           {[
-            { to: '/cierre',       icon: 'ti-calendar-stats', label: 'Cierre',       color: '#2D6B4A', bg: '#EDFAF3' },
-            { to: '/presupuestos', icon: 'ti-wallet',         label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
-            { to: '/deudas',       icon: 'ti-credit-card',    label: 'Deudas',       color: '#A32D2D', bg: '#FCEBEB' },
-            { to: '/activos',      icon: 'ti-building-bank',  label: 'Activos',      color: '#185FA5', bg: '#E6F1FB' },
+            { to: '/cierre',       icon: 'ti-calendar-stats', label: 'Cierre',       color: '#2452FF', bg: '#E8EDFF' },
+            { to: '/presupuestos', icon: 'ti-wallet',         label: 'Presupuestos', color: '#9A7530', bg: '#F5E8C0' },
+            { to: '/deudas',       icon: 'ti-credit-card',    label: 'Deudas',       color: '#C0303A', bg: '#FCEBEB' },
+            { to: '/activos',      icon: 'ti-building-bank',  label: 'Activos',      color: '#16A34A', bg: '#E9F9EF' },
           ].map(a => (
             <Link key={a.to} to={a.to} className="card p-2.5 flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: a.bg }}>
