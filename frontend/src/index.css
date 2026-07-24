@@ -6,8 +6,8 @@
   * { box-sizing: border-box; }
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    background: #F2F5F2;
-    color: #0F2318;
+    background: #F6F7FB;
+    color: #0B1220;
     -webkit-font-smoothing: antialiased;
   }
   /* CRÍTICO para iOS Safari: sin esto, el scroll táctil NO funciona dentro
@@ -32,18 +32,33 @@
   }
   .input {
     @apply w-full border border-g-200/60 rounded-xl px-3 py-2 text-sm
-           focus:outline-none focus:border-g-400 bg-white transition-colors;
+           focus:outline-none focus:border-blue-500 bg-white transition-colors;
   }
   .select {
     @apply w-full border border-g-200/60 rounded-xl px-3 py-2 text-sm
-           focus:outline-none focus:border-g-400 bg-white;
+           focus:outline-none focus:border-blue-500 bg-white;
   }
-  .badge-ok   { @apply text-xs px-2.5 py-0.5 rounded-full bg-g-50 text-g-700; }
+  /* Los badges de estado usan semántica de color propia (verde/ámbar/rojo),
+     independiente de la marca — "ok" nunca debe ser azul solo porque el
+     azul es el color de marca. */
+  .badge-ok   { @apply text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700; }
   .badge-warn { @apply text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700; }
   .badge-bad  { @apply text-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700; }
-  .text-pos   { @apply text-g-600 font-medium; }
+  .text-pos   { @apply text-emerald-600 font-medium; }
   .text-neg   { @apply text-red-600 font-medium; }
   .section-label { @apply text-[10px] uppercase tracking-widest text-g-400 font-medium; }
+
+  /* Card "premium" — la tarjeta física de gradiente navy que sirve de hero
+     en Dashboard y en cualquier panel que deba sentirse como el elemento
+     más importante de la pantalla (no un card plano más). */
+  .card-premium {
+    @apply relative overflow-hidden rounded-[28px] text-white p-5 md:p-6
+           shadow-2xl shadow-navy-800/30;
+    background: linear-gradient(135deg, #10224F 0%, #0B1E4D 45%, #060B18 100%);
+  }
+  .card-premium-glow {
+    @apply pointer-events-none absolute rounded-full blur-3xl;
+  }
 
   /* Safe area SOLO para la barra de navegación inferior — es el único
      elemento pegado al borde físico del iPhone. Los modales usan
@@ -55,7 +70,7 @@
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: #9ED4B8; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #C7D6FF; border-radius: 4px; }
 
 /* Animaciones */
 .page-enter { animation: fadeUp 0.2s ease; }
