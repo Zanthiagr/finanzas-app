@@ -12,7 +12,7 @@ const FRASES = [
 
 const AFIRMACIONES = [
   { ico: 'ti-heart',       color: '#534AB7', txt: '"Merezco prosperar y vivir con abundancia"' },
-  { ico: 'ti-trending-up', color: '#2D6B4A', txt: '"Cada decisión pequeña construye mi libertad"' },
+  { ico: 'ti-trending-up', color: '#16A34A', txt: '"Cada decisión pequeña construye mi libertad"' },
   { ico: 'ti-brain',       color: '#BA7517', txt: '"Mi mente crea riqueza con cada pensamiento que elijo"' },
 ];
 
@@ -112,8 +112,8 @@ export default function Mental() {
             <span className="text-xs text-g-500 bg-g-50 px-2 py-0.5 rounded-full">{done}/{habitos.length}</span>
           </div>
           <div className="h-2 bg-g-100 rounded-full overflow-hidden mb-4">
-            <div className="h-full bg-g-400 rounded-full transition-all"
-              style={{width: habitos.length>0?`${(done/habitos.length)*100}%`:'0%'}}/>
+            <div className="h-full rounded-full transition-all"
+              style={{width: habitos.length>0?`${(done/habitos.length)*100}%`:'0%', background: 'linear-gradient(90deg, #C9A84C, #6E93FF)'}}/>
           </div>
           <div className="space-y-1">
             {habitos.map(h=>(
