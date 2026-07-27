@@ -129,7 +129,7 @@ export default function Reporte() {
             </div>
             <div className="text-left sm:text-right flex-shrink-0">
               <p className="text-white/40 text-[11px] uppercase tracking-wider mb-1">Balance neto</p>
-              <p className={`text-2xl sm:text-3xl font-medium ${resumen?.balance >= 0 ? 'text-g-200' : 'text-red-400'}`}>
+              <p className={`text-2xl sm:text-3xl font-medium ${resumen?.balance >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>
                 {fmtShort(resumen?.balance || 0)}
               </p>
               <p className="text-white/30 text-xs mt-1">Tasa de ahorro: {tasaAhorro}%</p>
@@ -140,7 +140,7 @@ export default function Reporte() {
         {/* KPIs — 1 col móvil, 3 cols desktop */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
           {[
-            { label: 'Ingresos totales', value: fmt(resumen?.ingresos), bg: 'bg-g-50',   txt: 'text-g-600' },
+            { label: 'Ingresos totales', value: fmt(resumen?.ingresos), bg: 'bg-emerald-50', txt: 'text-emerald-700' },
             { label: 'Gastos totales',   value: fmt(resumen?.gastos),   bg: 'bg-red-50', txt: 'text-red-700' },
             { label: 'Movimientos',      value: movimientos?.length || 0, bg: 'bg-blue-50', txt: 'text-blue-700' },
           ].map((k, i) => (
@@ -167,7 +167,7 @@ export default function Reporte() {
                       </span>
                     </div>
                     <div className="h-1.5 bg-g-50 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: CATEGORIAS_COLORES[c.categoria] || '#4A9E72' }}/>
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: CATEGORIAS_COLORES[c.categoria] || '#2452FF' }}/>
                     </div>
                   </div>
                 );
@@ -183,8 +183,8 @@ export default function Reporte() {
             <div className="flex flex-col">
               {ingresosCategoria.map((c, i) => (
                 <div key={i} className={`flex justify-between gap-2 py-2 ${i < ingresosCategoria.length-1 ? 'border-b border-g-100' : ''}`}>
-                  <span className="text-[13px] text-g-600 truncate">{c.categoria}</span>
-                  <span className="text-[13px] font-medium text-g-600 flex-shrink-0">+{fmtShort(c.total)}</span>
+                  <span className="text-[13px] text-pos truncate">{c.categoria}</span>
+                  <span className="text-[13px] font-medium text-pos flex-shrink-0">+{fmtShort(c.total)}</span>
                 </div>
               ))}
             </div>
@@ -202,7 +202,7 @@ export default function Reporte() {
                     <p className="text-xs font-medium truncate">{m.descripcion || m.categoria}</p>
                     <p className="text-[11px] text-g-400 truncate">{m.categoria} · {fmtDate(m.fecha)}</p>
                   </div>
-                  <span className={`text-[13px] font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-g-600':'text-g-900'}`}>
+                  <span className={`text-[13px] font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-pos':'text-g-900'}`}>
                     {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
                   </span>
                 </div>
@@ -241,7 +241,7 @@ export default function Reporte() {
                       </div>
                     </div>
                     <div className="h-1.5 bg-g-50 rounded-full overflow-hidden">
-                      <div className="h-full bg-g-400 rounded-full" style={{ width: `${pct}%` }}/>
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }}/>
                     </div>
                   </div>
                 );
@@ -266,7 +266,7 @@ export default function Reporte() {
                       </p>
                     </div>
                     <div className="h-1.5 bg-g-50 rounded-full overflow-hidden">
-                      <div className="h-full bg-g-400 rounded-full" style={{ width: `${pct}%` }}/>
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }}/>
                     </div>
                     <p className="text-[11px] text-g-400 mt-1">{pct}% logrado</p>
                   </div>
@@ -285,7 +285,7 @@ export default function Reporte() {
                 <div key={i} className={`p-3 rounded-lg ${c.balance >= 0 ? 'bg-g-50' : 'bg-red-50'}`}>
                   <div className="flex justify-between gap-2 mb-1">
                     <p className="text-xs font-medium">Semana {c.semana_num}</p>
-                    <p className={`text-[13px] font-medium ${c.balance>=0?'text-g-600':'text-red-600'}`}>
+                    <p className={`text-[13px] font-medium ${c.balance>=0?'text-pos':'text-red-600'}`}>
                       {c.balance>=0?'+':''}{fmtShort(c.balance)}
                     </p>
                   </div>
