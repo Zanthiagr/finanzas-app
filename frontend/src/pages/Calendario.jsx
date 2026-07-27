@@ -243,7 +243,7 @@ export default function Calendario() {
               <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-g-50 rounded-xl p-3 text-center">
                   <p className="text-[10px] uppercase text-g-400 mb-1">Ingresos</p>
-                  <p className="text-sm font-medium text-g-600">{fmtShort(diaData.ingresos)}</p>
+                  <p className="text-sm font-medium text-pos">{fmtShort(diaData.ingresos)}</p>
                 </div>
                 <div className="bg-red-50 rounded-xl p-3 text-center">
                   <p className="text-[10px] uppercase text-g-400 mb-1">Gastos</p>
@@ -251,7 +251,7 @@ export default function Calendario() {
                 </div>
                 <div className={`rounded-xl p-3 text-center ${diaData.ingresos-diaData.gastos>=0?'bg-g-50':'bg-amber-50'}`}>
                   <p className="text-[10px] uppercase text-g-400 mb-1">Balance</p>
-                  <p className={`text-sm font-medium ${diaData.ingresos-diaData.gastos>=0?'text-g-600':'text-amber-700'}`}>
+                  <p className={`text-sm font-medium ${diaData.ingresos-diaData.gastos>=0?'text-pos':'text-amber-700'}`}>
                     {fmtShort(diaData.ingresos-diaData.gastos)}
                   </p>
                 </div>
@@ -284,7 +284,7 @@ export default function Calendario() {
                       <p className="text-sm text-g-700 truncate">{m.descripcion||m.categoria}</p>
                       {m.medio_pago && <p className="text-[10px] text-g-400">{m.medio_pago}</p>}
                     </div>
-                    <span className={`text-sm font-medium ml-2 flex-shrink-0 ${m.tipo==='ingreso'?'text-g-600':'text-g-900'}`}>
+                    <span className={`text-sm font-medium ml-2 flex-shrink-0 ${m.tipo==='ingreso'?'text-pos':'text-g-900'}`}>
                       {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
                     </span>
                   </div>
