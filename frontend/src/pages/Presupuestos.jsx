@@ -94,7 +94,7 @@ export default function Presupuestos() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: (CATEGORIAS_COLORES[p.categoria]||'#9ED4B8')+'25', color: CATEGORIAS_COLORES[p.categoria]||'#2D6B4A' }}>
+                      style={{ background: (CATEGORIAS_COLORES[p.categoria]||'#2452FF')+'25', color: CATEGORIAS_COLORES[p.categoria]||'#2452FF' }}>
                       <i className={`ti ${CATEGORIAS_ICONOS[p.categoria]||'ti-tag'}`}/>
                     </div>
                     <div>
