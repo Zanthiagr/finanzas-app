@@ -55,13 +55,13 @@ export default function Perfil() {
 
       {/* Avatar */}
       <div className="card p-6 flex flex-col items-center gap-3">
-        <div className="w-16 h-16 rounded-full bg-g-700 flex items-center justify-center text-white text-xl font-semibold">
+        <div className="w-16 h-16 rounded-full bg-gold flex items-center justify-center text-g-900 text-xl font-semibold">
           {initials}
         </div>
         <div className="text-center">
           <p className="font-medium text-g-900">{form.nombre || 'Sin nombre'}</p>
           <p className="text-sm text-g-400">{user?.email}</p>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-g-50 text-g-600 border border-g-200/60 mt-1 inline-block">
+          <span className="text-xs px-2.5 py-1 rounded-full bg-gold/10 text-gold-dark border border-gold/20 mt-1 inline-block">
             {perfil?.puntos_xp || 0} XP acumulados
           </span>
         </div>
