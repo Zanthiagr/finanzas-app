@@ -105,7 +105,7 @@ export default function CierreSemanal() {
               </p>
             ) : (
               <>
-                <p className={`text-base md:text-lg font-medium mt-1 truncate ${s.balance>=0?'text-g-600':'text-red-500'}`}>
+                <p className={`text-base md:text-lg font-medium mt-1 truncate ${s.balance>=0?'text-pos':'text-red-500'}`}>
                   {s.balance>=0?'+':''}{fmtShort(s.balance)}
                 </p>
                 <div className="text-[10px] text-g-400 mt-1.5 space-y-0.5">
@@ -141,7 +141,7 @@ export default function CierreSemanal() {
         <div className="grid grid-cols-3 gap-3">
           <div className="min-w-0">
             <p className="section-label">Ingresos</p>
-            <p className="text-base md:text-xl font-medium text-g-600 truncate">{fmtShort(resumen?.ingresos)}</p>
+            <p className="text-base md:text-xl font-medium text-pos truncate">{fmtShort(resumen?.ingresos)}</p>
           </div>
           <div className="min-w-0">
             <p className="section-label">Gastos</p>
@@ -149,7 +149,7 @@ export default function CierreSemanal() {
           </div>
           <div className="min-w-0">
             <p className="section-label">Balance</p>
-            <p className={`text-base md:text-xl font-medium truncate ${resumen?.balance>=0?'text-g-600':'text-red-500'}`}>
+            <p className={`text-base md:text-xl font-medium truncate ${resumen?.balance>=0?'text-pos':'text-red-500'}`}>
               {fmtShort(resumen?.balance)}
             </p>
           </div>
@@ -161,7 +161,7 @@ export default function CierreSemanal() {
               <span>{Math.round((resumen.balance/resumen.ingresos)*100)}%</span>
             </div>
             <div className="h-2 bg-g-100 rounded-full overflow-hidden">
-              <div className="h-full bg-g-400 rounded-full"
+              <div className="h-full bg-emerald-500 rounded-full"
                 style={{width:`${Math.min(Math.max(Math.round((resumen.balance/resumen.ingresos)*100),0),100)}%`}}/>
             </div>
           </div>
