@@ -19,14 +19,14 @@ const PASOS = [
   },
   {
     icon: 'ti-arrows-exchange',
-    color: '#2D6B4A',
+    color: '#16A34A', // verde = acción de dinero (semántica de "positivo/movimiento"), no el verde de marca viejo
     titulo: 'Registra tu primer movimiento',
     desc: 'Todo empieza con un registro. Un ingreso o un gasto — lo que sea, regístralo ahora para ver tu dashboard cobrar vida.',
     accion: true,
   },
   {
     icon: 'ti-calendar-check',
-    color: '#185FA5',
+    color: '#2452FF', // azul de marca — armonizado con el token actual
     titulo: 'Cierra tu semana, cada semana',
     desc: 'Cada domingo revisa cómo te fue y reflexiona. La constancia — no la perfección — es lo que genera el cambio real.',
   },
