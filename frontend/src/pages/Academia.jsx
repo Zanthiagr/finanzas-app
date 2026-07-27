@@ -41,11 +41,11 @@ const MODULOS = [
               { tipo: 'Deuda buena', items: ['Crédito para curso que aumenta ingresos', 'Herramienta de trabajo productiva', 'Hipoteca en propiedad que valoriza'], ok: true },
               { tipo: 'Deuda mala', items: ['Tarjeta para caprichos o impulsos', 'Gota a gota o préstamos informales', 'Crédito para bienes que se deprecian'], ok: false },
             ].map(c => (
-              <div key={c.tipo} className={`rounded-xl p-3 ${c.ok ? 'bg-g-50' : 'bg-red-50'}`}>
-                <p className={`text-[10px] uppercase tracking-wider font-medium mb-2 ${c.ok ? 'text-g-600' : 'text-red-600'}`}>{c.tipo}</p>
+              <div key={c.tipo} className={`rounded-xl p-3 ${c.ok ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                <p className={`text-[10px] uppercase tracking-wider font-medium mb-2 ${c.ok ? 'text-emerald-700' : 'text-red-600'}`}>{c.tipo}</p>
                 {c.items.map((it, i) => (
                   <div key={i} className="flex items-start gap-1.5 mb-1.5">
-                    <i className={`ti ${c.ok ? 'ti-check text-g-500' : 'ti-x text-red-500'} text-xs mt-0.5`} />
+                    <i className={`ti ${c.ok ? 'ti-check text-emerald-600' : 'ti-x text-red-500'} text-xs mt-0.5`} />
                     <p className="text-xs text-g-800">{it}</p>
                   </div>
                 ))}
@@ -128,7 +128,7 @@ function TarjetaLesson() {
           <p className="text-[7px] text-g-900 font-medium">**** 4821</p>
         </div>
         <div className="flex-1 space-y-1">
-          {[['Cupo usado','$3.200.000','text-amber-300'],['Tasa EA','27.9%','text-red-400'],['Pago mínimo','$96.000 ← trampa','text-red-400'],['Pago total','$3.200.000 ← poder','text-g-200']].map(([k,v,c]) => (
+          {[['Cupo usado','$3.200.000','text-amber-300'],['Tasa EA','27.9%','text-red-400'],['Pago mínimo','$96.000 ← trampa','text-red-400'],['Pago total','$3.200.000 ← poder','text-emerald-300']].map(([k,v,c]) => (
             <div key={k} className="flex justify-between">
               <span className="text-[11px] text-white/40">{k}</span>
               <span className={`text-[11px] font-medium ${c}`}>{v}</span>
@@ -201,7 +201,7 @@ function ICLesson() {
       <div className="flex items-end gap-1 h-16">
         {bars.map((b, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-            <div className="w-full bg-g-400 rounded-t-sm transition-all" style={{ height: `${Math.round(52 * b.v / maxV) + 6}px` }} />
+            <div className="w-full bg-emerald-500 rounded-t-sm transition-all" style={{ height: `${Math.round(52 * b.v / maxV) + 6}px` }} />
             <span className="text-[9px] text-g-400">A{b.y}</span>
           </div>
         ))}
@@ -211,7 +211,7 @@ function ICLesson() {
           <p className="text-xs text-white/40">Tu dinero en {years} años</p>
           <p className="text-[11px] text-white/30">Ganancia: ${ganancia.toLocaleString('es-CO')}</p>
         </div>
-        <p className="text-xl font-medium text-g-200">${(total/1000000).toFixed(2)}M</p>
+        <p className="text-xl font-medium text-gold">${(total/1000000).toFixed(2)}M</p>
       </div>
     </div>
   );
@@ -291,7 +291,7 @@ export default function Academia() {
               <p className="text-xs font-medium text-g-900">{m.titulo}</p>
               <p className="text-[10px] text-g-400 mt-0.5">{hecho}/{m.lecciones.length} lecciones</p>
               <div className="h-1 bg-g-100 rounded-full mt-2 overflow-hidden">
-                <div className="h-full bg-g-400 rounded-full" style={{ width: `${(hecho / m.lecciones.length) * 100}%` }} />
+                <div className="h-full rounded-full" style={{ width: `${(hecho / m.lecciones.length) * 100}%`, background: 'linear-gradient(90deg, #C9A84C, #6E93FF)' }} />
               </div>
             </button>
           );
@@ -312,7 +312,7 @@ export default function Academia() {
             <div className="flex items-center gap-2">
               {modulo.lecciones.map((_, i) => (
                 <button key={i} onClick={() => setLeccionIdx(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${i === leccionIdx ? 'bg-g-700' : completadas.has(`${moduloActivo}-${i}`) ? 'bg-g-400' : 'bg-g-200'}`} />
+                  className={`w-2 h-2 rounded-full transition-all ${i === leccionIdx ? 'bg-g-700' : completadas.has(`${moduloActivo}-${i}`) ? 'bg-emerald-500' : 'bg-g-200'}`} />
               ))}
             </div>
           </div>
@@ -346,9 +346,9 @@ export default function Academia() {
                     <button key={oi} onClick={() => responder(qi, oi)} disabled={answered}
                       className={`w-full text-left text-sm px-4 py-2.5 rounded-xl border transition-all ${
                         !answered ? 'hover:bg-g-50 border-g-200/60 text-g-700'
-                        : isSelected && isCorrect ? 'bg-g-50 border-g-300 text-g-800'
+                        : isSelected && isCorrect ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                         : isSelected && !isCorrect ? 'bg-red-50 border-red-200 text-red-800'
-                        : isCorrect && answered ? 'bg-g-50 border-g-300 text-g-600'
+                        : isCorrect && answered ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                         : 'border-g-100 text-g-400'}`}>
                       {op}
                     </button>
@@ -356,7 +356,7 @@ export default function Academia() {
                 })}
               </div>
               {quizResp[qi] !== undefined && (
-                <p className={`text-xs mt-3 p-2.5 rounded-lg ${quizResp[qi] === q.correcta ? 'bg-g-50 text-g-700' : 'bg-red-50 text-red-700'}`}>
+                <p className={`text-xs mt-3 p-2.5 rounded-lg ${quizResp[qi] === q.correcta ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                   {quizResp[qi] === q.correcta ? q.fb : q.fbMal}
                 </p>
               )}
