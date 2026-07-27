@@ -45,7 +45,7 @@ const NAV_MOBILE_MAS_GRUPOS = [
   {
     label: 'Seguimiento',
     items: [
-      { to: '/cierre',  icon: 'ti-calendar-stats', label: 'Cierre',      color: '#2D6B4A', bg: '#EDFAF3' },
+      { to: '/cierre',  icon: 'ti-calendar-stats', label: 'Cierre',      color: '#2452FF', bg: '#E8EDFF' },
       { to: '/reporte', icon: 'ti-file-download',  label: 'Reporte PDF', color: '#0F6E56', bg: '#E1F5EE' },
     ],
   },
@@ -60,7 +60,7 @@ const NAV_MOBILE_MAS_GRUPOS = [
   {
     label: 'Cuenta',
     items: [
-      { to: '/perfil', icon: 'ti-user-circle', label: 'Mi perfil', color: '#2D6B4A', bg: '#EDFAF3' },
+      { to: '/perfil', icon: 'ti-user-circle', label: 'Mi perfil', color: '#151B2E', bg: '#EEF0F5' },
     ],
   },
 ];
@@ -113,7 +113,7 @@ export default function Layout({ children }) {
       <aside className="hidden md:flex w-52 flex-shrink-0 bg-g-800 flex-col">
         <div className="px-5 py-5 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-gold"/>
+            <div className="w-2 h-2 rounded-full bg-blue-500"/>
             <span className="text-white font-medium text-base tracking-tight">Fintual</span>
           </div>
           <p className="text-white/30 text-[10px] mt-0.5 ml-4">Tu camino a la libertad</p>
@@ -127,13 +127,13 @@ export default function Layout({ children }) {
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-5 py-2 text-[13px] transition-all border-l-2 ${
                       isActive
-                        ? 'text-white bg-gold/10 border-gold'
+                        ? 'text-white bg-blue-500/10 border-blue-500'
                         : 'text-white/55 border-transparent hover:text-white/85 hover:bg-white/5'
                     }`}>
                   <i className={`ti ${n.icon} text-base`}/>
                   {n.label}
                   {n.to === '/coach' && (
-                    <span className="ml-auto text-[9px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full">IA</span>
+                    <span className="ml-auto text-[9px] bg-blue-500/20 text-blue-200 px-1.5 py-0.5 rounded-full">IA</span>
                   )}
                 </NavLink>
               ))}
@@ -229,7 +229,7 @@ export default function Layout({ children }) {
                   {grupo.items.map(n => (
                     <button key={n.to} onClick={() => irA(n.to)}
                       className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all active:scale-95 ${
-                        location.pathname === n.to ? 'ring-2 ring-g-400' : ''
+                        location.pathname === n.to ? 'ring-2 ring-blue-400' : ''
                       }`}
                       style={{ background: n.bg }}>
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -262,7 +262,7 @@ export default function Layout({ children }) {
                   <NavLink to={n.to}
                     className={({ isActive }) =>
                       `w-14 h-14 rounded-full flex flex-col items-center justify-center shadow-lg transition-all ${
-                        isActive ? 'bg-gold text-g-900' : 'bg-g-800 text-white'}`}>
+                        isActive ? 'bg-blue-600 text-white' : 'bg-g-800 text-white'}`}>
                     <i className={`ti ${n.icon} text-xl`}/>
                   </NavLink>
                 </div>
@@ -271,7 +271,7 @@ export default function Layout({ children }) {
                 <NavLink key={n.to} to={n.to} end={n.to === '/'}
                   className={({ isActive }) =>
                     `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-                      isActive ? 'text-g-700' : 'text-g-400'}`}>
+                      isActive ? 'text-blue-600' : 'text-g-400'}`}>
                   <i className={`ti ${n.icon} text-xl`}/>
                   <span className="text-[9px] font-medium">{n.label}</span>
                 </NavLink>
@@ -281,7 +281,7 @@ export default function Layout({ children }) {
             {/* Tab "Más" */}
             <button onClick={() => setMasOpen(!masOpen)}
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-                enMenuMas || masOpen ? 'text-g-700' : 'text-g-400'}`}>
+                enMenuMas || masOpen ? 'text-blue-600' : 'text-g-400'}`}>
               <i className={`ti ${masOpen ? 'ti-x' : 'ti-dots'} text-xl`}/>
               <span className="text-[9px] font-medium">{masOpen ? 'Cerrar' : 'Más'}</span>
             </button>
