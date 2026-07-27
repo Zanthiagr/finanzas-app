@@ -232,14 +232,14 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <PieChart width={90} height={90}>
               <Pie data={gastosCategoria} dataKey="total" cx="50%" cy="50%" innerRadius={28} outerRadius={44} paddingAngle={2}>
-                {gastosCategoria.map((c, i) => <Cell key={i} fill={CATEGORIAS_COLORES[c.categoria] || '#9ED4B8'}/>)}
+                {gastosCategoria.map((c, i) => <Cell key={i} fill={CATEGORIAS_COLORES[c.categoria] || '#2452FF'}/>)}
               </Pie>
             </PieChart>
             <div className="flex flex-col gap-1.5 flex-1">
               {gastosCategoria.map((c, i) => (
                 <div key={i} className="flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: CATEGORIAS_COLORES[c.categoria] || '#9ED4B8' }}/>
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: CATEGORIAS_COLORES[c.categoria] || '#2452FF' }}/>
                     <span className="text-g-700 truncate max-w-[80px]">{c.categoria}</span>
                   </div>
                   <span className="text-g-500 font-medium">{fmtShort(c.total)}</span>
@@ -258,7 +258,7 @@ export default function Dashboard() {
             {gastosCategoria.map((c, i) => (
               <div key={i} className="card p-3 flex-shrink-0 min-w-[110px]">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-2"
-                  style={{ background: (CATEGORIAS_COLORES[c.categoria] || '#9ED4B8') + '25', color: CATEGORIAS_COLORES[c.categoria] || '#2D6B4A' }}>
+                  style={{ background: (CATEGORIAS_COLORES[c.categoria] || '#2452FF') + '25', color: CATEGORIAS_COLORES[c.categoria] || '#2452FF' }}>
                   <i className={`ti ${CATEGORIAS_ICONOS[c.categoria] || 'ti-tag'} text-sm`}/>
                 </div>
                 <p className="text-xs font-medium text-g-700 truncate">{c.categoria}</p>
@@ -280,7 +280,7 @@ export default function Dashboard() {
             {movRecientes.map(m => (
               <div key={m.id} className="flex items-center gap-3 py-2.5">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-                  style={{ background: (CATEGORIAS_COLORES[m.categoria] || '#9ED4B8') + '20', color: CATEGORIAS_COLORES[m.categoria] || '#2D6B4A' }}>
+                  style={{ background: (CATEGORIAS_COLORES[m.categoria] || '#2452FF') + '20', color: CATEGORIAS_COLORES[m.categoria] || '#2452FF' }}>
                   <i className={`ti ${CATEGORIAS_ICONOS[m.categoria] || 'ti-tag'}`}/>
                 </div>
                 <div className="flex-1 min-w-0">
