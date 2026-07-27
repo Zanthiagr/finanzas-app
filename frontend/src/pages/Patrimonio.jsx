@@ -325,7 +325,7 @@ export function Deudas() {
                 <span className="text-red-600 font-medium">Pendiente: {fmtShort(pendiente)}</span>
               </div>
               <div className="h-2.5 bg-g-100 rounded-full overflow-hidden">
-                <div className="h-full bg-g-400 rounded-full transition-all" style={{width:`${pct}%`}}/>
+                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{width:`${pct}%`}}/>
               </div>
               <p className="text-[10px] text-g-400 mt-1">{pct}% pagado</p>
             </div>
@@ -437,7 +437,7 @@ export function Metas() {
                 <span>{fmt(m.monto_actual)}</span><span>{fmt(m.monto_objetivo)}</span>
               </div>
               <div className="h-3 bg-g-100 rounded-full overflow-hidden">
-                <div className="h-full bg-g-400 rounded-full transition-all" style={{width:`${pct}%`}}/>
+                <div className="h-full rounded-full transition-all" style={{width:`${pct}%`, background: 'linear-gradient(90deg, #C9A84C, #6E93FF)'}}/>
               </div>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-sm font-medium text-g-700">{pct}%</p>
@@ -457,8 +457,8 @@ export function Metas() {
               <p className="text-2xl font-medium text-g-900">{fmt(modalAporte.monto_actual)}</p>
               <p className="text-xs text-g-400 mt-1">de {fmt(modalAporte.monto_objetivo)}</p>
               <div className="mt-2 h-2 bg-g-100 rounded-full">
-                <div className="h-full bg-g-600 rounded-full transition-all"
-                  style={{width:`${Math.min((modalAporte.monto_actual/modalAporte.monto_objetivo)*100,100)}%`}}/>
+                <div className="h-full rounded-full transition-all"
+                  style={{width:`${Math.min((modalAporte.monto_actual/modalAporte.monto_objetivo)*100,100)}%`, background: 'linear-gradient(90deg, #C9A84C, #6E93FF)'}}/>
               </div>
             </div>
             <div>
