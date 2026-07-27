@@ -130,7 +130,7 @@ function CalcInversion() {
               <p className="text-2xl font-medium">{fmt(res.montoFinal)}</p>
             </div>
             <div className="card p-3"><p className="section-label">Total aportado</p><p className="text-lg font-medium text-g-900">{fmt(res.totalAportado)}</p></div>
-            <div className="card p-3"><p className="section-label">Rendimiento total</p><p className="text-lg font-medium text-g-600">+{fmt(res.rendTotal)}</p></div>
+            <div className="card p-3"><p className="section-label">Rendimiento total</p><p className="text-lg font-medium text-pos">+{fmt(res.rendTotal)}</p></div>
           </div>
           <div className="card p-3">
             <p className="text-xs font-medium text-g-700 mb-2">Proyección</p>
@@ -138,7 +138,7 @@ function CalcInversion() {
               <div key={p.mes} className="flex items-center gap-2 text-xs mb-1.5">
                 <span className="text-g-500 w-12 flex-shrink-0">Mes {p.mes}</span>
                 <div className="flex-1 h-1.5 bg-g-100 rounded-full">
-                  <div className="h-full bg-g-400 rounded-full" style={{width:`${Math.min((p.valor/res.montoFinal)*100,100)}%`}}/>
+                  <div className="h-full bg-emerald-500 rounded-full" style={{width:`${Math.min((p.valor/res.montoFinal)*100,100)}%`}}/>
                 </div>
                 <span className="font-medium text-g-800 w-24 text-right flex-shrink-0">{fmt(p.valor)}</span>
               </div>
