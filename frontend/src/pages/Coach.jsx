@@ -303,7 +303,7 @@ INSTRUCCIONES:
         {contexto?.resumen?.ingresos > 0 && (
           <div className="text-right flex-shrink-0">
             <p className="text-white/40 text-[10px] uppercase tracking-wider">Balance</p>
-            <p className={`text-sm font-medium ${contexto.resumen.balance >= 0 ? 'text-g-200' : 'text-red-400'}`}>
+            <p className={`text-sm font-medium ${contexto.resumen.balance >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>
               {fmtShort(contexto.resumen.balance)}
             </p>
           </div>
