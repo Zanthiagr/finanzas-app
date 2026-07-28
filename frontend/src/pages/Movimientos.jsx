@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal } from '../utils/api';
-import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS } from '../utils/helpers';
+import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
@@ -53,7 +53,9 @@ function MovRow({ m, onEdit, onDelete }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-g-900 truncate">{m.descripcion||m.categoria}</p>
-          <p className="text-[11px] text-g-400">{m.categoria} · {fmtDate(m.fecha)}</p>
+          <p className="text-[11px] text-g-400 truncate">
+            {m.categoria} · {fmtDate(m.fecha)} · {labelMedioPago(m.medio_pago || 'efectivo')}
+          </p>
         </div>
         <span className={`text-sm font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-pos':'text-g-900'}`}>
           {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
