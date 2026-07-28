@@ -351,9 +351,24 @@ export const getPresupuestos = async () => {
 
 export const guardarPresupuesto = async ({ categoria, monto_limite }) => {
   const userId = await getUserId();
+  // No usamos upsert(onConflict) porque depende de una restricción UNIQUE
+  // en Supabase que puede no existir (causaba que el guardado fallara en
+  // silencio). Buscamos primero y decidimos update/insert explícitamente —
+  // funciona sin importar el estado de las restricciones en la BD.
+  const { data: existente, error: errBusqueda } = await supabase
+    .from('presupuestos').select('id')
+    .eq('usuario_id', userId).eq('categoria', categoria)
+    .maybeSingle();
+  if (errBusqueda) throw errBusqueda;
+
+  if (existente) {
+    const { data, error } = await supabase.from('presupuestos')
+      .update({ monto_limite }).eq('id', existente.id).select().single();
+    if (error) throw error;
+    return data;
+  }
   const { data, error } = await supabase.from('presupuestos')
-    .upsert({ usuario_id: userId, categoria, monto_limite }, { onConflict: 'usuario_id,categoria' })
-    .select().single();
+    .insert({ usuario_id: userId, categoria, monto_limite }).select().single();
   if (error) throw error;
   return data;
 };
@@ -555,16 +570,18 @@ export const procesarPagosPendientes = async () => {
   const userId = await getUserId();
   const hoy = new Date();
   const diaHoy = hoy.getDate();
-  const mes = hoy.getMonth() + 1;
-  const anio = hoy.getFullYear();
   const fechaStr = hoy.toISOString().split('T')[0];
 
+  // Solo los pagos FIJOS se auto-registran. Los ÚNICOS nunca se procesan
+  // solos — se quedan como pendientes hasta que el usuario los confirma
+  // manualmente con marcarPagoUnicoComoPagado().
   const { data: pagos } = await supabase
     .from('pagos_programados')
     .select('*')
     .eq('usuario_id', userId)
     .eq('dia_mes', diaHoy)
-    .eq('activo', true);
+    .eq('activo', true)
+    .or('tipo.eq.fijo,tipo.is.null');
 
   if (!pagos?.length) return 0;
 
@@ -592,4 +609,26 @@ export const procesarPagosPendientes = async () => {
     procesados++;
   }
   return procesados;
+};
+
+// Confirma manualmente un pago único: crea el movimiento real y lo saca
+// de la lista de pendientes. A diferencia de los pagos fijos, esto NUNCA
+// pasa solo — requiere que el usuario lo confirme a propósito.
+export const marcarPagoUnicoComoPagado = async (pago, fechaPago) => {
+  const fecha = fechaPago || new Date().toISOString().split('T')[0];
+  await crearMovimiento({
+    tipo: 'gasto',
+    monto: pago.monto,
+    categoria: pago.categoria,
+    descripcion: pago.nombre,
+    fecha,
+    medio_pago: pago.medio_pago || 'otro_banco',
+  });
+  const { data, error } = await supabase
+    .from('pagos_programados')
+    .update({ pagado: true, activo: false, pagado_en: new Date().toISOString() })
+    .eq('id', pago.id)
+    .select().single();
+  if (error) throw error;
+  return data;
 };
