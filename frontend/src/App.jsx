@@ -115,7 +115,9 @@ export default function App() {
           position="top-right"
           toastOptions={{
             style: { fontSize: 13, borderRadius: 10 },
-            success: { iconTheme: { primary: '#16A34A', secondary: '#E9F9EF' } },
+            duration: 3000,
+            success: { duration: 2200, iconTheme: { primary: '#16A34A', secondary: '#E9F9EF' } },
+            error:   { duration: 3500 },
           }}
         />
       </BrowserRouter>
