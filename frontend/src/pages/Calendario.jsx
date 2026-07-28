@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, procesarPagosPendientes } from '../utils/api';
+import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, procesarPagosPendientes, marcarPagoUnicoComoPagado } from '../utils/api';
 import { supabase } from '../utils/supabase';
 import { fmt, fmtShort } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
@@ -27,7 +27,10 @@ export default function Calendario() {
   const [pagos, setPagos]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modalPago, setModalPago] = useState(false);
-  const [formPago, setFormPago] = useState({ nombre:'', monto:'', categoria:'Servicios', dia_mes:1, medio_pago:'bancolombia' });
+  const hoyStr = hoy.toISOString().split('T')[0];
+  const [formPago, setFormPago] = useState({ tipo:'fijo', nombre:'', monto:'', categoria:'Servicios', dia_mes:1, fecha: hoyStr, medio_pago:'bancolombia' });
+  const [guardandoPago, setGuardandoPago] = useState(false);
+  const [pagandoId, setPagandoId] = useState(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -82,7 +85,7 @@ export default function Calendario() {
     const habsDia  = habLogs.filter(h => h.fecha === fechaStr);
     const semana   = Math.ceil(dia / 7);
     const cierre   = cierres.find(c => c.semana_num === semana);
-    const pagosDia = pagos.filter(p => p.dia_mes === dia && p.activo);
+    const pagosDia = pagos.filter(p => p.activo && (p.tipo === 'unico' ? p.fecha === fechaStr : p.dia_mes === dia));
     const ingresos = movsDia.filter(m => m.tipo==='ingreso').reduce((a,m)=>a+parseFloat(m.monto),0);
     const gastos   = movsDia.filter(m => m.tipo==='gasto').reduce((a,m)=>a+parseFloat(m.monto),0);
     return { movsDia, habsDia, cierre, pagosDia, ingresos, gastos, semana, fechaStr };
@@ -108,14 +111,46 @@ export default function Calendario() {
 
   const guardarPago = async e => {
     e.preventDefault();
+    if (guardandoPago) return;
     if (!formPago.nombre || !formPago.monto) return toast.error('Completa todos los campos');
+    if (formPago.tipo === 'fijo' && !formPago.dia_mes) return toast.error('Indica el día del mes');
+    if (formPago.tipo === 'unico' && !formPago.fecha) return toast.error('Indica la fecha del pago');
+
+    setGuardandoPago(true);
     try {
-      await crearPagoProgramado({ ...formPago, activo: true });
-      toast.success('Pago programado ✅');
+      const base = { nombre: formPago.nombre, monto: formPago.monto, categoria: formPago.categoria, medio_pago: formPago.medio_pago, activo: true };
+      const payload = formPago.tipo === 'unico'
+        ? { ...base, tipo: 'unico', fecha: formPago.fecha }
+        : { ...base, dia_mes: formPago.dia_mes }; // sin campo "tipo": compatible aunque no se haya corrido la migración
+      await crearPagoProgramado(payload);
+      toast.success(formPago.tipo === 'unico' ? 'Pago único programado ✅' : 'Pago fijo programado ✅');
       setModalPago(false);
-      setFormPago({ nombre:'', monto:'', categoria:'Servicios', dia_mes:1, medio_pago:'bancolombia' });
+      setFormPago({ tipo:'fijo', nombre:'', monto:'', categoria:'Servicios', dia_mes:1, fecha: hoyStr, medio_pago:'bancolombia' });
       cargar();
-    } catch { toast.error('Error guardando pago'); }
+    } catch (err) {
+      if (formPago.tipo === 'unico' && /column/i.test(err?.message || '')) {
+        toast.error('Falta correr la migración de pagos únicos en Supabase (migracion_pagos_unicos.sql)', { duration: 5000 });
+      } else {
+        toast.error(err?.message || 'Error guardando pago');
+      }
+    } finally {
+      setGuardandoPago(false);
+    }
+  };
+
+  const confirmarPago = (p) => {
+    confirmToast(`¿Confirmas que ya pagaste "${p.nombre}" (${fmt(p.monto)})?`, async () => {
+      setPagandoId(p.id);
+      try {
+        await marcarPagoUnicoComoPagado(p);
+        toast.success('Pago confirmado y registrado ✅');
+        cargar();
+      } catch (err) {
+        toast.error(err?.message || 'Error confirmando el pago');
+      } finally {
+        setPagandoId(null);
+      }
+    }, { confirmLabel: 'Ya pagué' });
   };
 
   const eliminarPago = (id) => {
@@ -143,6 +178,47 @@ export default function Calendario() {
           <i className="ti ti-calendar-plus text-sm"/> Programar
         </button>
       </div>
+
+      {/* Pagos únicos pendientes — notificación persistente hasta que se confirmen manualmente */}
+      {(() => {
+        const pendientesUnico = pagos.filter(p => p.tipo === 'unico' && p.activo && !p.pagado)
+          .sort((a,b) => a.fecha.localeCompare(b.fecha));
+        if (pendientesUnico.length === 0) return null;
+        return (
+          <div className="card p-4 border-red-200 bg-red-50">
+            <div className="flex items-center gap-2 mb-3">
+              <i className="ti ti-bell-ringing text-red-600"/>
+              <p className="text-sm font-medium text-red-800">
+                {pendientesUnico.length} pago{pendientesUnico.length>1?'s':''} pendiente{pendientesUnico.length>1?'s':''} por confirmar
+              </p>
+            </div>
+            <div className="space-y-2">
+              {pendientesUnico.map(p => {
+                const vencido = p.fecha < hoyStr;
+                return (
+                  <div key={p.id} className="bg-white rounded-xl p-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-g-900 truncate">{p.nombre}</p>
+                      <p className={`text-[11px] ${vencido ? 'text-red-600 font-medium' : 'text-g-400'}`}>
+                        {vencido ? 'Venció el ' : 'Vence el '}
+                        {new Date(p.fecha + 'T00:00:00').toLocaleDateString('es-CO', { day:'numeric', month:'short' })}
+                        {vencido ? ' — ya pasó' : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-medium text-g-900">{fmtShort(p.monto)}</span>
+                      <button onClick={() => confirmarPago(p)} disabled={pagandoId === p.id}
+                        className="text-xs bg-g-900 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 active:scale-95 transition-transform">
+                        {pagandoId === p.id ? '...' : 'Ya pagué'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Resumen pagos programados */}
       {pagos.filter(p=>p.activo).length > 0 && (
@@ -263,12 +339,20 @@ export default function Calendario() {
               <div className="mb-4">
                 <p className="section-label mb-2">Pagos programados</p>
                 {diaData.pagosDia.map((p,i)=>(
-                  <div key={i} className="flex justify-between items-center py-2 border-b border-amber-100 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <i className="ti ti-calendar-event text-amber-500 text-sm"/>
-                      <span className="text-sm text-g-700">{p.nombre}</span>
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-amber-100 last:border-0 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <i className="ti ti-calendar-event text-amber-500 text-sm flex-shrink-0"/>
+                      <span className="text-sm text-g-700 truncate">{p.nombre}</span>
                     </div>
-                    <span className="text-sm font-medium text-amber-700">{fmtShort(p.monto)}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-medium text-amber-700">{fmtShort(p.monto)}</span>
+                      {p.tipo === 'unico' && !p.pagado && (
+                        <button onClick={() => confirmarPago(p)} disabled={pagandoId === p.id}
+                          className="text-[11px] bg-g-900 text-white px-2.5 py-1 rounded-lg disabled:opacity-50">
+                          Ya pagué
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -327,8 +411,26 @@ export default function Calendario() {
 
       {/* Pantalla nuevo pago programado */}
       {modalPago && (
-        <PantallaCompleta title="Programar pago fijo" onClose={()=>setModalPago(false)}>
+        <PantallaCompleta title="Programar pago" onClose={()=>setModalPago(false)}>
           <form onSubmit={guardarPago} className="space-y-4">
+            <div>
+              <label className="section-label block mb-2">Tipo de pago</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>setFormPago(f=>({...f,tipo:'fijo'}))}
+                  className={`py-3 rounded-xl text-sm font-medium border transition-all text-center ${formPago.tipo==='fijo'?'bg-g-900 border-g-900 text-white':'bg-white border-g-200/60 text-g-500'}`}>
+                  <i className="ti ti-repeat block mb-1"/> Fijo (recurrente)
+                </button>
+                <button type="button" onClick={()=>setFormPago(f=>({...f,tipo:'unico'}))}
+                  className={`py-3 rounded-xl text-sm font-medium border transition-all text-center ${formPago.tipo==='unico'?'bg-g-900 border-g-900 text-white':'bg-white border-g-200/60 text-g-500'}`}>
+                  <i className="ti ti-calendar-event block mb-1"/> Único (una vez)
+                </button>
+              </div>
+              <p className="text-xs text-g-400 mt-1.5">
+                {formPago.tipo==='fijo'
+                  ? 'Se registra solo como gasto cada mes, ese día.'
+                  : 'No se registra solo — te avisa hasta que confirmes que ya pagaste.'}
+              </p>
+            </div>
             <div>
               <label className="section-label block mb-1">Nombre del pago</label>
               <input className="input" placeholder="Ej: Arriendo, Netflix, Gym"
@@ -345,15 +447,24 @@ export default function Calendario() {
                 {CATS.map(c=><option key={c}>{c}</option>)}
               </select>
             </div>
-            <div>
-              <label className="section-label block mb-1">Día del mes en que se paga</label>
-              <input type="text" inputMode="numeric" className="input" placeholder="Ej: 5"
-                value={formPago.dia_mes} onChange={e=>{
-                  const v = parseInt(e.target.value);
-                  setFormPago(f=>({...f,dia_mes:isNaN(v)?'':Math.min(Math.max(v,1),28)}));
-                }} required/>
-              <p className="text-xs text-g-400 mt-1">Se registrará automáticamente como gasto cada mes ese día</p>
-            </div>
+            {formPago.tipo === 'fijo' ? (
+              <div>
+                <label className="section-label block mb-1">Día del mes en que se paga</label>
+                <input type="text" inputMode="numeric" className="input" placeholder="Ej: 5"
+                  value={formPago.dia_mes} onChange={e=>{
+                    const v = parseInt(e.target.value);
+                    setFormPago(f=>({...f,dia_mes:isNaN(v)?'':Math.min(Math.max(v,1),28)}));
+                  }} required/>
+                <p className="text-xs text-g-400 mt-1">Se registrará automáticamente como gasto cada mes ese día</p>
+              </div>
+            ) : (
+              <div>
+                <label className="section-label block mb-1">Fecha del pago</label>
+                <input type="date" className="input"
+                  value={formPago.fecha} onChange={e=>setFormPago(f=>({...f,fecha:e.target.value}))} required/>
+                <p className="text-xs text-g-400 mt-1">Aparecerá como pendiente hasta que confirmes que ya pagaste</p>
+              </div>
+            )}
             <div>
               <label className="section-label block mb-2">Medio de pago</label>
               <div className="grid grid-cols-2 gap-2">
@@ -366,8 +477,8 @@ export default function Calendario() {
                 ))}
               </div>
             </div>
-            <button type="submit" className="btn-primary w-full py-4 mt-2">
-              Programar pago ✅
+            <button type="submit" disabled={guardandoPago} className="btn-primary w-full py-4 mt-2 disabled:opacity-50">
+              {guardandoPago ? 'Guardando...' : 'Programar pago ✅'}
             </button>
             <button type="button" onClick={()=>setModalPago(false)} className="btn-secondary w-full py-3.5">
               Cancelar
