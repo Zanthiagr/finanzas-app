@@ -14,6 +14,21 @@ const SUGERENCIAS = [
   '¿Cómo empiezo a invertir con poco dinero?',
 ];
 
+// Anillo de progreso — mismo lenguaje visual que Dashboard/Nav. Aquí
+// muestra cuántos mensajes gratis quedan este mes.
+function Ring({ pct, size = 36, stroke = 3, color, trackColor = 'rgba(0,0,0,0.08)' }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
+        className="transition-all duration-700"/>
+    </svg>
+  );
+}
+
 function MsgBubble({ msg }) {
   const isUser = msg.role === 'user';
   return (
@@ -38,29 +53,29 @@ function LimiteBanner({ usados, limite, onUpgrade }) {
   const restantes = limite - usados;
   const pct = (usados / limite) * 100;
   const agotado = restantes <= 0;
+  const colorRing = agotado ? '#E5484D' : pct >= 80 ? '#F59E0B' : '#8A93A6';
 
   return (
-    <div className={`rounded-xl p-3 mb-3 flex-shrink-0 ${agotado ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
-      <div className="flex items-center justify-between mb-2">
+    <div className={`rounded-xl p-3 mb-3 flex-shrink-0 flex items-center gap-3 ${agotado ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
+      <div className="relative w-9 h-9 flex-shrink-0">
+        <Ring pct={pct} size={36} stroke={3} color={colorRing}/>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-[9px] font-semibold ${agotado ? 'text-red-700' : 'text-amber-700'}`}>{usados}/{limite}</span>
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
         <p className={`text-xs font-medium ${agotado ? 'text-red-700' : 'text-amber-700'}`}>
           {agotado
             ? '😔 Agotaste tus mensajes gratis este mes'
-            : `💬 ${restantes} mensaje${restantes !== 1 ? 's' : ''} gratis restante${restantes !== 1 ? 's' : ''} este mes`}
+            : `💬 ${restantes} mensaje${restantes !== 1 ? 's' : ''} gratis restante${restantes !== 1 ? 's' : ''}`}
         </p>
-        <span className={`text-[10px] font-medium ${agotado ? 'text-red-500' : 'text-amber-600'}`}>
-          {usados}/{limite}
-        </span>
+        {agotado && (
+          <button onClick={onUpgrade}
+            className="text-xs font-medium text-white bg-g-800 px-3 py-1.5 rounded-lg mt-1.5 hover:bg-g-900 transition-colors">
+            ✨ Obtener mensajes ilimitados
+          </button>
+        )}
       </div>
-      <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mb-2">
-        <div className={`h-full rounded-full transition-all ${agotado ? 'bg-red-400' : pct >= 80 ? 'bg-amber-400' : 'bg-g-400'}`}
-          style={{ width: `${Math.min(pct, 100)}%` }}/>
-      </div>
-      {agotado && (
-        <button onClick={onUpgrade}
-          className="w-full bg-g-800 text-white text-xs font-medium py-2 rounded-lg mt-1 hover:bg-g-900 transition-colors">
-          ✨ Obtener mensajes ilimitados
-        </button>
-      )}
     </div>
   );
 }
@@ -73,7 +88,8 @@ function UpgradeModal({ onClose }) {
           <div className="w-10 h-1 rounded-full bg-g-200"/>
         </div>
         <div className="text-center mb-5">
-          <div className="w-14 h-14 rounded-2xl bg-gold/15 flex items-center justify-center mx-auto mb-3">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+            style={{ background: 'linear-gradient(135deg, #10224F 0%, #0B1E4D 55%, #060B18 100%)' }}>
             <i className="ti ti-robot text-gold text-2xl"/>
           </div>
           <h3 className="text-lg font-medium text-g-900 mb-1">Coach ilimitado</h3>
@@ -292,16 +308,18 @@ INSTRUCCIONES:
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] page-enter">
 
       {/* Header */}
-      <div className="bg-g-800 rounded-2xl p-4 mb-4 flex items-center gap-3 flex-shrink-0">
-        <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center flex-shrink-0">
+      <div className="relative overflow-hidden bg-g-800 rounded-2xl p-4 mb-4 flex items-center gap-3 flex-shrink-0">
+        <div className="card-premium-glow -top-10 -right-6 w-32 h-32 bg-gold opacity-[0.1]"/>
+        <div className="relative w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, #10224F 0%, #0B1E4D 55%, #060B18 100%)' }}>
           <i className="ti ti-robot text-gold text-lg"/>
         </div>
-        <div className="flex-1">
+        <div className="relative flex-1">
           <p className="text-white font-medium text-sm">Coach financiero IA</p>
           <p className="text-white/40 text-xs">Conoce tus datos reales · Siempre disponible</p>
         </div>
         {contexto?.resumen?.ingresos > 0 && (
-          <div className="text-right flex-shrink-0">
+          <div className="relative text-right flex-shrink-0">
             <p className="text-white/40 text-[10px] uppercase tracking-wider">Balance</p>
             <p className={`text-sm font-medium ${contexto.resumen.balance >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>
               {fmtShort(contexto.resumen.balance)}
