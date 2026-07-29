@@ -56,20 +56,18 @@ function PrivateRoute({ children }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, esCuentaNueva } = useAuth();
   const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      const yaVisto = localStorage.getItem(`onboarding_${user.id}`);
-      if (!yaVisto) setMostrarOnboarding(true);
-    }
-  }, [user]);
+    // esCuentaNueva solo es true la primera vez que el perfil se crea en la
+    // BD — a diferencia de un flag en localStorage, no depende del
+    // navegador/dispositivo, así que alguien iniciando sesión en una cuenta
+    // EXISTENTE (aunque sea desde un navegador nuevo) nunca ve el onboarding.
+    if (user && esCuentaNueva) setMostrarOnboarding(true);
+  }, [user, esCuentaNueva]);
 
-  const completarOnboarding = () => {
-    if (user) localStorage.setItem(`onboarding_${user.id}`, 'true');
-    setMostrarOnboarding(false);
-  };
+  const completarOnboarding = () => setMostrarOnboarding(false);
 
   return (
     <>
