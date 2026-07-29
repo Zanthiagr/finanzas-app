@@ -2,6 +2,40 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
+// Anillo de progreso — el mismo lenguaje visual que "Salud financiera" y
+// "Presupuestos" en el Dashboard. Aquí es lo que convierte el logo y el
+// avatar de navegación en parte de la misma identidad, no en elementos
+// sueltos: en Fintual, el círculo SIEMPRE significa "cuánto vas de algo".
+function Ring({ pct, size = 40, stroke = 3, color, trackColor = 'rgba(255,255,255,0.14)' }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 absolute inset-0">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
+        className="transition-all duration-700"/>
+    </svg>
+  );
+}
+
+// Logomark — un ring dorado al 72% sobre gradiente navy (mismo gradiente
+// de card-premium). No es un ícono de billetera genérico de fintech: es
+// literalmente la promesa del producto ("ves tu progreso") convertida en
+// marca.
+function LogoMark({ size = 32 }) {
+  return (
+    <div className="relative flex items-center justify-center flex-shrink-0 rounded-[9px]"
+      style={{ width: size, height: size, background: 'linear-gradient(135deg, #10224F 0%, #0B1E4D 55%, #060B18 100%)' }}>
+      <svg viewBox="0 0 24 24" width={size * 0.55} height={size * 0.55} className="-rotate-90">
+        <circle cx="12" cy="12" r="8" fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="2.6"/>
+        <circle cx="12" cy="12" r="8" fill="none" stroke="#C9A84C" strokeWidth="2.6" strokeLinecap="round"
+          strokeDasharray={2 * Math.PI * 8} strokeDashoffset={2 * Math.PI * 8 * 0.28}/>
+      </svg>
+    </div>
+  );
+}
+
 const NAV_DESKTOP = [
   { to: '/',             icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
   { to: '/movimientos',  icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
@@ -94,9 +128,9 @@ export default function Layout({ children }) {
   const location   = useLocation();
   const [masOpen, setMasOpen] = useState(false);
 
-  const initials  = (perfil?.nombre || user?.user_metadata?.full_name || 'U')
-    .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const pageTitle = PAGE_TITLES[location.pathname] || 'Fintual';
+  const xp = perfil?.puntos_xp || 0;
+  const nivel = Math.floor(xp / 100) + 1;
+  const progresoNivel = xp % 100;
 
   // Saber si la página actual está en el menú "Más" (ahora agrupado)
   const enMenuMas = NAV_MOBILE_MAS_GRUPOS.some(g => g.items.some(n => n.to === location.pathname));
@@ -112,28 +146,35 @@ export default function Layout({ children }) {
       {/* ── SIDEBAR DESKTOP ── */}
       <aside className="hidden md:flex w-52 flex-shrink-0 bg-g-800 flex-col">
         <div className="px-5 py-5 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500"/>
-            <span className="text-white font-medium text-base tracking-tight">Fintual</span>
+          <div className="flex items-center gap-2.5">
+            <LogoMark/>
+            <div>
+              <span className="text-white font-medium text-base tracking-tight block leading-tight">Fintual</span>
+              <p className="text-white/30 text-[10px] leading-tight">Tu camino a la libertad</p>
+            </div>
           </div>
-          <p className="text-white/30 text-[10px] mt-0.5 ml-4">Tu camino a la libertad</p>
         </div>
         <nav className="flex-1 py-3 overflow-y-auto">
           {groups.map(g => (
             <div key={g.key} className="mb-1">
-              <p className="text-[9px] uppercase tracking-widest text-white/25 px-5 mb-1 mt-3">{g.label}</p>
+              <p className="text-[9px] uppercase tracking-widest text-white/25 font-medium px-5 mb-1.5 mt-4">{g.label}</p>
               {NAV_DESKTOP.filter(n => n.group === g.key).map(n => (
                 <NavLink key={n.to} to={n.to} end={n.to === '/'}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-5 py-2 text-[13px] transition-all border-l-2 ${
+                    `relative flex items-center gap-2.5 mx-3 px-3 py-2 rounded-lg text-[13px] transition-all ${
                       isActive
-                        ? 'text-white bg-blue-500/10 border-blue-500'
-                        : 'text-white/55 border-transparent hover:text-white/85 hover:bg-white/5'
+                        ? 'text-white bg-white/[0.07]'
+                        : 'text-white/50 hover:text-white/85 hover:bg-white/5'
                     }`}>
-                  <i className={`ti ${n.icon} text-base`}/>
-                  {n.label}
-                  {n.to === '/coach' && (
-                    <span className="ml-auto text-[9px] bg-blue-500/20 text-blue-200 px-1.5 py-0.5 rounded-full">IA</span>
+                  {({ isActive }) => (
+                    <>
+                      {isActive && <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-gold"/>}
+                      <i className={`ti ${n.icon} text-base ${isActive ? 'text-gold' : ''}`}/>
+                      {n.label}
+                      {n.to === '/coach' && (
+                        <span className="ml-auto text-[9px] bg-blue-500/20 text-blue-200 px-1.5 py-0.5 rounded-full">IA</span>
+                      )}
+                    </>
                   )}
                 </NavLink>
               ))}
@@ -141,13 +182,16 @@ export default function Layout({ children }) {
           ))}
         </nav>
         <div className="px-5 py-4 border-t border-white/10">
-          <button onClick={() => navigate('/perfil')} className="flex items-center gap-2.5 w-full text-left hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-g-900 text-xs font-semibold flex-shrink-0">
-              {initials}
+          <button onClick={() => navigate('/perfil')} className="flex items-center gap-2.5 w-full text-left hover:opacity-90 transition-opacity">
+            <div className="relative w-9 h-9 flex-shrink-0">
+              <Ring pct={progresoNivel} size={36} stroke={2.5} color="#C9A84C"/>
+              <div className="absolute inset-[3px] rounded-full bg-gold flex items-center justify-center text-g-900 text-[10px] font-semibold">
+                {initials}
+              </div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white/80 text-xs font-medium truncate">{perfil?.nombre || user?.user_metadata?.full_name}</p>
-              <p className="text-white/35 text-[10px]">{perfil?.puntos_xp || 0} XP</p>
+              <p className="text-white/85 text-xs font-medium truncate">{perfil?.nombre || user?.user_metadata?.full_name}</p>
+              <p className="text-white/35 text-[10px]">Nivel {nivel} · {xp} XP</p>
             </div>
           </button>
         </div>
@@ -156,8 +200,11 @@ export default function Layout({ children }) {
       {/* ── MAIN ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        {/* Topbar desktop */}
-        <header className="hidden md:flex bg-white border-b border-g-200/40 px-6 h-14 items-center justify-between flex-shrink-0">
+        {/* Topbar desktop — hairline azul→dorado en vez de un borde gris
+            plano: un acento de marca discreto que aparece en cada pantalla. */}
+        <header className="hidden md:flex relative bg-white px-6 h-14 items-center justify-between flex-shrink-0">
+          <div className="absolute bottom-0 left-0 right-0 h-px"
+            style={{ background: 'linear-gradient(90deg, rgba(36,82,255,0.22), rgba(201,168,76,0.4))' }}/>
           <h1 className="text-sm font-medium text-g-800">{pageTitle}</h1>
           <span className="text-xs px-3 py-1.5 rounded-full bg-g-50 text-g-600 border border-g-200/60 font-medium">
             {new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
@@ -165,8 +212,9 @@ export default function Layout({ children }) {
         </header>
 
         {/* Topbar móvil */}
-        <header className="md:hidden bg-g-800 px-4 pt-8 pb-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
+        <header className="md:hidden relative overflow-hidden bg-g-800 px-4 pt-8 pb-3 flex-shrink-0">
+          <div className="card-premium-glow -top-16 -right-8 w-40 h-40 bg-gold opacity-[0.09]"/>
+          <div className="relative flex items-center justify-between">
             <div>
               <p className="text-white/40 text-[11px]">Hola,</p>
               <p className="text-white font-medium text-[15px] leading-tight">
@@ -177,9 +225,11 @@ export default function Layout({ children }) {
               <span className="text-[11px] px-2 py-1 rounded-full bg-white/10 text-white/55">
                 {new Date().toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}
               </span>
-              <button onClick={() => navigate('/perfil')}
-                className="w-7 h-7 rounded-full bg-gold flex items-center justify-center text-g-900 text-[11px] font-semibold active:scale-90 transition-transform">
-                {initials}
+              <button onClick={() => navigate('/perfil')} className="relative w-8 h-8 flex-shrink-0 active:scale-90 transition-transform">
+                <Ring pct={progresoNivel} size={32} stroke={2.5} color="#C9A84C"/>
+                <div className="absolute inset-[3px] rounded-full bg-gold flex items-center justify-center text-g-900 text-[10px] font-semibold">
+                  {initials}
+                </div>
               </button>
             </div>
           </div>
@@ -214,7 +264,7 @@ export default function Layout({ children }) {
           onClick={() => setMasOpen(false)}
         />
         <div
-          className={`md:hidden fixed left-0 right-0 bg-white rounded-t-2xl z-50 p-5 shadow-2xl
+          className={`md:hidden fixed left-0 right-0 bg-white rounded-t-[28px] z-50 p-5 shadow-2xl
             transition-transform duration-300 ease-out ${masOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'}`}
           style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)', maxHeight: '75vh', overflowY: 'auto' }}>
           <div className="flex justify-center mb-4">
@@ -226,19 +276,21 @@ export default function Layout({ children }) {
               <div key={grupo.label}>
                 <p className="text-[10px] uppercase tracking-widest text-g-400 font-medium mb-2">{grupo.label}</p>
                 <div className="grid grid-cols-4 gap-2.5">
-                  {grupo.items.map(n => (
-                    <button key={n.to} onClick={() => irA(n.to)}
-                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all active:scale-95 ${
-                        location.pathname === n.to ? 'ring-2 ring-blue-400' : ''
-                      }`}
-                      style={{ background: n.bg }}>
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: n.color + '20' }}>
-                        <i className={`ti ${n.icon} text-base`} style={{ color: n.color }}/>
-                      </div>
-                      <span className="text-[10px] font-medium text-g-800 text-center leading-tight">{n.label}</span>
-                    </button>
-                  ))}
+                  {grupo.items.map(n => {
+                    const activo = location.pathname === n.to;
+                    return (
+                      <button key={n.to} onClick={() => irA(n.to)}
+                        className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all active:scale-95"
+                        style={{ background: n.bg }}>
+                        {activo && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gold"/>}
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: n.color + '20' }}>
+                          <i className={`ti ${n.icon} text-base`} style={{ color: n.color }}/>
+                        </div>
+                        <span className="text-[10px] font-medium text-g-800 text-center leading-tight">{n.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -272,8 +324,15 @@ export default function Layout({ children }) {
                   className={({ isActive }) =>
                     `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                       isActive ? 'text-blue-600' : 'text-g-400'}`}>
-                  <i className={`ti ${n.icon} text-xl`}/>
-                  <span className="text-[9px] font-medium">{n.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <span className="relative">
+                        <i className={`ti ${n.icon} text-xl`}/>
+                        {isActive && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gold"/>}
+                      </span>
+                      <span className="text-[9px] font-medium">{n.label}</span>
+                    </>
+                  )}
                 </NavLink>
               );
             })}
@@ -282,7 +341,10 @@ export default function Layout({ children }) {
             <button onClick={() => setMasOpen(!masOpen)}
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                 enMenuMas || masOpen ? 'text-blue-600' : 'text-g-400'}`}>
-              <i className={`ti ${masOpen ? 'ti-x' : 'ti-dots'} text-xl`}/>
+              <span className="relative">
+                <i className={`ti ${masOpen ? 'ti-x' : 'ti-dots'} text-xl`}/>
+                {enMenuMas && !masOpen && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gold"/>}
+              </span>
               <span className="text-[9px] font-medium">{masOpen ? 'Cerrar' : 'Más'}</span>
             </button>
           </div>
