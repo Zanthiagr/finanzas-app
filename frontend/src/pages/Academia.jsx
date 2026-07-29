@@ -1,6 +1,21 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
+// Anillo de progreso — mismo lenguaje visual que Dashboard/Nav/Patrimonio.
+// Aquí el % de lecciones completadas por módulo es otro encaje natural.
+function Ring({ pct, size = 32, stroke = 3, color = '#C9A84C', trackColor = '#EEF0F5' }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
+        className="transition-all duration-700"/>
+    </svg>
+  );
+}
+
 const MODULOS = [
   {
     id: 'tarjetas', icon: 'ti-credit-card', color: '#E24B4A', bg: '#FCEBEB',
@@ -282,17 +297,25 @@ export default function Academia() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {MODULOS.map(m => {
           const hecho = m.lecciones.filter((_, i) => completadas.has(`${m.id}-${i}`)).length;
+          const pctModulo = (hecho / m.lecciones.length) * 100;
           return (
             <button key={m.id} onClick={() => { setModuloActivo(m.id); setLeccionIdx(0); }}
-              className={`card p-3 text-left transition-all ${moduloActivo === m.id ? 'border-g-400 bg-g-50' : 'hover:border-g-200'}`}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ background: m.bg }}>
-                <i className={`ti ${m.icon} text-sm`} style={{ color: m.color }} />
+              className={`relative card p-3 text-left transition-all ${moduloActivo === m.id ? 'border-g-400 bg-g-50' : 'hover:border-g-200'}`}>
+              <div className="flex items-start justify-between mb-2">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: m.bg }}>
+                  <i className={`ti ${m.icon} text-sm`} style={{ color: m.color }} />
+                </div>
+                <div className="relative w-7 h-7 flex-shrink-0">
+                  <Ring pct={pctModulo} size={28} stroke={2.5} color={hecho === m.lecciones.length ? '#16A34A' : '#C9A84C'}/>
+                  {hecho === m.lecciones.length && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <i className="ti ti-check text-[10px] text-emerald-600"/>
+                    </div>
+                  )}
+                </div>
               </div>
               <p className="text-xs font-medium text-g-900">{m.titulo}</p>
               <p className="text-[10px] text-g-400 mt-0.5">{hecho}/{m.lecciones.length} lecciones</p>
-              <div className="h-1 bg-g-100 rounded-full mt-2 overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${(hecho / m.lecciones.length) * 100}%`, background: 'linear-gradient(90deg, #C9A84C, #6E93FF)' }} />
-              </div>
             </button>
           );
         })}
