@@ -18,6 +18,37 @@ const TIPOS_REND   = [
   { value:'variable',       label:'Variable / irregular', desc:'Ingresos variables en fechas distintas' },
 ];
 
+// Ícono + color por tipo de activo — reemplaza el badge de texto plano
+// por un chip visual, mismo patrón que las categorías de gasto en el
+// resto de la app (identidad reconocible de un vistazo).
+const TIPO_ACTIVO_VISUAL = {
+  'Efectivo':           { icon:'ti-cash',           color:'#16A34A' },
+  'Cuenta bancaria':    { icon:'ti-building-bank',  color:'#185FA5' },
+  'Inversión':          { icon:'ti-trending-up',    color:'#C9A84C' },
+  'CDT':                { icon:'ti-certificate',    color:'#0F6E56' },
+  'Vehículo':           { icon:'ti-car',            color:'#534AB7' },
+  'Inmueble':           { icon:'ti-home',           color:'#10224F' },
+  'Negocio':            { icon:'ti-briefcase',      color:'#BA7517' },
+  'Préstamo otorgado':  { icon:'ti-arrow-up-right', color:'#2452FF' },
+  'Otro':               { icon:'ti-dots',           color:'#8A93A6' },
+};
+
+// Anillo de progreso — mismo lenguaje visual que Dashboard/Nav: el
+// círculo es cómo Fintual representa "cuánto vas de un objetivo". Aquí
+// es el ajuste más natural de todos: una meta ES un porcentaje.
+function Ring({ pct, size = 48, stroke = 5, color, trackColor = '#EEF0F5' }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
+        className="transition-all duration-700"/>
+    </svg>
+  );
+}
+
 // ─── ACTIVOS ────────────────────────────────────────────
 export function Activos() {
   const [items, setItems]         = useState([]);
@@ -85,8 +116,9 @@ export function Activos() {
         <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><i className="ti ti-plus text-sm"/> Agregar</button>
       </div>
 
-      <div className="bg-g-800 rounded-2xl p-4 text-white">
-        <div className="flex justify-between items-start">
+      <div className="relative overflow-hidden bg-g-800 rounded-2xl p-4 text-white">
+        <div className="card-premium-glow -top-10 -right-10 w-36 h-36 bg-gold opacity-[0.12]"/>
+        <div className="relative flex justify-between items-start">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-g-200 mb-1">Total activos</p>
             <p className="text-3xl font-medium">{fmt(total)}</p>
@@ -95,7 +127,9 @@ export function Activos() {
           {rendTotal > 0 && (
             <div className="text-right">
               <p className="text-[10px] uppercase tracking-widest text-g-200 mb-1">Rend. mensual est.</p>
-              <p className="text-xl font-medium text-gold">+{fmt(rendTotal)}</p>
+              <p className="text-xl font-medium text-gold flex items-center gap-1 justify-end">
+                <i className="ti ti-trending-up text-sm"/>{fmt(rendTotal)}
+              </p>
             </div>
           )}
         </div>
@@ -112,21 +146,28 @@ export function Activos() {
           const g    = parseFloat(a.valor_actual)-parseFloat(a.valor_inicial);
           const rend = rendEst(a);
           const tipoRend = TIPOS_REND.find(t=>t.value===a.tipo_rendimiento);
+          const visual = TIPO_ACTIVO_VISUAL[a.tipo] || TIPO_ACTIVO_VISUAL['Otro'];
           return (
             <div key={a.id} className="card p-4">
               <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="font-medium text-g-900">{a.nombre}</p>
-                  <div className="flex gap-1.5 mt-0.5 flex-wrap">
-                    <span className="badge-ok text-[10px]">{a.tipo}</span>
-                    {tipoRend && tipoRend.value!=='manual' && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold/10 text-gold">{tipoRend.label}</span>
-                    )}
-                    {(a.tipo_rendimiento==='fija_capital'||a.tipo_rendimiento==='fija_compuesto') && a.tasa_rendimiento>0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-g-100 text-g-600">
-                        {a.tasa_rendimiento}%{a.tipo_rendimiento==='fija_compuesto'?' EA':'/mes'}
-                      </span>
-                    )}
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: visual.color + '18', color: visual.color }}>
+                    <i className={`ti ${visual.icon} text-base`}/>
+                  </div>
+                  <div>
+                    <p className="font-medium text-g-900">{a.nombre}</p>
+                    <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: visual.color + '18', color: visual.color }}>{a.tipo}</span>
+                      {tipoRend && tipoRend.value!=='manual' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold/10 text-gold">{tipoRend.label}</span>
+                      )}
+                      {(a.tipo_rendimiento==='fija_capital'||a.tipo_rendimiento==='fija_compuesto') && a.tasa_rendimiento>0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-g-100 text-g-600">
+                          {a.tasa_rendimiento}%{a.tipo_rendimiento==='fija_compuesto'?' EA':'/mes'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <button onClick={()=>del(a.id)} className="text-g-300 hover:text-red-500 p-1"><i className="ti ti-trash text-sm"/></button>
@@ -295,16 +336,18 @@ export function Deudas() {
         <div><h2 className="text-lg font-medium text-g-900">Deudas</h2><p className="text-sm text-g-400">Lo que debes y cómo vas pagando</p></div>
         <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><i className="ti ti-plus text-sm"/> Agregar</button>
       </div>
-      <div className="bg-red-700 rounded-2xl p-4 text-white">
-        <p className="text-[10px] uppercase tracking-widest text-red-200 mb-1">Deuda total activa</p>
-        <p className="text-3xl font-medium">{fmt(totalDeuda)}</p>
-        <p className="text-white/40 text-xs mt-1">{items.filter(d=>d.activa).length} deuda{items.filter(d=>d.activa).length!==1?'s':''} activa{items.filter(d=>d.activa).length!==1?'s':''}</p>
+      <div className="relative overflow-hidden bg-red-700 rounded-2xl p-4 text-white">
+        <div className="card-premium-glow -top-10 -right-10 w-36 h-36 bg-white opacity-[0.06]"/>
+        <p className="relative text-[10px] uppercase tracking-widest text-red-200 mb-1">Deuda total activa</p>
+        <p className="relative text-3xl font-medium">{fmt(totalDeuda)}</p>
+        <p className="relative text-white/40 text-xs mt-1">{items.filter(d=>d.activa).length} deuda{items.filter(d=>d.activa).length!==1?'s':''} activa{items.filter(d=>d.activa).length!==1?'s':''}</p>
       </div>
       <div className="space-y-3">
         {items.length===0 && <div className="card p-12 text-center"><i className="ti ti-credit-card text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Sin deudas registradas! 🎉</p></div>}
         {items.map(d=>{
           const pendiente = parseFloat(d.monto_total)-parseFloat(d.monto_pagado);
           const pct = Math.round((parseFloat(d.monto_pagado)/parseFloat(d.monto_total))*100);
+          const colorProgreso = pct >= 100 ? '#16A34A' : pct >= 66 ? '#0F6E56' : pct >= 33 ? '#C9A84C' : '#8A93A6';
           return (
             <div key={d.id} className={`card p-4 ${!d.activa?'opacity-60':''}`}>
               <div className="flex items-start justify-between mb-3">
@@ -325,9 +368,9 @@ export function Deudas() {
                 <span className="text-red-600 font-medium">Pendiente: {fmtShort(pendiente)}</span>
               </div>
               <div className="h-2.5 bg-g-100 rounded-full overflow-hidden">
-                <div className="h-full bg-g-400 rounded-full transition-all" style={{width:`${pct}%`}}/>
+                <div className="h-full rounded-full transition-all" style={{width:`${pct}%`, background: colorProgreso}}/>
               </div>
-              <p className="text-[10px] text-g-400 mt-1">{pct}% pagado</p>
+              <p className="text-[10px] mt-1 font-medium" style={{ color: colorProgreso }}>{pct}% pagado</p>
             </div>
           );
         })}
@@ -419,31 +462,32 @@ export function Metas() {
         {items.length===0 && <div className="card col-span-2 p-12 text-center"><i className="ti ti-target text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Crea tu primera meta!</p></div>}
         {items.map(m=>{
           const pct = Math.min(Math.round((parseFloat(m.monto_actual)/parseFloat(m.monto_objetivo))*100),100);
+          const colorMeta = m.completada ? '#16A34A' : pct >= 66 ? '#0F6E56' : pct >= 33 ? '#C9A84C' : '#8A93A6';
           return (
             <div key={m.id} className={`card p-4 ${m.completada?'border-g-300':''}`}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-g-50 flex items-center justify-center flex-shrink-0">
-                    <i className={`ti ${m.icono} text-g-600 text-lg`}/>
+                  <div className="relative w-12 h-12 flex-shrink-0">
+                    <Ring pct={pct} size={48} stroke={4} color={colorMeta}/>
+                    <div className="absolute inset-[6px] rounded-full bg-g-50 flex items-center justify-center">
+                      <i className={`ti ${m.icono} text-sm`} style={{ color: colorMeta }}/>
+                    </div>
                   </div>
                   <div>
                     <p className="font-medium text-g-900">{m.nombre}</p>
-                    {m.completada && <span className="badge-ok text-[10px]">Completada 🎉</span>}
+                    {m.completada ? <span className="badge-ok text-[10px]">Completada 🎉</span>
+                      : <span className="text-xs font-medium" style={{ color: colorMeta }}>{pct}% del objetivo</span>}
                   </div>
                 </div>
                 <button onClick={()=>del(m.id)} className="text-g-300 hover:text-red-500 p-1"><i className="ti ti-trash text-sm"/></button>
               </div>
               <div className="flex justify-between text-xs text-g-500 mb-2">
-                <span>{fmt(m.monto_actual)}</span><span>{fmt(m.monto_objetivo)}</span>
+                <span className="font-medium text-g-700">{fmt(m.monto_actual)}</span><span>de {fmt(m.monto_objetivo)}</span>
               </div>
-              <div className="h-3 bg-g-100 rounded-full overflow-hidden">
-                <div className="h-full bg-g-400 rounded-full transition-all" style={{width:`${pct}%`}}/>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-sm font-medium text-g-700">{pct}%</p>
+              <div className="flex items-center justify-between">
+                {m.fecha_limite ? <p className="text-[10px] text-g-400">Meta: {fmtDate(m.fecha_limite)}</p> : <span/>}
                 {!m.completada && <button onClick={()=>{ setModalAporte(m); setAporteMonto(''); }} className="text-xs btn-secondary py-1.5 px-3">Aportar</button>}
               </div>
-              {m.fecha_limite && <p className="text-[10px] text-g-400 mt-1">Meta: {fmtDate(m.fecha_limite)}</p>}
             </div>
           );
         })}
