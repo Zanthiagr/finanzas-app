@@ -12,7 +12,7 @@ export default function Presupuestos() {
   const [gastosReales, setGastosReales] = useState({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal]     = useState(false);
-  const [form, setForm]       = useState({ categoria: 'Alimentación', monto_limite: '' });
+  const [form, setForm]       = useState({ categoria: '', monto_limite: '' });
 
   const load = async () => {
     setLoading(true);
@@ -36,14 +36,15 @@ export default function Presupuestos() {
 
   const submit = async e => {
     e.preventDefault();
+    if (!form.categoria) return toast.error('Selecciona una categoría');
     if (!form.monto_limite || parseFloat(form.monto_limite) <= 0) return toast.error('Ingresa un monto válido');
     try {
       await guardarPresupuesto(form);
       toast.success('Presupuesto guardado');
       setModal(false);
-      setForm({ categoria: 'Alimentación', monto_limite: '' });
+      setForm({ categoria: '', monto_limite: '' });
       load();
-    } catch { toast.error('Error guardando'); }
+    } catch (err) { toast.error(err?.message || 'Error guardando el presupuesto'); }
   };
 
   const eliminar = (id) => {
@@ -57,6 +58,18 @@ export default function Presupuestos() {
   const categoriasConPresupuesto = presupuestos.map(p => p.categoria);
   const categoriasDisponibles = CATEGORIAS_GASTO.filter(c => !categoriasConPresupuesto.includes(c));
 
+  // El <select> solo lista categorías SIN presupuesto todavía. Si el
+  // formulario abriera con una categoría que ya tiene presupuesto (ej. un
+  // valor fijo por defecto), el <select> no tendría esa opción para
+  // mostrar pero el estado seguiría apuntando a ella — al guardar,
+  // actualizaría el presupuesto existente en vez de crear el nuevo que el
+  // usuario cree estar creando. Por eso siempre se fija explícitamente a
+  // la primera categoría disponible al abrir el modal.
+  const abrirModal = () => {
+    setForm({ categoria: categoriasDisponibles[0] || '', monto_limite: '' });
+    setModal(true);
+  };
+
   if (loading) return <div className="flex justify-center items-center h-64"><i className="ti ti-loader animate-spin text-2xl text-g-400"/></div>;
 
   return (
@@ -67,7 +80,7 @@ export default function Presupuestos() {
           <p className="text-sm text-g-400">Define límites por categoría y mantente bajo control</p>
         </div>
         {categoriasDisponibles.length > 0 && (
-          <button onClick={() => setModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={abrirModal} className="btn-primary flex items-center gap-2">
             <i className="ti ti-plus text-sm"/> <span className="hidden md:inline">Nuevo</span>
           </button>
         )}
@@ -78,7 +91,7 @@ export default function Presupuestos() {
           <i className="ti ti-wallet text-4xl text-g-200 block mb-3"/>
           <p className="text-g-700 font-medium mb-1">Aún no tienes presupuestos</p>
           <p className="text-g-400 text-sm mb-4">Define cuánto quieres gastar máximo en cada categoría y la app te avisará cuando te acerques al límite.</p>
-          <button onClick={() => setModal(true)} className="btn-primary">Crear mi primer presupuesto</button>
+          <button onClick={abrirModal} className="btn-primary">Crear mi primer presupuesto</button>
         </div>
       ) : (
         <div className="space-y-3">
