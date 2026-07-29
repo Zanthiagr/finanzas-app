@@ -71,9 +71,9 @@ export default function CapitalInicialForm({ dark = false, onChange }) {
   }, [saldos]);
 
   const inputCls = dark
-    ? 'w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-gold/60'
+    ? 'w-full bg-g-800 border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-gold/60'
     : 'input';
-  const rowCls = dark ? 'bg-white/8' : 'bg-g-50';
+  const rowCls = dark ? 'bg-g-800' : 'bg-g-50';
   const textCls = dark ? 'text-white' : 'text-g-800';
   const subCls = dark ? 'text-white/40' : 'text-g-400';
 
