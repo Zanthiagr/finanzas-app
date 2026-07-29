@@ -67,7 +67,16 @@ function AppRoutes() {
     if (user && esCuentaNueva) setMostrarOnboarding(true);
   }, [user, esCuentaNueva]);
 
-  const completarOnboarding = () => setMostrarOnboarding(false);
+  const completarOnboarding = () => {
+    setMostrarOnboarding(false);
+    // El Dashboard ya cargó el saldo ANTES de que se agregara el capital
+    // inicial en el onboarding (es una capa flotante encima, no una
+    // navegación real, así que su useEffect de carga no se vuelve a
+    // disparar solo). Recargar es la forma simple y confiable de que
+    // "Dinero disponible" y todo lo demás reflejen el capital recién
+    // agregado sin tener que enchufar un sistema de refresco global.
+    window.location.reload();
+  };
 
   return (
     <>
