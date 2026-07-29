@@ -128,6 +128,9 @@ export default function Layout({ children }) {
   const location   = useLocation();
   const [masOpen, setMasOpen] = useState(false);
 
+  const initials = (perfil?.nombre || user?.user_metadata?.full_name || 'U')
+    .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Fintual';
   const xp = perfil?.puntos_xp || 0;
   const nivel = Math.floor(xp / 100) + 1;
   const progresoNivel = xp % 100;
