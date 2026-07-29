@@ -1,43 +1,94 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, labelMedioPago } from '../utils/helpers';
+import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, marcarPagoUnicoComoPagado } from '../utils/api';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, labelMedioPago, getCurrentWeek, DIA_CIERRE_SEMANAL } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
+import toast from 'react-hot-toast';
+import { confirmToast } from '../utils/confirm';
 
 export default function Dashboard() {
   const { user, perfil } = useAuth();
   const [resumen, setResumen]           = useState(null);
   const [saldo, setSaldo]               = useState(null);
   const [movRecientes, setMovRecientes] = useState([]);
-  const [pagosHoy, setPagosHoy]         = useState([]);
+  const [pagosPendientes, setPagosPendientes] = useState([]);
+  const [presupuestos, setPresupuestos] = useState([]);
+  const [gastosReales, setGastosReales] = useState({});
+  const [cierres, setCierres]           = useState([]);
+  const [marcandoPagoId, setMarcandoPagoId] = useState(null);
   const [loading, setLoading]           = useState(true);
   const [modalCapital, setModalCapital] = useState(false);
   const [ocultarSaldo, setOcultarSaldo] = useState(false);
-  const now  = new Date();
-  const mes  = now.getMonth() + 1;
-  const anio = now.getFullYear();
+  const now    = new Date();
+  const mes    = now.getMonth() + 1;
+  const anio   = now.getFullYear();
+  const hoyStr = now.toISOString().split('T')[0];
 
   const cargarSaldo = () => getSaldoTotal().then(setSaldo).catch(console.error);
+
+  // Pagos pendientes — separado del resto para no bloquear el dashboard si
+  // falla. "Pendiente" = fijo que cae hoy (recordatorio, aunque se
+  // auto-registre al visitar Calendario) O único sin pagar con fecha de
+  // hoy o vencida. Se recalcula por fecha, no por hora, así que se ve
+  // igual sin importar a qué hora del día se abra la app.
+  const cargarPagos = () => {
+    getPagosProgramados().then(pagos => {
+      const diaHoy = now.getDate();
+      const pendientes = (pagos || [])
+        .filter(p => {
+          if (!p.activo) return false;
+          if (p.tipo === 'unico') return !p.pagado && p.fecha && p.fecha <= hoyStr;
+          return p.dia_mes === diaHoy; // fijo (o sin "tipo" = fijo, compatibilidad)
+        })
+        .sort((a, b) => (a.tipo === 'unico' ? -1 : 1)); // vencidos/únicos primero
+      setPagosPendientes(pendientes);
+    }).catch(() => {});
+  };
 
   useEffect(() => {
     Promise.all([
       getResumen({ mes, anio }),
       getMovimientos({ mes, anio }),
       getSaldoTotal(),
-    ]).then(([r, m, s]) => {
+      getPresupuestos(),
+      getCierres(anio),
+    ]).then(([r, m, s, pres, cierresData]) => {
       setResumen(r);
       setMovRecientes(m.slice(0, 5));
       setSaldo(s);
+      setPresupuestos(pres || []);
+      setCierres(cierresData || []);
+      const gastosMap = {};
+      r.porCategoria?.filter(c => c.tipo === 'gasto').forEach(c => {
+        gastosMap[c.categoria] = parseFloat(c.total);
+      });
+      setGastosReales(gastosMap);
     }).catch(console.error).finally(() => setLoading(false));
-    // Pagos de hoy — separado para no bloquear si falla
-    getPagosProgramados().then(pagos => {
-      const diaHoy = new Date().getDate();
-      setPagosHoy((pagos || []).filter(p => p.activo && p.dia_mes === diaHoy));
-    }).catch(() => {});
+    cargarPagos();
   }, []);
+
+  const confirmarPagoPendiente = (p) => {
+    confirmToast(`¿Confirmas que ya pagaste "${p.nombre}" (${fmt(p.monto)})?`, async () => {
+      setMarcandoPagoId(p.id);
+      try {
+        await marcarPagoUnicoComoPagado(p);
+        toast.success('Pago confirmado y registrado ✅');
+        cargarPagos();
+        cargarSaldo();
+      } catch (err) {
+        toast.error(err?.message || 'Error confirmando el pago');
+      } finally {
+        setMarcandoPagoId(null);
+      }
+    }, { confirmLabel: 'Ya pagué' });
+  };
+
+  const semanaActual     = getCurrentWeek();
+  const semanaYaCerrada  = cierres.some(c => c.semana_num === semanaActual && c.mes_num === mes);
+  const esDiaDeCierre    = now.getDay() === DIA_CIERRE_SEMANAL;
 
   const salud = resumen ? calcSaludFinanciera({
     ingresos: resumen.ingresos, gastos: resumen.gastos,
@@ -110,29 +161,63 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Pagos programados para hoy */}
-      {pagosHoy.length > 0 && (
+      {/* Pagos pendientes — fijos que caen hoy + únicos sin pagar (hoy o
+          vencidos). Se muestra todo el día porque el filtro es por fecha,
+          no por hora del reloj. Los únicos se pueden confirmar aquí mismo. */}
+      {pagosPendientes.length > 0 && (
         <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
               <i className="ti ti-bell-ringing text-amber-600 text-base"/>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800 mb-1">
-                {pagosHoy.length === 1 ? 'Pago programado para hoy' : `${pagosHoy.length} pagos programados para hoy`}
+              <p className="text-sm font-medium text-amber-800 mb-2">
+                {pagosPendientes.length === 1 ? 'Tienes 1 pago pendiente' : `Tienes ${pagosPendientes.length} pagos pendientes`}
               </p>
-              {pagosHoy.map(p => (
-                <div key={p.id} className="flex items-center justify-between">
-                  <span className="text-xs text-amber-700 truncate">{p.nombre}</span>
-                  <span className="text-xs font-medium text-amber-800 ml-2 flex-shrink-0">
-                    {new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(p.monto)}
-                  </span>
-                </div>
-              ))}
-              <Link to="/calendario" className="text-[11px] text-amber-600 underline mt-1.5 inline-block">Ver calendario →</Link>
+              <div className="space-y-2">
+                {pagosPendientes.map(p => {
+                  const vencido = p.tipo === 'unico' && p.fecha < hoyStr;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs text-amber-800 truncate font-medium">{p.nombre}</p>
+                        <p className="text-[10px] text-amber-600">
+                          {p.tipo === 'unico' ? (vencido ? 'Venció — sin confirmar' : 'Vence hoy') : 'Pago fijo de hoy'}
+                          {' · '}{fmtShort(p.monto)}
+                        </p>
+                      </div>
+                      {p.tipo === 'unico' ? (
+                        <button onClick={() => confirmarPagoPendiente(p)} disabled={marcandoPagoId === p.id}
+                          className="text-[11px] bg-g-900 text-white px-2.5 py-1.5 rounded-lg disabled:opacity-50 flex-shrink-0">
+                          {marcandoPagoId === p.id ? '...' : 'Ya pagué'}
+                        </button>
+                      ) : (
+                        <span className="text-xs font-medium text-amber-800 flex-shrink-0">{fmtShort(p.monto)}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <Link to="/calendario" className="text-[11px] text-amber-600 underline mt-2 inline-block">Ver calendario →</Link>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Recordatorio de cierre semanal — aparece el día designado
+          (domingo por defecto, ver DIA_CIERRE_SEMANAL en helpers.js)
+          mientras la semana actual siga sin cerrar. */}
+      {esDiaDeCierre && !semanaYaCerrada && (
+        <Link to="/cierre" className="rounded-2xl bg-g-800 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+            <i className="ti ti-calendar-check text-gold text-base"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white">Hoy toca cerrar la semana {semanaActual}</p>
+            <p className="text-[11px] text-white/40">Reflexiona sobre tu dinero — toma menos de 1 minuto</p>
+          </div>
+          <i className="ti ti-chevron-right text-white/30 flex-shrink-0"/>
+        </Link>
       )}
 
       {/* Salud financiera — gauge circular: es contenido motivacional, no
@@ -192,6 +277,57 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Presupuestos — interactivo: barra de progreso en vivo por
+          categoría, para saber cuánto vas sin tener que entrar a la
+          sección de Presupuestos. Solo se muestra si hay presupuestos
+          creados; si no, invita a crear el primero. */}
+      {presupuestos.length > 0 ? (
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-g-900">Presupuestos</p>
+            <Link to="/presupuestos" className="text-xs text-g-600 hover:text-g-800">Ver todos →</Link>
+          </div>
+          <div className="space-y-3">
+            {presupuestos.slice(0, 4).map(p => {
+              const gastado  = gastosReales[p.categoria] || 0;
+              const limite   = parseFloat(p.monto_limite);
+              const pct      = Math.min(Math.round((gastado / limite) * 100), 150);
+              const excedido = gastado > limite;
+              const enAlerta = pct >= 80 && !excedido;
+              return (
+                <Link key={p.id} to="/presupuestos" className="block">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <i className={`ti ${CATEGORIAS_ICONOS[p.categoria] || 'ti-tag'} text-xs`}
+                        style={{ color: CATEGORIAS_COLORES[p.categoria] || '#2452FF' }}/>
+                      <span className="text-xs font-medium text-g-700 truncate">{p.categoria}</span>
+                    </div>
+                    <span className={`text-[11px] font-medium flex-shrink-0 ${excedido ? 'text-red-600' : enAlerta ? 'text-amber-600' : 'text-g-400'}`}>
+                      {fmtShort(gastado)} / {fmtShort(limite)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-g-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${excedido ? 'bg-red-500' : enAlerta ? 'bg-amber-400' : 'bg-g-400'}`}
+                      style={{ width: `${Math.min(pct, 100)}%` }}/>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <Link to="/presupuestos" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-g-50 flex items-center justify-center flex-shrink-0">
+            <i className="ti ti-wallet text-g-500 text-base"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-g-900">Crea tu primer presupuesto</p>
+            <p className="text-[11px] text-g-400">Define límites por categoría y míralos en vivo aquí</p>
+          </div>
+          <i className="ti ti-chevron-right text-g-300 flex-shrink-0"/>
+        </Link>
+      )}
 
       {/* Gráfica — full width en móvil */}
       <div className="card p-4">
