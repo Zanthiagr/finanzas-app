@@ -81,10 +81,11 @@ export default function Mental() {
       </div>
 
       {/* Frase del día */}
-      <div className="bg-g-800 rounded-2xl p-4 md:p-5">
-        <p className="text-[10px] uppercase tracking-widest text-g-200 mb-3">Frase del día</p>
-        <p className="text-white font-serif text-sm md:text-base leading-relaxed mb-3">{frase.txt}</p>
-        <div className="flex items-center justify-between">
+      <div className="relative overflow-hidden bg-g-800 rounded-2xl p-4 md:p-5">
+        <div className="card-premium-glow -top-10 -right-10 w-36 h-36 bg-gold opacity-[0.1]"/>
+        <p className="relative text-[10px] uppercase tracking-widest text-g-200 mb-3">Frase del día</p>
+        <p className="relative text-white font-serif text-sm md:text-base leading-relaxed mb-3">{frase.txt}</p>
+        <div className="relative flex items-center justify-between">
           <p className="text-white/30 text-xs">{frase.autor ? `— ${frase.autor}` : ''}</p>
           <button onClick={()=>setFraseIdx((fraseIdx+1)%FRASES.length)}
             className="text-gold/70 hover:text-gold text-xs flex items-center gap-1">
@@ -148,9 +149,9 @@ export default function Mental() {
                   <p className="text-[9px] uppercase tracking-wider text-red-600 font-medium mb-0.5">Antes</p>
                   <p className="text-xs text-red-800">{c.lim}</p>
                 </div>
-                <i className="ti ti-arrow-right text-g-300 flex-shrink-0"/>
-                <div className="flex-1 bg-g-50 rounded-xl p-3">
-                  <p className="text-[9px] uppercase tracking-wider text-g-600 font-medium mb-0.5">Ahora</p>
+                <i className="ti ti-arrow-right text-gold flex-shrink-0"/>
+                <div className="flex-1 bg-gold/8 rounded-xl p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-gold-dark font-medium mb-0.5">Ahora</p>
                   <p className="text-xs text-g-800">{c.pot}</p>
                 </div>
               </div>
@@ -162,21 +163,29 @@ export default function Mental() {
       {/* Afirmaciones */}
       <div className={`${tab!=='afirmaciones'?'hidden md:block':''}`}>
         <div className="space-y-3">
-          {AFIRMACIONES.map((a,i)=>(
-            <button key={i} onClick={()=>setAfirmDone(d=>d.includes(i)?d.filter(x=>x!==i):[...d,i])}
-              className={`w-full card p-4 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${afirmDone.includes(i)?'border-g-300 bg-g-50':''}`}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{background: a.color+'15'}}>
-                <i className={`ti ${a.ico} text-lg`} style={{color:a.color}}/>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-g-800 font-medium leading-relaxed">{a.txt}</p>
-                <p className={`text-[10px] mt-1 ${afirmDone.includes(i)?'text-g-500':'text-g-300'}`}>
-                  {afirmDone.includes(i)?'✓ Dicha hoy':'Toca para marcar'}
-                </p>
-              </div>
-            </button>
-          ))}
+          {AFIRMACIONES.map((a,i)=>{
+            const hecha = afirmDone.includes(i);
+            return (
+              <button key={i} onClick={()=>setAfirmDone(d=>d.includes(i)?d.filter(x=>x!==i):[...d,i])}
+                className={`w-full card p-4 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${hecha?'border-gold/40 bg-gold/5':''}`}>
+                <div className="relative w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{background: a.color+'15'}}>
+                  <i className={`ti ${a.ico} text-lg`} style={{color:a.color}}/>
+                  {hecha && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold flex items-center justify-center">
+                      <i className="ti ti-check text-g-900 text-[9px]"/>
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-g-800 font-medium leading-relaxed">{a.txt}</p>
+                  <p className={`text-[10px] mt-1 ${hecha?'text-gold-dark font-medium':'text-g-300'}`}>
+                    {hecha?'✓ Dicha hoy':'Toca para marcar'}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -204,10 +213,11 @@ export default function Mental() {
         {entradas.length>0 && (
           <div className="space-y-3 mt-3">
             {entradas.slice(0,3).map(e=>(
-              <div key={e.id} className="card p-3">
-                <p className="text-[11px] text-g-500 mb-1">{e.pregunta}</p>
-                <p className="text-sm text-g-800 italic">"{e.respuesta}"</p>
-                <p className="text-[10px] text-g-400 mt-1">{new Date(e.created_at).toLocaleDateString('es-CO')}</p>
+              <div key={e.id} className="card p-4 relative overflow-hidden">
+                <i className="ti ti-quote absolute -top-1 -right-1 text-4xl text-g-50"/>
+                <p className="text-[11px] text-g-500 mb-1.5 relative">{e.pregunta}</p>
+                <p className="text-sm text-g-800 font-serif italic leading-relaxed relative">"{e.respuesta}"</p>
+                <p className="text-[10px] text-g-400 mt-2 relative">{new Date(e.created_at).toLocaleDateString('es-CO')}</p>
               </div>
             ))}
           </div>
