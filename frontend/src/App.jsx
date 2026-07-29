@@ -56,26 +56,19 @@ function PrivateRoute({ children }) {
 }
 
 function AppRoutes() {
-  const { user, esCuentaNueva } = useAuth();
+  const { user } = useAuth();
   const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
 
   useEffect(() => {
-    // esCuentaNueva solo es true la primera vez que el perfil se crea en la
-    // BD — a diferencia de un flag en localStorage, no depende del
-    // navegador/dispositivo, así que alguien iniciando sesión en una cuenta
-    // EXISTENTE (aunque sea desde un navegador nuevo) nunca ve el onboarding.
-    if (user && esCuentaNueva) setMostrarOnboarding(true);
-  }, [user, esCuentaNueva]);
+    if (user) {
+      const yaVisto = localStorage.getItem(`onboarding_${user.id}`);
+      if (!yaVisto) setMostrarOnboarding(true);
+    }
+  }, [user]);
 
   const completarOnboarding = () => {
+    if (user) localStorage.setItem(`onboarding_${user.id}`, 'true');
     setMostrarOnboarding(false);
-    // El Dashboard ya cargó el saldo ANTES de que se agregara el capital
-    // inicial en el onboarding (es una capa flotante encima, no una
-    // navegación real, así que su useEffect de carga no se vuelve a
-    // disparar solo). Recargar es la forma simple y confiable de que
-    // "Dinero disponible" y todo lo demás reflejen el capital recién
-    // agregado sin tener que enchufar un sistema de refresco global.
-    window.location.reload();
   };
 
   return (
