@@ -9,6 +9,25 @@ import CapitalInicialForm from '../components/CapitalInicialForm';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
 
+// Anillo de progreso circular — mismo lenguaje visual que el gauge de
+// "Salud financiera" (abajo), reutilizado para presupuestos: en Fintual
+// el círculo es cómo se representa "cuánto vas de un total".
+function Ring({ pct, size = 56, stroke = 6, color, trackColor = '#EEF0F5' }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = c * (1 - Math.min(pct, 100) / 100);
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={dash}
+        className="transition-all duration-700" />
+    </svg>
+  );
+}
+
+const DIAS_CORTO = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+
 export default function Dashboard() {
   const { user, perfil } = useAuth();
   const [resumen, setResumen]           = useState(null);
@@ -105,6 +124,21 @@ export default function Dashboard() {
     return acc;
   }, []);
 
+  // Presupuestos — ring agregado (todos los límites vs. todo lo gastado)
+  // + las 3 categorías más "calientes" (mayor % consumido primero, no
+  // orden de creación) para que lo más urgente se vea sin scrollear.
+  const totalLimite    = presupuestos.reduce((a, p) => a + parseFloat(p.monto_limite), 0);
+  const totalGastadoPr = presupuestos.reduce((a, p) => a + (gastosReales[p.categoria] || 0), 0);
+  const pctPresupAgg   = totalLimite > 0 ? Math.min(Math.round((totalGastadoPr / totalLimite) * 100), 150) : 0;
+  const excedidoAgg    = totalGastadoPr > totalLimite;
+  const alertaAgg      = pctPresupAgg >= 80 && !excedidoAgg;
+  const colorPresupAgg = excedidoAgg ? '#E5484D' : alertaAgg ? '#F59E0B' : '#16A34A';
+  const presupuestosTop = [...presupuestos].sort((a, b) => {
+    const pa = (gastosReales[a.categoria] || 0) / parseFloat(a.monto_limite);
+    const pb = (gastosReales[b.categoria] || 0) / parseFloat(b.monto_limite);
+    return pb - pa;
+  }).slice(0, 3);
+
   const nombre = (perfil?.nombre || user?.user_metadata?.full_name || '').split(' ')[0];
 
   if (loading) return (
@@ -163,60 +197,76 @@ export default function Dashboard() {
 
       {/* Pagos pendientes — fijos que caen hoy + únicos sin pagar (hoy o
           vencidos). Se muestra todo el día porque el filtro es por fecha,
-          no por hora del reloj. Los únicos se pueden confirmar aquí mismo. */}
+          no por hora del reloj. Cada fila lleva un punto de severidad
+          (rojo=vencido, ámbar=vence hoy, gris=fijo informativo) en vez de
+          un solo bloque de alerta — así se distingue de un vistazo cuál
+          urge más. Los únicos se confirman aquí mismo con un toque. */}
       {pagosPendientes.length > 0 && (
-        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <i className="ti ti-bell-ringing text-amber-600 text-base"/>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800 mb-2">
-                {pagosPendientes.length === 1 ? 'Tienes 1 pago pendiente' : `Tienes ${pagosPendientes.length} pagos pendientes`}
-              </p>
-              <div className="space-y-2">
-                {pagosPendientes.map(p => {
-                  const vencido = p.tipo === 'unico' && p.fecha < hoyStr;
-                  return (
-                    <div key={p.id} className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs text-amber-800 truncate font-medium">{p.nombre}</p>
-                        <p className="text-[10px] text-amber-600">
-                          {p.tipo === 'unico' ? (vencido ? 'Venció — sin confirmar' : 'Vence hoy') : 'Pago fijo de hoy'}
-                          {' · '}{fmtShort(p.monto)}
-                        </p>
-                      </div>
-                      {p.tipo === 'unico' ? (
-                        <button onClick={() => confirmarPagoPendiente(p)} disabled={marcandoPagoId === p.id}
-                          className="text-[11px] bg-g-900 text-white px-2.5 py-1.5 rounded-lg disabled:opacity-50 flex-shrink-0">
-                          {marcandoPagoId === p.id ? '...' : 'Ya pagué'}
-                        </button>
-                      ) : (
-                        <span className="text-xs font-medium text-amber-800 flex-shrink-0">{fmtShort(p.monto)}</span>
-                      )}
-                    </div>
-                  );
-                })}
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <i className="ti ti-bell-ringing text-amber-600 text-sm"/>
               </div>
-              <Link to="/calendario" className="text-[11px] text-amber-600 underline mt-2 inline-block">Ver calendario →</Link>
+              <p className="text-sm font-medium text-g-900">
+                {pagosPendientes.length === 1 ? '1 pago pendiente' : `${pagosPendientes.length} pagos pendientes`}
+              </p>
             </div>
+            <Link to="/calendario" className="text-xs text-g-600 hover:text-g-800 flex-shrink-0">Calendario →</Link>
+          </div>
+          <div className="divide-y divide-g-100/70 mt-1">
+            {pagosPendientes.map(p => {
+              const vencido = p.tipo === 'unico' && p.fecha < hoyStr;
+              const statusColor = vencido ? '#E5484D' : p.tipo === 'unico' ? '#F59E0B' : '#8A93A6';
+              const statusLabel = p.tipo === 'unico' ? (vencido ? 'Vencido' : 'Vence hoy') : 'Fijo · hoy';
+              return (
+                <div key={p.id} className="flex items-center gap-3 py-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusColor }}/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-g-800 truncate">{p.nombre}</p>
+                    <p className="text-[10px] text-g-400">{statusLabel} · {fmtShort(p.monto)}</p>
+                  </div>
+                  {p.tipo === 'unico' ? (
+                    <button onClick={() => confirmarPagoPendiente(p)} disabled={marcandoPagoId === p.id}
+                      title="Marcar como pagado"
+                      className="w-7 h-7 rounded-full border-2 border-g-200 hover:border-g-800 hover:bg-g-800
+                                 flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40 group">
+                      <i className={`ti ti-check text-[13px] text-g-300 group-hover:text-white ${marcandoPagoId === p.id ? 'animate-pulse' : ''}`}/>
+                    </button>
+                  ) : (
+                    <i className="ti ti-repeat text-g-300 text-sm flex-shrink-0" title="Se registra automáticamente"/>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* Recordatorio de cierre semanal — aparece el día designado
           (domingo por defecto, ver DIA_CIERRE_SEMANAL en helpers.js)
-          mientras la semana actual siga sin cerrar. */}
+          mientras la semana actual siga sin cerrar. La franja de días
+          responde visualmente "qué día de la semana toca cerrar": el
+          día de cierre queda marcado en dorado todo el tiempo. */}
       {esDiaDeCierre && !semanaYaCerrada && (
-        <Link to="/cierre" className="rounded-2xl bg-g-800 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
-          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-            <i className="ti ti-calendar-check text-gold text-base"/>
+        <Link to="/cierre" className="relative overflow-hidden rounded-2xl bg-g-800 p-4 flex items-center gap-4 active:scale-[0.99] transition-transform">
+          <div className="card-premium-glow -top-10 -right-10 w-32 h-32 bg-gold opacity-[0.12]"/>
+          <div className="relative w-10 h-10 rounded-xl bg-gold/15 flex items-center justify-center flex-shrink-0">
+            <i className="ti ti-calendar-check text-gold text-lg"/>
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="relative flex-1 min-w-0">
             <p className="text-sm font-medium text-white">Hoy toca cerrar la semana {semanaActual}</p>
-            <p className="text-[11px] text-white/40">Reflexiona sobre tu dinero — toma menos de 1 minuto</p>
+            <p className="text-[11px] text-white/40 mb-2.5">Reflexiona sobre tu dinero — toma menos de 1 minuto</p>
+            <div className="flex gap-1.5">
+              {DIAS_CORTO.map((d, i) => (
+                <span key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium flex-shrink-0
+                  ${i === DIA_CIERRE_SEMANAL ? 'bg-gold text-g-900' : 'bg-white/10 text-white/40'}`}>
+                  {d}
+                </span>
+              ))}
+            </div>
           </div>
-          <i className="ti ti-chevron-right text-white/30 flex-shrink-0"/>
+          <i className="ti ti-chevron-right text-white/30 flex-shrink-0 relative"/>
         </Link>
       )}
 
@@ -278,42 +328,56 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Presupuestos — interactivo: barra de progreso en vivo por
-          categoría, para saber cuánto vas sin tener que entrar a la
-          sección de Presupuestos. Solo se muestra si hay presupuestos
-          creados; si no, invita a crear el primero. */}
+      {/* Presupuestos — interactivo: un ring agregado (mismo lenguaje
+          visual que el gauge de Salud financiera) muestra de un vistazo
+          cuánto llevas del total, y debajo las 3 categorías más "calientes"
+          (mayor % consumido, no orden de creación) con barra en vivo.
+          Solo se muestra si hay presupuestos creados. */}
       {presupuestos.length > 0 ? (
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-medium text-g-900">Presupuestos</p>
             <Link to="/presupuestos" className="text-xs text-g-600 hover:text-g-800">Ver todos →</Link>
           </div>
-          <div className="space-y-3">
-            {presupuestos.slice(0, 4).map(p => {
-              const gastado  = gastosReales[p.categoria] || 0;
-              const limite   = parseFloat(p.monto_limite);
-              const pct      = Math.min(Math.round((gastado / limite) * 100), 150);
-              const excedido = gastado > limite;
-              const enAlerta = pct >= 80 && !excedido;
-              return (
-                <Link key={p.id} to="/presupuestos" className="block">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <i className={`ti ${CATEGORIAS_ICONOS[p.categoria] || 'ti-tag'} text-xs`}
-                        style={{ color: CATEGORIAS_COLORES[p.categoria] || '#2452FF' }}/>
-                      <span className="text-xs font-medium text-g-700 truncate">{p.categoria}</span>
+          <div className="flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <Ring pct={pctPresupAgg} color={colorPresupAgg}/>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-semibold text-g-900">{pctPresupAgg}%</span>
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 space-y-2.5">
+              {presupuestosTop.map(p => {
+                const gastado  = gastosReales[p.categoria] || 0;
+                const limite   = parseFloat(p.monto_limite);
+                const pct      = Math.min(Math.round((gastado / limite) * 100), 150);
+                const excedido = gastado > limite;
+                const enAlerta = pct >= 80 && !excedido;
+                return (
+                  <Link key={p.id} to="/presupuestos" className="block group">
+                    <div className="flex items-center justify-between text-[11px] mb-1 gap-2">
+                      <span className="flex items-center gap-1.5 text-g-600 font-medium truncate min-w-0">
+                        <i className={`ti ${CATEGORIAS_ICONOS[p.categoria] || 'ti-tag'} text-[10px] flex-shrink-0`}
+                          style={{ color: CATEGORIAS_COLORES[p.categoria] || '#2452FF' }}/>
+                        <span className="truncate">{p.categoria}</span>
+                      </span>
+                      <span className={`flex-shrink-0 ${excedido ? 'text-red-600 font-medium' : enAlerta ? 'text-amber-600 font-medium' : 'text-g-400'}`}>
+                        {fmtShort(gastado)}
+                      </span>
                     </div>
-                    <span className={`text-[11px] font-medium flex-shrink-0 ${excedido ? 'text-red-600' : enAlerta ? 'text-amber-600' : 'text-g-400'}`}>
-                      {fmtShort(gastado)} / {fmtShort(limite)}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-g-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${excedido ? 'bg-red-500' : enAlerta ? 'bg-amber-400' : 'bg-g-400'}`}
-                      style={{ width: `${Math.min(pct, 100)}%` }}/>
-                  </div>
+                    <div className="h-1.5 bg-g-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all group-active:opacity-70 ${excedido ? 'bg-red-500' : enAlerta ? 'bg-amber-400' : 'bg-g-700'}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}/>
+                    </div>
+                  </Link>
+                );
+              })}
+              {presupuestos.length > 3 && (
+                <Link to="/presupuestos" className="text-[10px] text-g-400 hover:text-g-600 block">
+                  +{presupuestos.length - 3} más
                 </Link>
-              );
-            })}
+              )}
+            </div>
           </div>
         </div>
       ) : (
