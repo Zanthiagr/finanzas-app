@@ -25,6 +25,12 @@ export const getCurrentWeek = () => {
   return Math.ceil(d.getDate() / 7);
 };
 
+// Día de la semana en que se recomienda hacer el cierre semanal.
+// 0=domingo, 1=lunes ... 6=sábado. Se usa en Dashboard para mostrar el
+// recordatorio de cierre. Cambiar este único valor ajusta el recordatorio
+// en toda la app — domingo por defecto (cierre de la semana que termina).
+export const DIA_CIERRE_SEMANAL = 0;
+
 export const calcSaludFinanciera = ({ ingresos, gastos, deudaTotal, balance }) => {
   if (!ingresos) return 0;
   const ahorroPct = Math.min((balance / ingresos) * 100, 40);
