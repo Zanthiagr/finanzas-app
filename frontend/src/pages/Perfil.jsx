@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
+import { eliminarCuentaCompleta } from '../utils/api';
 import toast from 'react-hot-toast';
 
 export default function Perfil() {
   const { user, perfil, logout } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     nombre: '',
     email: '',
@@ -12,6 +15,9 @@ export default function Perfil() {
     notif_diario: false,
   });
   const [saving, setSaving] = useState(false);
+  const [modalEliminar, setModalEliminar] = useState(false);
+  const [confirmTexto, setConfirmTexto] = useState('');
+  const [eliminando, setEliminando] = useState(false);
   const nombre = (perfil?.nombre || user?.user_metadata?.full_name || '').split(' ')[0];
 
   useEffect(() => {
@@ -45,6 +51,24 @@ export default function Perfil() {
   };
 
   const initials = form.nombre.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'U';
+
+  const eliminarCuenta = async () => {
+    if (confirmTexto !== 'ELIMINAR') return;
+    setEliminando(true);
+    try {
+      const { cuentaAuthEliminada } = await eliminarCuentaCompleta();
+      toast.success(
+        cuentaAuthEliminada
+          ? 'Tu cuenta y todos tus datos fueron eliminados'
+          : 'Tus datos fueron eliminados. Sesión cerrada.',
+        { duration: 4000 }
+      );
+      navigate('/login', { replace: true });
+    } catch (err) {
+      toast.error(err?.message || 'Error eliminando la cuenta. Intenta de nuevo.');
+      setEliminando(false);
+    }
+  };
 
   return (
     <div className="space-y-5 page-enter max-w-lg mx-auto">
@@ -126,6 +150,56 @@ export default function Perfil() {
           Cerrar sesión
         </button>
       </div>
+
+      {/* Zona de peligro */}
+      <div className="card p-5 border-red-200">
+        <p className="text-sm font-medium text-red-700 mb-1">Zona de peligro</p>
+        <p className="text-xs text-g-400 mb-3 leading-relaxed">
+          Elimina tu cuenta y todos tus datos: movimientos, deudas, activos, metas, hábitos, presupuestos y más.
+          Esta acción no se puede deshacer.
+        </p>
+        <button onClick={() => setModalEliminar(true)}
+          className="w-full flex items-center justify-center gap-2 text-sm text-red-600 border border-red-200 rounded-xl py-2.5 hover:bg-red-50 transition-colors">
+          <i className="ti ti-trash text-sm"/>
+          Eliminar mi cuenta
+        </button>
+      </div>
+
+      {modalEliminar && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-5">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+              <i className="ti ti-alert-triangle text-red-600 text-xl"/>
+            </div>
+            <h3 className="text-lg font-medium text-g-900 mb-2">¿Eliminar tu cuenta?</h3>
+            <p className="text-sm text-g-500 mb-4 leading-relaxed">
+              Se borrarán <strong>todos</strong> tus movimientos, deudas, activos, metas, hábitos,
+              presupuestos, cierres semanales y tu perfil. No hay vuelta atrás.
+            </p>
+            <label className="section-label block mb-1.5">
+              Escribe <span className="font-mono text-red-600">ELIMINAR</span> para confirmar
+            </label>
+            <input
+              className="input mb-4"
+              value={confirmTexto}
+              onChange={e => setConfirmTexto(e.target.value)}
+              placeholder="ELIMINAR"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button onClick={() => { setModalEliminar(false); setConfirmTexto(''); }}
+                className="btn-secondary flex-1" disabled={eliminando}>
+                Cancelar
+              </button>
+              <button onClick={eliminarCuenta}
+                disabled={confirmTexto !== 'ELIMINAR' || eliminando}
+                className="flex-1 bg-red-600 text-white text-sm font-medium rounded-xl disabled:opacity-40 hover:bg-red-700 transition-colors">
+                {eliminando ? 'Eliminando...' : 'Eliminar definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
