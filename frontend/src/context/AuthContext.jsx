@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser]     = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [esCuentaNueva, setEsCuentaNueva] = useState(false);
 
   const cargarPerfil = async (userId) => {
     const { data } = await supabase
@@ -25,6 +26,10 @@ export const AuthProvider = ({ children }) => {
       .single();
 
     if (!existe) {
+      // Señal confiable de "cuenta nueva" — a diferencia de un flag en
+      // localStorage (que es por navegador/dispositivo, no por cuenta),
+      // esto solo es true la primera vez que existe esta cuenta en la BD.
+      setEsCuentaNueva(true);
       await supabase.from('perfiles').insert({
         id: userId,
         nombre: nombre || 'Usuario',
@@ -117,21 +122,6 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const loginConEmail = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
-  };
-
-  const registrarConEmail = async (nombre, email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: nombre } },
-    });
-    if (error) throw error;
-    return data;
-  };
-
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -139,7 +129,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, perfil, loading, loginConGoogle, loginConEmail, registrarConEmail, logout }}>
+    <AuthContext.Provider value={{ user, perfil, loading, esCuentaNueva, loginConGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
