@@ -109,7 +109,7 @@ export default function CapitalInicialForm({ dark = false, onChange }) {
       {!loading && disponibles.length > 0 && (
         <div className="space-y-2">
           <select value={medio} onChange={e => setMedio(e.target.value)} className={inputCls}>
-            {disponibles.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            {disponibles.map(m => <option key={m.value} value={m.value} className="text-g-900 bg-white">{m.label}</option>)}
           </select>
           <input
             type="text" inputMode="decimal"
