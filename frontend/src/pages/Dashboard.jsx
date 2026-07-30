@@ -8,23 +8,7 @@ import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
-
-// Anillo de progreso circular — mismo lenguaje visual que el gauge de
-// "Salud financiera" (abajo), reutilizado para presupuestos: en Fintual
-// el círculo es cómo se representa "cuánto vas de un total".
-function Ring({ pct, size = 56, stroke = 6, color, trackColor = '#EEF0F5' }) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const dash = c * (1 - Math.min(pct, 100) / 100);
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={dash}
-        className="transition-all duration-700" />
-    </svg>
-  );
-}
+import Ring from '../components/Ring';
 
 const DIAS_CORTO = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
