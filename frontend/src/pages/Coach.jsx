@@ -3,6 +3,7 @@ import { getResumen, getMovimientos, getDeudas, getMetas } from '../utils/api';
 import { supabase } from '../utils/supabase';
 import { fmt, fmtShort } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
+import Ring from '../components/Ring';
 
 const LIMITE_MENSAJES = 15;
 const SUGERENCIAS = [
@@ -14,20 +15,7 @@ const SUGERENCIAS = [
   '¿Cómo empiezo a invertir con poco dinero?',
 ];
 
-// Anillo de progreso — mismo lenguaje visual que Dashboard/Nav. Aquí
-// muestra cuántos mensajes gratis quedan este mes.
-function Ring({ pct, size = 36, stroke = 3, color, trackColor = 'rgba(0,0,0,0.08)' }) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
-        className="transition-all duration-700"/>
-    </svg>
-  );
-}
+// Anillo de progreso — ver components/Ring.jsx
 
 function MsgBubble({ msg }) {
   const isUser = msg.role === 'user';
@@ -58,7 +46,7 @@ function LimiteBanner({ usados, limite, onUpgrade }) {
   return (
     <div className={`rounded-xl p-3 mb-3 flex-shrink-0 flex items-center gap-3 ${agotado ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
       <div className="relative w-9 h-9 flex-shrink-0">
-        <Ring pct={pct} size={36} stroke={3} color={colorRing}/>
+        <Ring pct={pct} size={36} stroke={3} color={colorRing} trackColor="rgba(0,0,0,0.08)"/>
         <div className="absolute inset-0 flex items-center justify-center">
           <span className={`text-[9px] font-semibold ${agotado ? 'text-red-700' : 'text-amber-700'}`}>{usados}/{limite}</span>
         </div>
