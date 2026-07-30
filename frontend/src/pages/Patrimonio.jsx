@@ -7,6 +7,7 @@ import { fmt, fmtDate, fmtShort } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
+import Ring from '../components/Ring';
 
 const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','CDT','Vehículo','Inmueble','Negocio','Préstamo otorgado','Otro'];
 const TIPOS_DEUDA  = ['Tarjeta de crédito','Crédito bancario','Préstamo personal','Hipoteca','Gota a gota','Otro'];
@@ -33,21 +34,7 @@ const TIPO_ACTIVO_VISUAL = {
   'Otro':               { icon:'ti-dots',           color:'#8A93A6' },
 };
 
-// Anillo de progreso — mismo lenguaje visual que Dashboard/Nav: el
-// círculo es cómo Fintual representa "cuánto vas de un objetivo". Aquí
-// es el ajuste más natural de todos: una meta ES un porcentaje.
-function Ring({ pct, size = 48, stroke = 5, color, trackColor = '#EEF0F5' }) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
-        className="transition-all duration-700"/>
-    </svg>
-  );
-}
+// Anillo de progreso — ver components/Ring.jsx
 
 // ─── ACTIVOS ────────────────────────────────────────────
 export function Activos() {
