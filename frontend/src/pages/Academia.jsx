@@ -1,20 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-
-// Anillo de progreso — mismo lenguaje visual que Dashboard/Nav/Patrimonio.
-// Aquí el % de lecciones completadas por módulo es otro encaje natural.
-function Ring({ pct, size = 32, stroke = 3, color = '#C9A84C', trackColor = '#EEF0F5' }) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 flex-shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
-        className="transition-all duration-700"/>
-    </svg>
-  );
-}
+import Ring from '../components/Ring';
 
 const MODULOS = [
   {
