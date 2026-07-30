@@ -248,15 +248,15 @@ export default function Movimientos() {
 
       <div className="grid grid-cols-3 gap-3">
         <div className="card p-3 md:p-4">
-          <p className="section-label">Ingresos</p>
+          <p className="section-label flex items-center gap-1"><i className="ti ti-arrow-down text-pos text-[11px]"/>Ingresos</p>
           <p className="text-base md:text-xl font-medium text-pos">{fmtShort(totalIngresos)}</p>
         </div>
         <div className="card p-3 md:p-4">
-          <p className="section-label">Gastos</p>
+          <p className="section-label flex items-center gap-1"><i className="ti ti-arrow-up text-red-500 text-[11px]"/>Gastos</p>
           <p className="text-base md:text-xl font-medium text-red-500">{fmtShort(totalGastos)}</p>
         </div>
         <div className="card p-3 md:p-4">
-          <p className="section-label">Balance</p>
+          <p className="section-label flex items-center gap-1"><i className={`ti ${totalIngresos-totalGastos>=0?'ti-trending-up text-pos':'ti-trending-down text-red-500'} text-[11px]`}/>Balance</p>
           <p className={`text-base md:text-xl font-medium ${totalIngresos-totalGastos>=0?'text-pos':'text-red-500'}`}>
             {fmtShort(totalIngresos-totalGastos)}
           </p>
