@@ -121,7 +121,11 @@ export default function Reporte() {
           <div className="flex flex-col sm:flex-row justify-between gap-4 sm:gap-0 sm:items-start">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-gold flex-shrink-0"/>
+                <svg viewBox="0 0 24 24" width="14" height="14" className="-rotate-90 flex-shrink-0">
+                  <circle cx="12" cy="12" r="8" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3"/>
+                  <circle cx="12" cy="12" r="8" fill="none" stroke="#C9A84C" strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 8} strokeDashoffset={2 * Math.PI * 8 * 0.28}/>
+                </svg>
                 <span className="text-white/50 text-[11px] tracking-widest uppercase">Fintual</span>
               </div>
               <h1 className="text-white text-2xl sm:text-3xl font-medium mb-1 leading-tight">Reporte mensual</h1>
