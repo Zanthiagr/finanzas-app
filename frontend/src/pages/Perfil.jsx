@@ -4,6 +4,7 @@ import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { eliminarCuentaCompleta } from '../utils/api';
 import toast from 'react-hot-toast';
+import Ring from '../components/Ring';
 
 export default function Perfil() {
   const { user, perfil, logout } = useAuth();
@@ -79,14 +80,17 @@ export default function Perfil() {
 
       {/* Avatar */}
       <div className="card p-6 flex flex-col items-center gap-3">
-        <div className="w-16 h-16 rounded-full bg-gold flex items-center justify-center text-g-900 text-xl font-semibold">
-          {initials}
+        <div className="relative w-16 h-16">
+          <Ring pct={(perfil?.puntos_xp || 0) % 100} size={64} stroke={4} className="-rotate-90 absolute inset-0"/>
+          <div className="absolute inset-[5px] rounded-full bg-gold flex items-center justify-center text-g-900 text-lg font-semibold">
+            {initials}
+          </div>
         </div>
         <div className="text-center">
           <p className="font-medium text-g-900">{form.nombre || 'Sin nombre'}</p>
           <p className="text-sm text-g-400">{user?.email}</p>
           <span className="text-xs px-2.5 py-1 rounded-full bg-gold/10 text-gold-dark border border-gold/20 mt-1 inline-block">
-            {perfil?.puntos_xp || 0} XP acumulados
+            Nivel {Math.floor((perfil?.puntos_xp || 0) / 100) + 1} · {perfil?.puntos_xp || 0} XP
           </span>
         </div>
       </div>
