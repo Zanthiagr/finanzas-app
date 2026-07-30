@@ -1,23 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-
-// Anillo de progreso — el mismo lenguaje visual que "Salud financiera" y
-// "Presupuestos" en el Dashboard. Aquí es lo que convierte el logo y el
-// avatar de navegación en parte de la misma identidad, no en elementos
-// sueltos: en Fintual, el círculo SIEMPRE significa "cuánto vas de algo".
-function Ring({ pct, size = 40, stroke = 3, color, trackColor = 'rgba(255,255,255,0.14)' }) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90 absolute inset-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(pct, 100) / 100)}
-        className="transition-all duration-700"/>
-    </svg>
-  );
-}
+import Ring from '../Ring';
 
 // Logomark — un ring dorado al 72% sobre gradiente navy (mismo gradiente
 // de card-premium). No es un ícono de billetera genérico de fintech: es
@@ -187,7 +171,7 @@ export default function Layout({ children }) {
         <div className="px-5 py-4 border-t border-white/10">
           <button onClick={() => navigate('/perfil')} className="flex items-center gap-2.5 w-full text-left hover:opacity-90 transition-opacity">
             <div className="relative w-9 h-9 flex-shrink-0">
-              <Ring pct={progresoNivel} size={36} stroke={2.5} color="#C9A84C"/>
+              <Ring pct={progresoNivel} size={36} stroke={2.5} color="#C9A84C" trackColor="rgba(255,255,255,0.14)" className="-rotate-90 absolute inset-0"/>
               <div className="absolute inset-[3px] rounded-full bg-gold flex items-center justify-center text-g-900 text-[10px] font-semibold">
                 {initials}
               </div>
@@ -229,7 +213,7 @@ export default function Layout({ children }) {
                 {new Date().toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}
               </span>
               <button onClick={() => navigate('/perfil')} className="relative w-8 h-8 flex-shrink-0 active:scale-90 transition-transform">
-                <Ring pct={progresoNivel} size={32} stroke={2.5} color="#C9A84C"/>
+                <Ring pct={progresoNivel} size={32} stroke={2.5} color="#C9A84C" trackColor="rgba(255,255,255,0.14)" className="-rotate-90 absolute inset-0"/>
                 <div className="absolute inset-[3px] rounded-full bg-gold flex items-center justify-center text-g-900 text-[10px] font-semibold">
                   {initials}
                 </div>
