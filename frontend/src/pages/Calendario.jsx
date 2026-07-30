@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, procesarPagosPendientes, marcarPagoUnicoComoPagado } from '../utils/api';
 import { supabase } from '../utils/supabase';
-import { fmt, fmtShort } from '../utils/helpers';
+import { fmt, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
@@ -230,11 +230,15 @@ export default function Calendario() {
           <div className="space-y-1.5">
             {pagos.filter(p=>p.activo).map(p=>(
               <div key={p.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Día {p.dia_mes}</span>
-                  <span className="text-xs text-amber-800">{p.nombre}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                    style={{ background: (CATEGORIAS_COLORES[p.categoria]||'#2452FF')+'22', color: CATEGORIAS_COLORES[p.categoria]||'#2452FF' }}>
+                    <i className={`ti ${CATEGORIAS_ICONOS[p.categoria]||'ti-tag'} text-[10px]`}/>
+                  </div>
+                  <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex-shrink-0">Día {p.dia_mes}</span>
+                  <span className="text-xs text-amber-800 truncate">{p.nombre}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs font-medium text-amber-700">{fmtShort(p.monto)}</span>
                   <button onClick={()=>eliminarPago(p.id)} className="text-amber-400 hover:text-red-500">
                     <i className="ti ti-x text-xs"/>
