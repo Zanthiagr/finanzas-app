@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import Ring from '../components/Ring';
 
 const fmt = v => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(v);
 const fmtPct = v => `${parseFloat(v).toFixed(2)}%`;
@@ -163,7 +164,8 @@ function CalcLibertad() {
     let meses = null;
     if (A>0&&faltante>0) { const rM=Math.pow(1+r,1/12)-1; meses=Math.log((faltante*rM/A)+1)/Math.log(1+rM); }
     else if (faltante===0) meses=0;
-    setRes({ objetivo, faltante, meses, G });
+    const pctLogrado = Math.min(Math.round((P/objetivo)*100),100);
+    setRes({ objetivo, faltante, meses, G, pctLogrado });
   };
 
   return (
@@ -192,10 +194,19 @@ function CalcLibertad() {
       <button onClick={calcular} className="btn-primary w-full py-3.5">Calcular</button>
       {res && (
         <div className="space-y-3">
-          <div className="card p-4 bg-g-800 text-white">
-            <p className="text-[10px] uppercase tracking-widest text-g-200 mb-1">Tu número de libertad financiera</p>
-            <p className="text-2xl font-medium">{fmt(res.objetivo)}</p>
-            <p className="text-xs text-g-300 mt-1">Necesitas {fmt(res.G*12)}/año de rendimientos</p>
+          <div className="relative overflow-hidden card p-4 bg-g-800 text-white flex items-center gap-4">
+            <div className="card-premium-glow -top-8 -right-6 w-28 h-28 bg-gold opacity-[0.12]"/>
+            <div className="relative flex-shrink-0">
+              <Ring pct={res.pctLogrado} size={60} stroke={5.5} trackColor="rgba(255,255,255,0.15)"/>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-semibold">{res.pctLogrado}%</span>
+              </div>
+            </div>
+            <div className="relative min-w-0">
+              <p className="text-[10px] uppercase tracking-widest text-g-200 mb-1">Tu número de libertad financiera</p>
+              <p className="text-xl font-medium">{fmt(res.objetivo)}</p>
+              <p className="text-xs text-g-300 mt-1">Necesitas {fmt(res.G*12)}/año de rendimientos</p>
+            </div>
           </div>
           {res.meses !== null && res.meses > 0 && (
             <div className="card p-4 bg-g-50">
