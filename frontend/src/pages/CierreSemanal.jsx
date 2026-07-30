@@ -202,8 +202,11 @@ export default function CierreSemanal() {
         )}
 
         {semanaYaCerrada && cierres.find(c=>c.semana_num===semanaActual && c.mes_num===mesActual)?.reflexion && (
-          <div className="bg-g-50 rounded-xl p-3 text-sm text-g-700 italic border border-g-200/60">
-            "{cierres.find(c=>c.semana_num===semanaActual && c.mes_num===mesActual)?.reflexion}"
+          <div className="relative overflow-hidden bg-g-50 rounded-xl p-4 border border-g-200/60">
+            <i className="ti ti-quote absolute -top-1 -right-1 text-4xl text-g-200/50"/>
+            <p className="relative text-sm text-g-700 font-serif italic leading-relaxed">
+              "{cierres.find(c=>c.semana_num===semanaActual && c.mes_num===mesActual)?.reflexion}"
+            </p>
           </div>
         )}
       </div>
