@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, marcarPagoUnicoComoPagado } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, labelMedioPago, getCurrentWeek, DIA_CIERRE_SEMANAL } from '../utils/helpers';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, labelMedioPago, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
@@ -28,7 +28,7 @@ export default function Dashboard() {
   const now    = new Date();
   const mes    = now.getMonth() + 1;
   const anio   = now.getFullYear();
-  const hoyStr = now.toISOString().split('T')[0];
+  const hoyStr = todayLocalStr(now);
 
   const cargarSaldo = () => getSaldoTotal().then(setSaldo).catch(console.error);
 
@@ -227,19 +227,23 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recordatorio de cierre semanal — aparece el día designado
-          (domingo por defecto, ver DIA_CIERRE_SEMANAL en helpers.js)
-          mientras la semana actual siga sin cerrar. La franja de días
-          responde visualmente "qué día de la semana toca cerrar": el
-          día de cierre queda marcado en dorado todo el tiempo. */}
-      {esDiaDeCierre && !semanaYaCerrada && (
+      {/* Recordatorio de cierre semanal — antes solo aparecía el día
+          designado (domingo por defecto) y desaparecía el lunes aunque la
+          semana siguiera sin cerrar, dejando al usuario sin forma de
+          acordarse. Ahora se queda visible TODOS los días mientras la
+          semana actual siga pendiente; el texto distingue si es el día
+          sugerido de cierre o si ya se pasó. La franja de días marca en
+          dorado cuál es el día designado. */}
+      {!semanaYaCerrada && (
         <Link to="/cierre" className="relative overflow-hidden rounded-2xl bg-g-800 p-4 flex items-center gap-4 active:scale-[0.99] transition-transform">
           <div className="card-premium-glow -top-10 -right-10 w-32 h-32 bg-gold opacity-[0.12]"/>
           <div className="relative w-10 h-10 rounded-xl bg-gold/15 flex items-center justify-center flex-shrink-0">
             <i className="ti ti-calendar-check text-gold text-lg"/>
           </div>
           <div className="relative flex-1 min-w-0">
-            <p className="text-sm font-medium text-white">Hoy toca cerrar la semana {semanaActual}</p>
+            <p className="text-sm font-medium text-white">
+              {esDiaDeCierre ? `Hoy toca cerrar la semana ${semanaActual}` : `Semana ${semanaActual} sin cerrar todavía`}
+            </p>
             <p className="text-[11px] text-white/40 mb-2.5">Reflexiona sobre tu dinero — toma menos de 1 minuto</p>
             <div className="flex gap-1.5">
               {DIAS_CORTO.map((d, i) => (
