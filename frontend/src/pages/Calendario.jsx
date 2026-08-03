@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, procesarPagosPendientes, marcarPagoUnicoComoPagado } from '../utils/api';
 import { supabase } from '../utils/supabase';
-import { fmt, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import { fmt, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
@@ -27,7 +27,7 @@ export default function Calendario() {
   const [pagos, setPagos]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modalPago, setModalPago] = useState(false);
-  const hoyStr = hoy.toISOString().split('T')[0];
+  const hoyStr = todayLocalStr(hoy);
   const [formPago, setFormPago] = useState({ tipo:'fijo', nombre:'', monto:'', categoria:'Servicios', dia_mes:1, fecha: hoyStr, medio_pago:'bancolombia' });
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [pagandoId, setPagandoId] = useState(null);
