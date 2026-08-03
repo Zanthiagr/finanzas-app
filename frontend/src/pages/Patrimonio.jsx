@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { getActivos, crearActivo, eliminarActivo, actualizarActivo,
+import { getActivos, crearActivo, eliminarActivo,
          getDeudas, crearDeuda, actualizarDeuda, eliminarDeuda,
          getMetas, crearMeta, actualizarMeta, eliminarMeta,
          registrarRendimientoActivo } from '../utils/api';
-import { fmt, fmtDate, fmtShort } from '../utils/helpers';
+import { fmt, fmtDate, fmtShort, todayLocalStr } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
@@ -42,7 +42,7 @@ export function Activos() {
   const [modal, setModal]         = useState(false);
   const [modalRend, setModalRend] = useState(null);
   const [rendMonto, setRendMonto] = useState('');
-  const [rendFecha, setRendFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [rendFecha, setRendFecha] = useState(todayLocalStr());
   const [form, setForm] = useState({
     nombre:'', tipo:'Inversión', valor_inicial:'', valor_actual:'',
     fecha_adquisicion:'', descripcion:'', tasa_rendimiento:'', tipo_rendimiento:'manual'
@@ -168,7 +168,7 @@ export function Activos() {
                 </div>
               )}
               {a.tipo_rendimiento==='variable' && <p className="text-xs text-g-400 mt-1">Ingresos variables — registra cada rendimiento</p>}
-              <button onClick={()=>{ setModalRend(a); setRendMonto(rend>0?Math.round(rend).toString():''); setRendFecha(new Date().toISOString().split('T')[0]); }}
+              <button onClick={()=>{ setModalRend(a); setRendMonto(rend>0?Math.round(rend).toString():''); setRendFecha(todayLocalStr()); }}
                 className="w-full btn-secondary text-xs py-2 mt-3 flex items-center justify-center gap-1">
                 <i className="ti ti-trending-up text-xs"/> Registrar rendimiento
               </button>
