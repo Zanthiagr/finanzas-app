@@ -9,14 +9,43 @@ export const fmtShort = (n) => {
   return fmt(n);
 };
 
+// ── Fechas: SIEMPRE en hora local, nunca en UTC ─────────────
+// Bug histórico: `new Date("2026-08-01")` se interpreta como medianoche
+// UTC. En Colombia (UTC-5) eso cae en "31 jul 19:00" hora local, así que
+// cualquier .getMonth()/.getDate()/.toLocaleDateString() sobre ese objeto
+// muestra un día antes. Y `new Date().toISOString().split('T')[0]` hace
+// lo opuesto: después de las 7pm hora Colombia ya es "mañana" en UTC.
+// Estas dos funciones son el único punto de conversión fecha↔string que
+// debe usarse en toda la app — nunca construir esas strings a mano.
+
+// String "YYYY-MM-DD" → Date en hora LOCAL (no UTC). Úsala en vez de
+// `new Date(dateString)` para cualquier fecha que venga de un <input
+// type="date"> o de la base de datos.
+export const parseLocalDate = (d) => {
+  if (!d) return null;
+  if (d instanceof Date) return d;
+  const [y, m, day] = String(d).split('T')[0].split('-').map(Number);
+  return new Date(y, m - 1, day);
+};
+
+// Date (o vacío = ahora mismo) → string "YYYY-MM-DD" en hora LOCAL.
+// Úsala en vez de `new Date().toISOString().split('T')[0]` para "la
+// fecha de hoy" — toISOString() siempre da la fecha en UTC.
+export const todayLocalStr = (d = new Date()) => {
+  const y   = d.getFullYear();
+  const m   = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export const fmtDate = (d) => {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+  return parseLocalDate(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 export const fmtDateShort = (d) => {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+  return parseLocalDate(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
 };
 
 // Semana DENTRO DEL MES actual (1 a 5) — coincide con el cálculo de api.js
