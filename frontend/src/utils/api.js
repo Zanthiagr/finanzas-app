@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { parseLocalDate, todayLocalStr } from './helpers';
 
 // Helper para obtener el usuario actual
 const getUserId = async () => {
@@ -27,7 +28,7 @@ export const getMovimientos = async ({ mes, anio, tipo } = {}) => {
 
 export const crearMovimiento = async (mov) => {
   const userId = await getUserId();
-  const fecha = mov.fecha ? new Date(mov.fecha) : new Date();
+  const fecha = mov.fecha ? parseLocalDate(mov.fecha) : new Date();
   const semana = getWeekNumber(fecha);
 
   // Construir payload limpio — guardamos banco dentro de medio_pago
@@ -43,7 +44,7 @@ export const crearMovimiento = async (mov) => {
     descripcion: mov.descripcion || null,
     medio_pago:  medioPago,
     usuario_id:  userId,
-    fecha:       fecha.toISOString().split('T')[0],
+    fecha:       todayLocalStr(fecha),
     semana_num:  semana,
     mes_num:     fecha.getMonth() + 1,
     anio_num:    fecha.getFullYear(),
@@ -59,13 +60,18 @@ export const actualizarMovimiento = async (id, mov) => {
     ? mov.banco
     : mov.medio_pago || 'efectivo';
 
+  const fecha = parseLocalDate(mov.fecha);
+
   const payload = {
     tipo:        mov.tipo,
     monto:       parseFloat(String(mov.monto).replace(',','.')),
     categoria:   mov.categoria,
     descripcion: mov.descripcion || null,
     medio_pago:  medioPago,
-    fecha:       mov.fecha,
+    fecha:       todayLocalStr(fecha),
+    semana_num:  getWeekNumber(fecha),
+    mes_num:     fecha.getMonth() + 1,
+    anio_num:    fecha.getFullYear(),
   };
 
   const { data, error } = await supabase
@@ -241,7 +247,7 @@ export const eliminarMeta = async (id) => {
 // ── HÁBITOS ──────────────────────────────────────────────
 export const getHabitos = async () => {
   const userId = await getUserId();
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = todayLocalStr();
 
   const { data: habitos, error } = await supabase.from('habitos').select('*')
     .eq('usuario_id', userId).eq('activo', true);
@@ -258,7 +264,7 @@ export const getHabitos = async () => {
 
 export const toggleHabito = async (habitoId, puntos) => {
   const userId = await getUserId();
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = todayLocalStr();
 
   const { data: existing } = await supabase.from('habitos_log').select('*')
     .eq('usuario_id', userId).eq('habito_id', habitoId).eq('fecha', hoy).single();
@@ -520,7 +526,7 @@ export const registrarRendimientoActivo = async ({ activo_id, rendimiento_monto,
   const { data: activo } = await supabase.from('activos').select('*').eq('id', activo_id).single();
   if (!activo) throw new Error('Activo no encontrado');
 
-  const fechaRegistro = fecha || new Date().toISOString().split('T')[0];
+  const fechaRegistro = fecha || todayLocalStr();
   const nuevoValor = parseFloat(activo.valor_actual) + parseFloat(rendimiento_monto);
   await supabase.from('activos').update({
     valor_actual: nuevoValor,
@@ -570,7 +576,7 @@ export const procesarPagosPendientes = async () => {
   const userId = await getUserId();
   const hoy = new Date();
   const diaHoy = hoy.getDate();
-  const fechaStr = hoy.toISOString().split('T')[0];
+  const fechaStr = todayLocalStr(hoy);
 
   // Solo los pagos FIJOS se auto-registran. Los ÚNICOS nunca se procesan
   // solos — se quedan como pendientes hasta que el usuario los confirma
@@ -615,7 +621,7 @@ export const procesarPagosPendientes = async () => {
 // de la lista de pendientes. A diferencia de los pagos fijos, esto NUNCA
 // pasa solo — requiere que el usuario lo confirme a propósito.
 export const marcarPagoUnicoComoPagado = async (pago, fechaPago) => {
-  const fecha = fechaPago || new Date().toISOString().split('T')[0];
+  const fecha = fechaPago || todayLocalStr();
   await crearMovimiento({
     tipo: 'gasto',
     monto: pago.monto,
