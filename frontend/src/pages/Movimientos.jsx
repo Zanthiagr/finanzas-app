@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal } from '../utils/api';
-import { fmt, fmtDate, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
+import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
 const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Otro'];
-const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: new Date().toISOString().split('T')[0], medio_pago: 'efectivo', banco: '' };
+const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: todayLocalStr(), medio_pago: 'efectivo', banco: '' };
 
 // Componente fila con swipe para eliminar
 function MovRow({ m, onEdit, onDelete }) {
@@ -188,7 +188,7 @@ export default function Movimientos() {
     // Si estamos viendo un mes distinto al actual, la fecha por defecto
     // cae en ese mes (día 1) en vez de "hoy" para no registrar en el mes equivocado
     const fechaDefault = esMesActual
-      ? hoy.toISOString().split('T')[0]
+      ? todayLocalStr(hoy)
       : `${anio}-${String(mes).padStart(2,'0')}-01`;
     setForm({ ...initForm, fecha: fechaDefault });
     setModal(true);
