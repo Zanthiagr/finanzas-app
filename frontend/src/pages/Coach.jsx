@@ -140,13 +140,6 @@ export default function Coach() {
     setMensajesUsados(count || 0);
   };
 
-  // Registrar mensaje usado
-  const registrarMensaje = async () => {
-    if (!user?.id) return;
-    await supabase.from('coach_mensajes').insert({ usuario_id: user.id });
-    setMensajesUsados(prev => prev + 1);
-  };
-
   // Cargar datos reales
   useEffect(() => {
     const cargar = async () => {
@@ -233,7 +226,12 @@ INSTRUCCIONES:
 - Máximo 3 párrafos por respuesta
 - Sé motivador pero honesto
 - Tu misión es ayudar a ${nombre} a lograr libertad financiera desde donde está hoy
-- Usa emojis con moderación`;
+- Usa emojis con moderación
+
+LÍMITES IMPORTANTES:
+- Eres un copiloto financiero personal, NO un contador público certificado. En Colombia, dictaminar estados financieros, firmar declaraciones de renta o representar a alguien ante la DIAN o un proceso legal solo lo puede hacer un contador con tarjeta profesional (Ley 43/1990)
+- Puedes explicar conceptos tributarios generales, ayudar a organizar y proyectar, pero si ${nombre} pregunta algo que requiere una declaración formal, una certificación, o representación legal/tributaria, dilo claramente y recomienda un contador público o asesor tributario certificado
+- Nunca inventes cifras de impuestos exactas ni cites artículos de ley específicos si no estás seguro — es mejor decir "esto lo debe confirmar un contador" que dar un dato tributario incorrecto`;
   };
 
   const enviar = async (texto) => {
@@ -251,23 +249,28 @@ INSTRUCCIONES:
     setMessages(newMessages);
     setLoading(true);
 
-    // Registrar uso
-    await registrarMensaje();
-
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
+      const { data, error } = await supabase.functions.invoke('coach-chat', {
+        body: {
           system: construirSistema(),
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-        }),
+        },
       });
-      const data = await response.json();
-      const respuesta = data.content?.[0]?.text || 'Hubo un error. Intenta de nuevo.';
-      setMessages(prev => [...prev, { role: 'assistant', content: respuesta }]);
+
+      if (error || data?.error) {
+        // Límite alcanzado según el servidor (fuente de verdad real)
+        if (data?.error === 'Límite de mensajes del mes alcanzado') {
+          setMensajesUsados(LIMITE_MENSAJES);
+          setShowUpgrade(true);
+          setMessages(prev => prev.slice(0, -1)); // no dejar el mensaje del usuario colgado
+          setInput(msg);
+          return;
+        }
+        throw new Error(data?.error || 'Error de red');
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', content: data.respuesta }]);
+      setMensajesUsados(prev => prev + 1); // el insert real ya ocurrió en el servidor
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
