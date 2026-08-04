@@ -53,7 +53,17 @@ export default function Reporte() {
   const tasaAhorro = resumen?.ingresos > 0 ? Math.round((resumen.balance / resumen.ingresos) * 100) : 0;
   const deudasActivas = deudas?.filter(d => d.activa) || [];
   const totalDeuda = deudasActivas.reduce((a, d) => a + (parseFloat(d.monto_total) - parseFloat(d.monto_pagado)), 0);
-  const cierresMes = cierres?.filter(c => c.mes_num === mes) || [];
+  // Los cierres guardan una foto de ingresos/gastos al momento de cerrar
+  // la semana (c.total_ingresos/total_gastos/balance) — si después editas
+  // un movimiento de esa semana, esa foto NO se actualiza sola. Por eso
+  // acá se recalcula en vivo desde resumen.porSemana (misma fuente que
+  // usa la pantalla de Cierre Semanal), así el reporte y el cierre nunca
+  // se desincronizan entre sí.
+  const cierresMes = (cierres?.filter(c => c.mes_num === mes) || []).map(c => {
+    const ing = parseFloat(resumen?.porSemana?.find(s => s.semana_num === c.semana_num && s.tipo === 'ingreso')?.total || 0);
+    const gas = parseFloat(resumen?.porSemana?.find(s => s.semana_num === c.semana_num && s.tipo === 'gasto')?.total || 0);
+    return { ...c, ingresos: ing, gastos: gas, balance: ing - gas };
+  });
 
   return (
     <>
