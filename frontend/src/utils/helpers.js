@@ -49,10 +49,20 @@ export const fmtDateShort = (d) => {
 };
 
 // Semana DENTRO DEL MES actual (1 a 5) — coincide con el cálculo de api.js
-export const getCurrentWeek = () => {
-  const d = new Date();
-  return Math.ceil(d.getDate() / 7);
+// Semana DENTRO DEL MES — SIEMPRE 4 por mes, sin importar cuántos días
+// tenga (28 a 31). Semanas 1-3 son de 7 días (1-7, 8-14, 15-21); la
+// semana 4 absorbe todo lo que quede (22 hasta el último día del mes:
+// entre 6 y 10 días según el mes). Antes se usaba Math.ceil(día/7), que
+// daba 5 "semanas" en casi todos los meses, con una 5ª de solo 1-3 días
+// — confuso porque nadie piensa el mes en 5 semanas.
+export const getSemanaDelMes = (dia) => {
+  if (dia <= 7)  return 1;
+  if (dia <= 14) return 2;
+  if (dia <= 21) return 3;
+  return 4;
 };
+
+export const getCurrentWeek = () => getSemanaDelMes(new Date().getDate());
 
 // Día de la semana en que se recomienda hacer el cierre semanal.
 // 0=domingo, 1=lunes ... 6=sábado. Se usa en Dashboard para mostrar el
