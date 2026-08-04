@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { parseLocalDate, todayLocalStr } from './helpers';
+import { parseLocalDate, todayLocalStr, getSemanaDelMes } from './helpers';
 
 // Helper para obtener el usuario actual
 const getUserId = async () => {
@@ -307,7 +307,7 @@ export const crearEntradaDiario = async ({ pregunta, respuesta }) => {
   const now = new Date();
   const { data, error } = await supabase.from('diario_financiero').insert({
     usuario_id: userId, pregunta, respuesta,
-    semana_num: Math.ceil(now.getDate() / 7),
+    semana_num: getSemanaDelMes(now.getDate()),
     anio_num: now.getFullYear(),
   }).select().single();
   if (error) throw error;
@@ -339,12 +339,9 @@ export const crearCierre = async ({ semana_num, mes_num, anio_num, reflexion, in
 };
 
 // ── HELPER ──────────────────────────────────────────────
-// Semana DENTRO DEL MES (1 a 5), no semana del año.
+// Semana DENTRO DEL MES (1 a 4, ver getSemanaDelMes en helpers.js).
 // Así "Semana 1" siempre significa los primeros días del mes actual.
-const getWeekNumber = (date) => {
-  const d = new Date(date);
-  return Math.ceil(d.getDate() / 7);
-};
+const getWeekNumber = (date) => getSemanaDelMes(date.getDate());
 
 // ── PRESUPUESTOS ──────────────────────────────────────────
 export const getPresupuestos = async () => {
