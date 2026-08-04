@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getResumen, getCierres, crearCierre } from '../utils/api';
-import { fmtShort, getCurrentWeek } from '../utils/helpers';
+import { fmtShort, getCurrentWeek, getSemanaDelMes } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 const PREGUNTAS = [
@@ -33,9 +33,13 @@ export default function CierreSemanal() {
 
   const esMesActual  = mesSel === mesHoy && anioSel === anioHoy;
   const esMesFuturo  = anioSel > anioHoy || (anioSel === anioHoy && mesSel > mesHoy);
-  // Cuántas semanas tiene el mes que se está viendo (4 ó 5)
+  // Siempre 4 semanas por mes (ver getSemanaDelMes en helpers.js). La
+  // última va del día 22 al final del mes, así que tiene entre 6 y 10
+  // días según el mes — no son bloques parejos de 7, pero así el mes
+  // nunca se parte en una 5ª semana suelta de 1-3 días.
+  const totalSemanas = 4;
   const ultimoDiaMes = new Date(anioSel, mesSel, 0).getDate();
-  const totalSemanas = Math.ceil(ultimoDiaMes / 7);
+  const rangoSemana = (n) => n < 4 ? `${n*7-6}–${n*7}` : `22–${ultimoDiaMes}`;
 
   const load = async () => {
     setLoading(true);
@@ -151,6 +155,7 @@ export default function CierreSemanal() {
             disabled={s.esFutura}
             className={`card p-3 min-w-0 text-left ${s.esFutura ? 'cursor-default opacity-60' : 'cursor-pointer'} ${s.cerrada ? 'border-g-300' : s.esSeleccionada ? 'border-gold' : ''}`}>
             <p className="section-label truncate">Semana {s.numSemana}</p>
+            <p className="text-[10px] text-g-300 -mt-0.5">Días {rangoSemana(s.numSemana)}</p>
 
             {!s.tieneMovimientos && !s.cerrada ? (
               <p className="text-sm text-g-300 mt-2">
