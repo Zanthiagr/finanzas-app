@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, procesarPagosPendientes, marcarPagoUnicoComoPagado } from '../utils/api';
 import { supabase } from '../utils/supabase';
-import { fmt, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import { fmt, fmtShort, todayLocalStr, getSemanaDelMes, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
@@ -83,7 +83,7 @@ export default function Calendario() {
     const fechaStr = `${año}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
     const movsDia  = movimientos.filter(m => m.fecha === fechaStr);
     const habsDia  = habLogs.filter(h => h.fecha === fechaStr);
-    const semana   = Math.ceil(dia / 7);
+    const semana   = getSemanaDelMes(dia);
     const cierre   = cierres.find(c => c.semana_num === semana);
     const pagosDia = pagos.filter(p => p.activo && (p.tipo === 'unico' ? p.fecha === fechaStr : p.dia_mes === dia));
     const ingresos = movsDia.filter(m => m.tipo==='ingreso').reduce((a,m)=>a+parseFloat(m.monto),0);
