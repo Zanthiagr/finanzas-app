@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Layout from './components/layout/Layout';
+import Layout, { COACH_HABILITADO } from './components/layout/Layout';
 import Onboarding from './components/Onboarding';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
@@ -97,7 +97,7 @@ function AppRoutes() {
                   <Route path="/metas"        element={<Metas/>}/>
                   <Route path="/mental"       element={<Mental/>}/>
                   <Route path="/academia"     element={<Academia/>}/>
-                  <Route path="/coach"        element={<Coach/>}/>
+                  <Route path="/coach"        element={COACH_HABILITADO ? <Coach/> : <Navigate to="/" replace/>}/>
                   <Route path="/reporte"      element={<Reporte/>}/>
                   <Route path="/perfil"       element={<Perfil/>}/>
                   <Route path="/calendario"   element={<Calendario/>}/>
