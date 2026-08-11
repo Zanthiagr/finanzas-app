@@ -119,11 +119,22 @@ export const getResumen = async ({ mes, anio } = {}) => {
     semMap[key].total += parseFloat(m.monto);
   });
 
+  // Por categoría DENTRO de cada semana — mismo query, sin costo extra.
+  // Se usa para el "espejo de la semana" en CierreSemanal.jsx (categoría
+  // con más movimiento de esa semana puntual).
+  const catSemMap = {};
+  data.forEach(m => {
+    const key = `${m.semana_num}-${m.categoria}-${m.tipo}`;
+    if (!catSemMap[key]) catSemMap[key] = { semana_num: m.semana_num, categoria: m.categoria, tipo: m.tipo, total: 0 };
+    catSemMap[key].total += parseFloat(m.monto);
+  });
+
   return {
     ingresos, gastos,
     balance: ingresos - gastos,
     porCategoria: Object.values(catMap).sort((a, b) => b.total - a.total),
     porSemana: Object.values(semMap).sort((a, b) => a.semana_num - b.semana_num),
+    porCategoriaSemana: Object.values(catSemMap).sort((a, b) => b.total - a.total),
   };
 };
 
@@ -324,7 +335,7 @@ export const getCierres = async (anio) => {
   return data;
 };
 
-export const crearCierre = async ({ semana_num, mes_num, anio_num, reflexion, ingresos, gastos }) => {
+export const crearCierre = async ({ semana_num, mes_num, anio_num, reflexion, ingresos, gastos, estado_animo }) => {
   const userId = await getUserId();
   const balance = ingresos - gastos;
   const estado = balance >= 0 ? 'ok' : 'negativo';
@@ -332,8 +343,8 @@ export const crearCierre = async ({ semana_num, mes_num, anio_num, reflexion, in
   const { data, error } = await supabase.from('cierres_semanales').upsert({
     usuario_id: userId, semana_num, mes_num, anio_num,
     total_ingresos: ingresos, total_gastos: gastos,
-    balance, reflexion, estado,
-  }, { onConflict: 'usuario_id,semana_num,anio_num' }).select().single();
+    balance, reflexion, estado, estado_animo: estado_animo || null,
+  }, { onConflict: 'usuario_id,semana_num,mes_num,anio_num' }).select().single();
   if (error) throw error;
   return data;
 };
