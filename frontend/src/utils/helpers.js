@@ -9,6 +9,19 @@ export const fmtShort = (n) => {
   return fmt(n);
 };
 
+// ── Check-in emocional del cierre semanal (1 toque, sin fricción) ──
+// Se guarda como texto plano en cierres_semanales.estado_animo. El valor
+// es opcional a propósito: escribir la reflexión ya pide esfuerzo, obligar
+// también el mood baja la tasa de cierre. Usar en CierreSemanal.jsx y
+// Reporte.jsx para que el emoji/color se vea igual en toda la app.
+export const ESTADOS_ANIMO = [
+  { valor: 'tranquilo', emoji: '😌', label: 'Tranquilo', color: '#2B9C6F' },
+  { valor: 'orgulloso',  emoji: '💪', label: 'Orgulloso', color: '#C9A84C' },
+  { valor: 'neutral',    emoji: '😐', label: 'Neutral',   color: '#8A93A6' },
+  { valor: 'estresado',  emoji: '😣', label: 'Estresado', color: '#E0574C' },
+];
+export const getEstadoAnimo = (valor) => ESTADOS_ANIMO.find(e => e.valor === valor);
+
 // ── Fechas: SIEMPRE en hora local, nunca en UTC ─────────────
 // Bug histórico: `new Date("2026-08-01")` se interpreta como medianoche
 // UTC. En Colombia (UTC-5) eso cae en "31 jul 19:00" hora local, así que
@@ -48,7 +61,6 @@ export const fmtDateShort = (d) => {
   return parseLocalDate(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
 };
 
-// Semana DENTRO DEL MES actual (1 a 5) — coincide con el cálculo de api.js
 // Semana DENTRO DEL MES — SIEMPRE 4 por mes, sin importar cuántos días
 // tenga (28 a 31). Semanas 1-3 son de 7 días (1-7, 8-14, 15-21); la
 // semana 4 absorbe todo lo que quede (22 hasta el último día del mes:
