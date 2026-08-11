@@ -84,7 +84,7 @@ export default function Calendario() {
     const movsDia  = movimientos.filter(m => m.fecha === fechaStr);
     const habsDia  = habLogs.filter(h => h.fecha === fechaStr);
     const semana   = getSemanaDelMes(dia);
-    const cierre   = cierres.find(c => c.semana_num === semana);
+    const cierre   = cierres.find(c => c.semana_num === semana && c.mes_num === mes + 1);
     const pagosDia = pagos.filter(p => p.activo && (p.tipo === 'unico' ? p.fecha === fechaStr : p.dia_mes === dia));
     const ingresos = movsDia.filter(m => m.tipo==='ingreso').reduce((a,m)=>a+parseFloat(m.monto),0);
     const gastos   = movsDia.filter(m => m.tipo==='gasto').reduce((a,m)=>a+parseFloat(m.monto),0);
