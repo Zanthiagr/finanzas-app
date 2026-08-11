@@ -3,6 +3,11 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import Ring from '../Ring';
 
+// Apaga el Coach IA en toda la app (menú desktop, menú "Más" móvil y
+// título de la página) sin borrar nada del código. Cuando vuelvas a
+// cargar créditos en console.anthropic.com, solo cambia esto a `true`.
+export const COACH_HABILITADO = false;
+
 // Logomark — un ring dorado al 72% sobre gradiente navy (mismo gradiente
 // de card-premium). No es un ícono de billetera genérico de fintech: es
 // literalmente la promesa del producto ("ves tu progreso") convertida en
@@ -33,7 +38,7 @@ const NAV_DESKTOP = [
   { to: '/mental',       icon: 'ti-brain',            label: 'Mentalidad',     group: 'crecimiento' },
   { to: '/academia',     icon: 'ti-school',           label: 'Academia',       group: 'crecimiento' },
   { to: '/calculadora',  icon: 'ti-calculator',       label: 'Calculadoras',   group: 'crecimiento' },
-  { to: '/coach',        icon: 'ti-robot',            label: 'Coach IA',       group: 'crecimiento' },
+  ...(COACH_HABILITADO ? [{ to: '/coach', icon: 'ti-robot', label: 'Coach IA', group: 'crecimiento' }] : []),
 ];
 
 // Tabs principales móvil — los 4 más usados + "Más"
@@ -72,7 +77,7 @@ const NAV_MOBILE_MAS_GRUPOS = [
     items: [
       { to: '/academia',    icon: 'ti-school',     label: 'Academia',     color: '#BA7517', bg: '#FAEEDA' },
       { to: '/calculadora', icon: 'ti-calculator', label: 'Calculadoras', color: '#534AB7', bg: '#EEEDFE' },
-      { to: '/coach',       icon: 'ti-robot',      label: 'Coach IA',     color: '#185FA5', bg: '#E6F1FB' },
+      ...(COACH_HABILITADO ? [{ to: '/coach', icon: 'ti-robot', label: 'Coach IA', color: '#185FA5', bg: '#E6F1FB' }] : []),
     ],
   },
   {
