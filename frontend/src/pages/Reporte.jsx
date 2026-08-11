@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getResumen, getMovimientos, getDeudas, getMetas, getCierres } from '../utils/api';
-import { fmt, fmtShort, fmtDate, CATEGORIAS_COLORES } from '../utils/helpers';
+import { fmt, fmtShort, fmtDate, CATEGORIAS_COLORES, getEstadoAnimo } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -290,24 +290,58 @@ export default function Reporte() {
           </div>
         )}
 
-        {/* Cierres semanales */}
+        {/* Cierres semanales — tendencia + diario navegable */}
         {cierresMes?.length > 0 && (
           <div className="bg-white border border-g-200/40 rounded-xl p-4 sm:p-5 mb-4">
-            <h2 className="text-sm font-medium mb-4">Cierres semanales</h2>
-            <div className="flex flex-col gap-3">
-              {cierresMes.map((c, i) => (
-                <div key={i} className={`p-3 rounded-lg ${c.balance >= 0 ? 'bg-g-50' : 'bg-red-50'}`}>
-                  <div className="flex justify-between gap-2 mb-1">
-                    <p className="text-xs font-medium">Semana {c.semana_num}</p>
-                    <p className={`text-[13px] font-medium ${c.balance>=0?'text-pos':'text-red-600'}`}>
-                      {c.balance>=0?'+':''}{fmtShort(c.balance)}
-                    </p>
-                  </div>
-                  {c.reflexion && (
-                    <p className="text-xs text-g-600 italic break-words">"{c.reflexion}"</p>
-                  )}
+            <h2 className="text-sm font-medium mb-1">Cierres semanales</h2>
+            <p className="text-[11px] text-g-400 mb-4">Evolución del balance semana a semana</p>
+
+            {/* Mini-tendencia: barras simples (sin recharts, esta pantalla
+                se imprime a PDF y no vale la pena cargar la librería acá
+                solo por esto). Cada barra es proporcional al balance más
+                alto del mes en valor absoluto, para que se puedan comparar. */}
+            {(() => {
+              const maxAbs = Math.max(...cierresMes.map(c => Math.abs(c.balance)), 1);
+              const ALTURA_MAX_PX = 48; // deja espacio para la etiqueta "S1" debajo, dentro del h-16 (64px) del contenedor
+              return (
+                <div className="flex items-end gap-2 h-16 mb-5 px-1">
+                  {cierresMes
+                    .slice()
+                    .sort((a, b) => a.semana_num - b.semana_num)
+                    .map((c, i) => (
+                      <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-1">
+                        <div className="w-full rounded-t"
+                          style={{
+                            height: `${Math.max((Math.abs(c.balance) / maxAbs) * ALTURA_MAX_PX, 4)}px`,
+                            background: c.balance >= 0 ? '#2B9C6F' : '#E0574C',
+                          }}/>
+                        <span className="text-[9px] text-g-400">S{c.semana_num}</span>
+                      </div>
+                    ))}
                 </div>
-              ))}
+              );
+            })()}
+
+            <div className="flex flex-col gap-3">
+              {cierresMes.map((c, i) => {
+                const mood = getEstadoAnimo(c.estado_animo);
+                return (
+                  <div key={i} className={`p-3 rounded-lg ${c.balance >= 0 ? 'bg-g-50' : 'bg-red-50'}`}>
+                    <div className="flex justify-between gap-2 mb-1">
+                      <p className="text-xs font-medium flex items-center gap-1.5">
+                        Semana {c.semana_num}
+                        {mood && <span title={mood.label}>{mood.emoji}</span>}
+                      </p>
+                      <p className={`text-[13px] font-medium ${c.balance>=0?'text-pos':'text-red-600'}`}>
+                        {c.balance>=0?'+':''}{fmtShort(c.balance)}
+                      </p>
+                    </div>
+                    {c.reflexion && (
+                      <p className="text-xs text-g-600 italic break-words">"{c.reflexion}"</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
