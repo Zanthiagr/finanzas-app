@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getResumen, getCierres, crearCierre } from '../utils/api';
-import { fmtShort, getCurrentWeek, getSemanaDelMes } from '../utils/helpers';
+import { fmtShort, getCurrentWeek, ESTADOS_ANIMO, getEstadoAnimo } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 const PREGUNTAS = [
@@ -30,6 +30,9 @@ export default function CierreSemanal() {
   const [pregIdx, setPregIdx]     = useState(0);
   const [loading, setLoading]     = useState(true);
   const [cerrando, setCerrando]   = useState(false);
+  const [estadoAnimo, setEstadoAnimo] = useState(null);
+  const [resumenMesAnterior, setResumenMesAnterior] = useState(null);
+  const [finalData, setFinalData] = useState(null); // snapshot para la tarjeta-resumen tras cerrar
 
   const esMesActual  = mesSel === mesHoy && anioSel === anioHoy;
   const esMesFuturo  = anioSel > anioHoy || (anioSel === anioHoy && mesSel > mesHoy);
@@ -55,6 +58,16 @@ export default function CierreSemanal() {
   };
 
   useEffect(() => { load(); }, [mesSel, anioSel]);
+
+  // La semana 1 de un mes se compara contra la semana 4 del mes anterior
+  // (cruza de mes) — se pide aparte, solo cuando hace falta, para no
+  // gastar una consulta extra en el resto de los casos.
+  useEffect(() => {
+    if (semanaSel !== 1) { setResumenMesAnterior(null); return; }
+    let mAnt = mesSel - 1, aAnt = anioSel;
+    if (mAnt < 1) { mAnt = 12; aAnt -= 1; }
+    getResumen({ mes: mAnt, anio: aAnt }).then(setResumenMesAnterior).catch(() => setResumenMesAnterior(null));
+  }, [semanaSel, mesSel, anioSel]);
 
   // Cada vez que cambian mes/cierres, si no hay semana elegida (o la que
   // había quedó fuera de rango al cambiar de mes) se elige automáticamente
@@ -93,16 +106,41 @@ export default function CierreSemanal() {
 
       await crearCierre({
         semana_num: semanaSel, mes_num: mesSel, anio_num: anioSel,
-        reflexion, ingresos: ing, gastos: gas,
+        reflexion, ingresos: ing, gastos: gas, estado_animo: estadoAnimo,
       });
-      toast.success('¡Semana cerrada! 🎉');
+      setFinalData({
+        semana: semanaSel, balance: parseFloat(ing) - parseFloat(gas),
+        ingresos: parseFloat(ing), gastos: parseFloat(gas),
+        reflexion, estadoAnimo, categoriaTop,
+      });
       setReflexion('');
+      setEstadoAnimo(null);
       load();
     } catch { toast.error('Error al cerrar la semana'); }
     finally { setCerrando(false); }
   };
 
+  const cerrarTarjetaFinal = () => setFinalData(null);
+
   const semanaYaCerrada = cierres.some(c => c.semana_num === semanaSel && c.mes_num === mesSel);
+
+  // "Espejo de la semana": comparación de gastos vs. la semana inmediatamente
+  // anterior (dentro del mismo mes, o la semana 4 del mes pasado si estamos
+  // en la semana 1) + la categoría donde más se movió la plata. Todo sale
+  // de datos que ya se pidieron (resumen.porCategoriaSemana), sin queries nuevas,
+  // salvo el caso cruce-de-mes que se resuelve en el useEffect de arriba.
+  const gastoSemanaAnt = semanaSel > 1
+    ? parseFloat(resumen?.porSemana?.find(s => s.semana_num === semanaSel - 1 && s.tipo === 'gasto')?.total || 0)
+    : parseFloat(resumenMesAnterior?.porSemana?.find(s => s.semana_num === 4 && s.tipo === 'gasto')?.total || 0);
+  const hayComparacion = (semanaSel > 1) || !!resumenMesAnterior;
+  const gastoSemanaActual = parseFloat(resumen?.porSemana?.find(s => s.semana_num === semanaSel && s.tipo === 'gasto')?.total || 0);
+  const cambioPct = hayComparacion && gastoSemanaAnt > 0
+    ? Math.round(((gastoSemanaActual - gastoSemanaAnt) / gastoSemanaAnt) * 100)
+    : null;
+
+  const categoriaTop = resumen?.porCategoriaSemana
+    ?.filter(c => c.semana_num === semanaSel && c.tipo === 'gasto')
+    ?.sort((a, b) => b.total - a.total)[0] || null;
 
   // Construye los datos de cada semana del mes que se está viendo
   const semanasData = Array.from({ length: totalSemanas }, (_, idx) => {
@@ -224,6 +262,36 @@ export default function CierreSemanal() {
         )}
       </div>
 
+      {/* Espejo de la semana — comparación automática + categoría top.
+          Solo tiene sentido mostrarlo si la semana seleccionada ya tiene
+          movimientos y todavía no se cerró (si ya se cerró, el foco pasa
+          a la reflexión guardada). */}
+      {semanaSel && !semanaYaCerrada && (gastoSemanaActual > 0 || categoriaTop) && (
+        <div className="card p-4 bg-g-50/60 border-dashed">
+          <p className="text-xs text-g-500 flex items-center gap-1.5 mb-2">
+            <i className="ti ti-sparkles text-sm"/> Antes de cerrar, un vistazo rápido
+          </p>
+          <div className="space-y-1.5">
+            {cambioPct !== null && (
+              <p className="text-sm text-g-700">
+                Gastaste{' '}
+                <span className={`font-medium ${cambioPct > 0 ? 'text-red-500' : 'text-pos'}`}>
+                  {Math.abs(cambioPct)}% {cambioPct > 0 ? 'más' : 'menos'}
+                </span>{' '}
+                que la semana pasada.
+              </p>
+            )}
+            {categoriaTop && (
+              <p className="text-sm text-g-700">
+                Tu categoría con más movimiento fue{' '}
+                <span className="font-medium text-g-900">{categoriaTop.categoria}</span>{' '}
+                ({fmtShort(categoriaTop.total)}).
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Cerrar la semana seleccionada arriba */}
       {semanaSel && (
         <div className="card p-5">
@@ -239,6 +307,18 @@ export default function CierreSemanal() {
 
           {!semanaYaCerrada && (
             <>
+              <p className="text-xs text-g-500 mb-2">¿Cómo te sentiste con tu dinero esta semana? <span className="text-g-300">(opcional)</span></p>
+              <div className="flex gap-2 mb-4">
+                {ESTADOS_ANIMO.map(e => (
+                  <button key={e.valor} onClick={() => setEstadoAnimo(prev => prev === e.valor ? null : e.valor)}
+                    className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl border transition-all ${estadoAnimo === e.valor ? 'border-current' : 'border-g-200/60 bg-white'}`}
+                    style={estadoAnimo === e.valor ? { borderColor: e.color, background: `${e.color}14` } : {}}>
+                    <span className="text-lg leading-none">{e.emoji}</span>
+                    <span className="text-[10px] text-g-500">{e.label}</span>
+                  </button>
+                ))}
+              </div>
+
               <div className="flex gap-2 flex-wrap mb-3">
                 {PREGUNTAS.map((p,i) => (
                   <button key={i} onClick={() => setPregIdx(i)}
@@ -261,11 +341,52 @@ export default function CierreSemanal() {
           {semanaYaCerrada && cierres.find(c=>c.semana_num===semanaSel && c.mes_num===mesSel)?.reflexion && (
             <div className="relative overflow-hidden bg-g-50 rounded-xl p-4 border border-g-200/60">
               <i className="ti ti-quote absolute -top-1 -right-1 text-4xl text-g-200/50"/>
+              {getEstadoAnimo(cierres.find(c=>c.semana_num===semanaSel && c.mes_num===mesSel)?.estado_animo) && (
+                <p className="text-lg mb-1">{getEstadoAnimo(cierres.find(c=>c.semana_num===semanaSel && c.mes_num===mesSel)?.estado_animo).emoji}</p>
+              )}
               <p className="relative text-sm text-g-700 font-serif italic leading-relaxed">
                 "{cierres.find(c=>c.semana_num===semanaSel && c.mes_num===mesSel)?.reflexion}"
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tarjeta-resumen tras cerrar — el "recibo emocional" de la semana.
+          Reemplaza el toast genérico de antes: le devuelve al usuario algo
+          que vale la pena mirar, no solo una confirmación. */}
+      {finalData && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50" onClick={cerrarTarjetaFinal}>
+          <div className="relative w-full max-w-sm rounded-2xl bg-g-800 p-6 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="card-premium-glow -top-16 -right-16 w-56 h-56 bg-gold opacity-[0.15]"/>
+            <div className="relative">
+              <p className="text-white/40 text-[11px] uppercase tracking-wider mb-1">Semana {finalData.semana} cerrada</p>
+              <p className={`text-3xl font-medium mb-4 ${finalData.balance>=0?'text-emerald-300':'text-red-400'}`}>
+                {finalData.balance>=0?'+':''}{fmtShort(finalData.balance)}
+              </p>
+
+              {finalData.estadoAnimo && getEstadoAnimo(finalData.estadoAnimo) && (
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">{getEstadoAnimo(finalData.estadoAnimo).emoji}</span>
+                  <span className="text-white/60 text-sm">Te sentiste {getEstadoAnimo(finalData.estadoAnimo).label.toLowerCase()}</span>
+                </div>
+              )}
+
+              {finalData.categoriaTop && (
+                <p className="text-white/50 text-xs mb-3">
+                  Tu categoría con más movimiento: <span className="text-white/80">{finalData.categoriaTop.categoria}</span>
+                </p>
+              )}
+
+              <div className="bg-white/5 rounded-xl p-3 mb-5">
+                <p className="text-white/70 text-sm italic leading-relaxed">"{finalData.reflexion}"</p>
+              </div>
+
+              <button onClick={cerrarTarjetaFinal} className="w-full py-2.5 rounded-xl bg-gold text-g-900 text-sm font-medium">
+                Listo
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
