@@ -62,12 +62,16 @@
   }
   /* Los badges de estado usan semántica de color propia (verde/ámbar/rojo),
      independiente de la marca — "ok" nunca debe ser azul solo porque el
-     azul es el color de marca. */
-  .badge-ok   { @apply text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700; }
+     azul es el color de marca. Usan los tokens pos/neg definidos en
+     tailwind.config.js — ANTES usaban emerald-600/red-600 (verdes/rojos
+     por defecto de Tailwind), que NO son el mismo verde/rojo que pos/neg,
+     así que había dos "verdes de dinero positivo" ligeramente distintos
+     compitiendo en la misma pantalla sin que se notara a simple vista. */
+  .badge-ok   { @apply text-xs px-2.5 py-0.5 rounded-full bg-pos/10 text-pos; }
   .badge-warn { @apply text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700; }
-  .badge-bad  { @apply text-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700; }
-  .text-pos   { @apply text-emerald-600 font-medium; }
-  .text-neg   { @apply text-red-600 font-medium; }
+  .badge-bad  { @apply text-xs px-2.5 py-0.5 rounded-full bg-neg/10 text-neg; }
+  .text-pos   { color: theme('colors.pos'); font-weight: 500; }
+  .text-neg   { color: theme('colors.neg'); font-weight: 500; }
   .section-label { @apply text-[10px] uppercase tracking-widest text-g-400 font-medium; }
 
   /* Card "premium" — la tarjeta física de gradiente navy que sirve de hero
