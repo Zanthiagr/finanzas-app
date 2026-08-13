@@ -23,15 +23,15 @@ const TIPOS_REND   = [
 // por un chip visual, mismo patrón que las categorías de gasto en el
 // resto de la app (identidad reconocible de un vistazo).
 const TIPO_ACTIVO_VISUAL = {
-  'Efectivo':           { icon:'ti-cash',           color:'#16A34A' },
-  'Cuenta bancaria':    { icon:'ti-building-bank',  color:'#185FA5' },
-  'Inversión':          { icon:'ti-trending-up',    color:'#C9A84C' },
-  'CDT':                { icon:'ti-certificate',    color:'#0F6E56' },
-  'Vehículo':           { icon:'ti-car',            color:'#534AB7' },
-  'Inmueble':           { icon:'ti-home',           color:'#10224F' },
-  'Negocio':            { icon:'ti-briefcase',      color:'#BA7517' },
-  'Préstamo otorgado':  { icon:'ti-arrow-up-right', color:'#2452FF' },
-  'Otro':               { icon:'ti-dots',           color:'#8A93A6' },
+  'Efectivo':           { icon:'ti-cash',           color:'#16A34A' }, // = pos
+  'Cuenta bancaria':    { icon:'ti-building-bank',  color:'#4E7AA8' }, // = accent.azul
+  'Inversión':          { icon:'ti-trending-up',    color:'#C9A84C' }, // = gold
+  'CDT':                { icon:'ti-certificate',    color:'#5B6472' }, // = accent.pizarra
+  'Vehículo':           { icon:'ti-car',            color:'#7C7594' }, // = accent.violeta
+  'Inmueble':           { icon:'ti-home',           color:'#5B6472' }, // = accent.pizarra (mismo que Vivienda en categorías)
+  'Negocio':            { icon:'ti-briefcase',      color:'#A8792E' }, // = accent.bronce
+  'Préstamo otorgado':  { icon:'ti-arrow-up-right', color:'#B8663F' }, // = accent.terracota
+  'Otro':               { icon:'ti-dots',           color:'#8A93A6' }, // = g-400
 };
 
 // Anillo de progreso — ver components/Ring.jsx
@@ -334,7 +334,7 @@ export function Deudas() {
         {items.map(d=>{
           const pendiente = parseFloat(d.monto_total)-parseFloat(d.monto_pagado);
           const pct = Math.round((parseFloat(d.monto_pagado)/parseFloat(d.monto_total))*100);
-          const colorProgreso = pct >= 100 ? '#16A34A' : pct >= 66 ? '#0F6E56' : pct >= 33 ? '#C9A84C' : '#8A93A6';
+          const colorProgreso = pct >= 100 ? '#16A34A' : pct >= 66 ? '#4F8F76' : pct >= 33 ? '#C9A84C' : '#8A93A6';
           return (
             <div key={d.id} className={`card p-4 ${!d.activa?'opacity-60':''}`}>
               <div className="flex items-start justify-between mb-3">
@@ -449,7 +449,7 @@ export function Metas() {
         {items.length===0 && <div className="card col-span-2 p-12 text-center"><i className="ti ti-target text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Crea tu primera meta!</p></div>}
         {items.map(m=>{
           const pct = Math.min(Math.round((parseFloat(m.monto_actual)/parseFloat(m.monto_objetivo))*100),100);
-          const colorMeta = m.completada ? '#16A34A' : pct >= 66 ? '#0F6E56' : pct >= 33 ? '#C9A84C' : '#8A93A6';
+          const colorMeta = m.completada ? '#16A34A' : pct >= 66 ? '#4F8F76' : pct >= 33 ? '#C9A84C' : '#8A93A6';
           return (
             <div key={m.id} className={`card p-4 ${m.completada?'border-g-300':''}`}>
               <div className="flex items-start justify-between mb-3">
