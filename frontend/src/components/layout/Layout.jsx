@@ -55,35 +55,42 @@ const NAV_MOBILE_MAIN = [
 // sidebar de escritorio (Patrimonio / Seguimiento / Crecimiento), más un
 // grupo de Cuenta. Antes era una sola parrilla plana de 9 iconos sin
 // jerarquía; agrupar reduce la carga cognitiva de escanear el menú.
+// Mismos 8 acentos que las categorías (ver `accent` en tailwind.config.js)
+// — antes este menú tenía sus propios 10 colores inventados aparte, sin
+// relación con el resto de la app. El fondo claro de cada ícono se genera
+// agregando transparencia al mismo color (sufijo hex de alpha), así no
+// hay que mantener una segunda lista de "versión clara" de cada color.
+const conFondoClaro = (hex) => `${hex}1F`; // ~12% de opacidad
+
 const NAV_MOBILE_MAS_GRUPOS = [
   {
     label: 'Patrimonio',
     items: [
-      { to: '/activos',      icon: 'ti-building-bank', label: 'Activos',      color: '#185FA5', bg: '#E6F1FB' },
-      { to: '/deudas',       icon: 'ti-credit-card',   label: 'Deudas',       color: '#A32D2D', bg: '#FCEBEB' },
-      { to: '/metas',        icon: 'ti-target',        label: 'Metas',        color: '#0F6E56', bg: '#E1F5EE' },
-      { to: '/presupuestos', icon: 'ti-wallet',        label: 'Presupuestos', color: '#C9A84C', bg: '#F5E8C0' },
+      { to: '/activos',      icon: 'ti-building-bank', label: 'Activos',      color: '#4E7AA8', bg: conFondoClaro('#4E7AA8') },
+      { to: '/deudas',       icon: 'ti-credit-card',   label: 'Deudas',       color: '#E5484D', bg: conFondoClaro('#E5484D') },
+      { to: '/metas',        icon: 'ti-target',        label: 'Metas',        color: '#4F8F76', bg: conFondoClaro('#4F8F76') },
+      { to: '/presupuestos', icon: 'ti-wallet',        label: 'Presupuestos', color: '#C9A84C', bg: conFondoClaro('#C9A84C') },
     ],
   },
   {
     label: 'Seguimiento',
     items: [
-      { to: '/cierre',  icon: 'ti-calendar-stats', label: 'Cierre',      color: '#2452FF', bg: '#E8EDFF' },
-      { to: '/reporte', icon: 'ti-file-download',  label: 'Reporte PDF', color: '#0F6E56', bg: '#E1F5EE' },
+      { to: '/cierre',  icon: 'ti-calendar-stats', label: 'Cierre',      color: '#4E7AA8', bg: conFondoClaro('#4E7AA8') },
+      { to: '/reporte', icon: 'ti-file-download',  label: 'Reporte PDF', color: '#5B6472', bg: conFondoClaro('#5B6472') },
     ],
   },
   {
     label: 'Crecimiento',
     items: [
-      { to: '/academia',    icon: 'ti-school',     label: 'Academia',     color: '#BA7517', bg: '#FAEEDA' },
-      { to: '/calculadora', icon: 'ti-calculator', label: 'Calculadoras', color: '#534AB7', bg: '#EEEDFE' },
-      ...(COACH_HABILITADO ? [{ to: '/coach', icon: 'ti-robot', label: 'Coach IA', color: '#185FA5', bg: '#E6F1FB' }] : []),
+      { to: '/academia',    icon: 'ti-school',     label: 'Academia',     color: '#A8792E', bg: conFondoClaro('#A8792E') },
+      { to: '/calculadora', icon: 'ti-calculator', label: 'Calculadoras', color: '#7C7594', bg: conFondoClaro('#7C7594') },
+      ...(COACH_HABILITADO ? [{ to: '/coach', icon: 'ti-robot', label: 'Coach IA', color: '#4E7AA8', bg: conFondoClaro('#4E7AA8') }] : []),
     ],
   },
   {
     label: 'Cuenta',
     items: [
-      { to: '/perfil', icon: 'ti-user-circle', label: 'Mi perfil', color: '#151B2E', bg: '#EEF0F5' },
+      { to: '/perfil', icon: 'ti-user-circle', label: 'Mi perfil', color: '#5B6472', bg: conFondoClaro('#5B6472') },
     ],
   },
 ];
