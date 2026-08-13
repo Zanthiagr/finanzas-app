@@ -15,10 +15,10 @@ export const fmtShort = (n) => {
 // también el mood baja la tasa de cierre. Usar en CierreSemanal.jsx y
 // Reporte.jsx para que el emoji/color se vea igual en toda la app.
 export const ESTADOS_ANIMO = [
-  { valor: 'tranquilo', emoji: '😌', label: 'Tranquilo', color: '#2B9C6F' },
-  { valor: 'orgulloso',  emoji: '💪', label: 'Orgulloso', color: '#C9A84C' },
-  { valor: 'neutral',    emoji: '😐', label: 'Neutral',   color: '#8A93A6' },
-  { valor: 'estresado',  emoji: '😣', label: 'Estresado', color: '#E0574C' },
+  { valor: 'tranquilo', emoji: '😌', label: 'Tranquilo', color: '#16A34A' },  // = pos
+  { valor: 'orgulloso',  emoji: '💪', label: 'Orgulloso', color: '#C9A84C' }, // = gold
+  { valor: 'neutral',    emoji: '😐', label: 'Neutral',   color: '#8A93A6' }, // = g-400
+  { valor: 'estresado',  emoji: '😣', label: 'Estresado', color: '#E5484D' }, // = neg
 ];
 export const getEstadoAnimo = (valor) => ESTADOS_ANIMO.find(e => e.valor === valor);
 
@@ -105,11 +105,19 @@ export const CATEGORIAS_ICONOS = {
   'Deudas': 'ti-credit-card',
 };
 
+// Antes: 10 hues completamente saturados sin relación entre sí (rojo,
+// azul, morado, rosa, café, naranja, verde azulado, gris, rojo oscuro,
+// verde) — un "arcoíris" que no tenía nada que ver con la identidad
+// navy/dorado del resto de la app. Ahora: Ingresos/Deudas usan los MISMOS
+// tokens pos/neg que el resto de la app usa para "dinero entra/sale" (en
+// vez de un verde/rojo inventado aparte), y el resto usa la paleta de
+// acentos compartida (ver `accent` en tailwind.config.js) — apagada, de
+// la misma familia tonal que navy+dorado.
 export const CATEGORIAS_COLORES = {
-  'Salario': '#2D6B4A', 'Freelance': '#2D6B4A', 'Negocio': '#2D6B4A',
-  'Alimentación': '#E24B4A', 'Transporte': '#378ADD', 'Servicios': '#7F77DD',
-  'Salud': '#D4537E', 'Educación': '#BA7517', 'Entretenimiento': '#D85A30',
-  'Ropa': '#1D9E75', 'Vivienda': '#5F5E5A', 'Deudas': '#A32D2D',
+  'Salario': '#16A34A', 'Freelance': '#16A34A', 'Negocio': '#16A34A',
+  'Alimentación': '#B8663F', 'Transporte': '#4E7AA8', 'Servicios': '#7C7594',
+  'Salud': '#B15C7C', 'Educación': '#A8792E', 'Entretenimiento': '#BC7748',
+  'Ropa': '#4F8F76', 'Vivienda': '#5B6472', 'Deudas': '#E5484D',
 };
 
 // Bancos/billeteras digitales disponibles como medio de pago.
