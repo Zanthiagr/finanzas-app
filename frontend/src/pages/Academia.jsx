@@ -4,7 +4,7 @@ import Ring from '../components/Ring';
 
 const MODULOS = [
   {
-    id: 'tarjetas', icon: 'ti-credit-card', color: '#E24B4A', bg: '#FCEBEB',
+    id: 'tarjetas', icon: 'ti-credit-card', color: '#B8663F', bg: '#FBEDE7',
     titulo: 'Tarjetas de crédito', subtitulo: 'Úsalas a tu favor, no al revés',
     lecciones: [
       {
@@ -31,7 +31,7 @@ const MODULOS = [
     ],
   },
   {
-    id: 'deuda', icon: 'ti-scale', color: '#854F0B', bg: '#FAEEDA',
+    id: 'deuda', icon: 'ti-scale', color: '#A8792E', bg: '#F5EBD8',
     titulo: 'Deuda buena y mala', subtitulo: 'No toda deuda te destruye',
     lecciones: [
       {
@@ -61,7 +61,7 @@ const MODULOS = [
     ],
   },
   {
-    id: 'inversiones', icon: 'ti-chart-candle', color: '#185FA5', bg: '#E6F1FB',
+    id: 'inversiones', icon: 'ti-chart-candle', color: '#C9A84C', bg: '#F5E8C0',
     titulo: 'Inversiones', subtitulo: 'Dónde poner tu dinero en Colombia',
     lecciones: [
       {
@@ -91,7 +91,7 @@ const MODULOS = [
     ],
   },
   {
-    id: 'activos-pasivos', icon: 'ti-building-bank', color: '#0F6E56', bg: '#E1F5EE',
+    id: 'activos-pasivos', icon: 'ti-building-bank', color: '#4E7AA8', bg: '#E7EEF4',
     titulo: 'Activos y pasivos', subtitulo: 'La regla que cambia todo',
     lecciones: [
       {
