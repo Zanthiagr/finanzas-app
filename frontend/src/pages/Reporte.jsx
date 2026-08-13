@@ -313,7 +313,7 @@ export default function Reporte() {
                         <div className="w-full rounded-t"
                           style={{
                             height: `${Math.max((Math.abs(c.balance) / maxAbs) * ALTURA_MAX_PX, 4)}px`,
-                            background: c.balance >= 0 ? '#2B9C6F' : '#E0574C',
+                            background: c.balance >= 0 ? '#16A34A' : '#E5484D',
                           }}/>
                         <span className="text-[9px] text-g-400">S{c.semana_num}</span>
                       </div>
