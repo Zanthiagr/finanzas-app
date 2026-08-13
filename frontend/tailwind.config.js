@@ -26,11 +26,30 @@ export default {
         // botones o filtros de uso frecuente — por eso dejó de estar en la
         // escala "g". Si el azul aparece en todos lados, deja de ser especial.
         blue: { 600: '#2452FF', 500: '#3E6BFF', 400: '#6E93FF', 100: '#E8EDFF', 50: '#F3F6FF' },
-        // Acento cálido puntual (chip de tarjeta, badges "premium") — con cuentagotas
-        gold: { DEFAULT: '#C9A84C', light: '#F5E8C0', dark: '#9A7530' },
+        // Acentos compartidos — 8 colores con nombre, todos apagados/de
+        // la misma familia tonal que navy+dorado (nada de rainbow
+        // saturado). Se usan para categorías, el menú "Más", y cualquier
+        // otro lugar que necesite distinguir varios ítems por color.
+        // Ingresos y Deudas usan pos/neg (arriba), NO un acento — así el
+        // significado "dinero entra/sale" se mantiene igual en toda la
+        // app en vez de competir con un color decorativo.
+        accent: {
+          terracota: '#B8663F', // Alimentación
+          azul:      '#4E7AA8', // Transporte, Cierre Semanal, Coach
+          violeta:   '#7C7594', // Servicios, Calculadoras
+          rosa:      '#B15C7C', // Salud
+          bronce:    '#A8792E', // Educación — familia del dorado, pero
+                                 // deliberadamente distinto de `gold`
+                                 // (ese queda reservado para "premium")
+          coral:     '#BC7748', // Entretenimiento
+          salvia:    '#4F8F76', // Ropa, Metas
+          pizarra:   '#5B6472', // Vivienda, Reporte PDF, Perfil
+        },
         // Semántica de dinero, INDEPENDIENTE de la marca — nunca debe volverse azul
         pos: '#16A34A',
         neg: '#E5484D',
+        // Acento cálido puntual (chip de tarjeta, badges "premium") — con cuentagotas
+        gold: { DEFAULT: '#C9A84C', light: '#F5E8C0', dark: '#9A7530' },
       },
       fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
     },
