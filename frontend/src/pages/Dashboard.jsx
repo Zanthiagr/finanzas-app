@@ -459,7 +459,7 @@ export default function Dashboard() {
           {[
             { to: '/cierre',       icon: 'ti-calendar-stats', label: 'Cierre',       color: '#2452FF', bg: '#E8EDFF' },
             { to: '/presupuestos', icon: 'ti-wallet',         label: 'Presupuestos', color: '#9A7530', bg: '#F5E8C0' },
-            { to: '/deudas',       icon: 'ti-credit-card',    label: 'Deudas',       color: '#C0303A', bg: '#FCEBEB' },
+            { to: '/deudas',       icon: 'ti-credit-card',    label: 'Deudas',       color: '#E5484D', bg: '#FCEBEB' },
             { to: '/activos',      icon: 'ti-building-bank',  label: 'Activos',      color: '#16A34A', bg: '#E9F9EF' },
           ].map(a => (
             <Link key={a.to} to={a.to} className="card p-2.5 flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
