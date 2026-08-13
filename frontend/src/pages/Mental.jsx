@@ -11,9 +11,9 @@ const FRASES = [
 ];
 
 const AFIRMACIONES = [
-  { ico: 'ti-heart',       color: '#534AB7', txt: '"Merezco prosperar y vivir con abundancia"' },
+  { ico: 'ti-heart',       color: '#7C7594', txt: '"Merezco prosperar y vivir con abundancia"' },
   { ico: 'ti-trending-up', color: '#16A34A', txt: '"Cada decisión pequeña construye mi libertad"' },
-  { ico: 'ti-brain',       color: '#BA7517', txt: '"Mi mente crea riqueza con cada pensamiento que elijo"' },
+  { ico: 'ti-brain',       color: '#A8792E', txt: '"Mi mente crea riqueza con cada pensamiento que elijo"' },
 ];
 
 const PREGUNTAS = [
