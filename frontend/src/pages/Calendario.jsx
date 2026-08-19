@@ -61,20 +61,30 @@ export default function Calendario() {
         setHabLogs(logs || []);
       } catch { setHabLogs([]); }
 
-      // Procesar pagos automáticos si es el mes actual
-      if (mesNum === hoy.getMonth()+1 && año === hoy.getFullYear()) {
-        const procesados = await procesarPagosPendientes();
-        if (procesados > 0) {
-          toast.success(`${procesados} pago${procesados>1?'s':''} automático${procesados>1?'s':''} registrado${procesados>1?'s':''}`);
-          const movNuevos = await getMovimientos({ mes: mesNum, anio: año });
-          setMovimientos(movNuevos);
-        }
-      }
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   }, [mes, año]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Procesar pagos automáticos (fijos que caen hoy) — SOLO una vez al
+  // entrar al Calendario, independiente de cargar(). Antes vivía dentro
+  // de cargar(), que se vuelve a llamar cada vez que agregas, confirmas o
+  // borras un pago — si el pago recién agregado caía justo en el día de
+  // hoy, se reprocesaba en el acto y aparecía un SEGUNDO toast apilado
+  // encima del de la acción que el usuario acababa de hacer.
+  useEffect(() => {
+    (async () => {
+      try {
+        const procesados = await procesarPagosPendientes();
+        if (procesados > 0) {
+          toast.success(`${procesados} pago${procesados>1?'s':''} automático${procesados>1?'s':''} registrado${procesados>1?'s':''}`);
+          cargar(); // refresca para mostrar los movimientos que se acaban de crear solos
+        }
+      } catch (e) { console.error(e); }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const primerDia = new Date(año, mes, 1).getDay();
   const diasEnMes = new Date(año, mes + 1, 0).getDate();
