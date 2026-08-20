@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal } from '../utils/api';
+import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta } from '../utils/api';
 import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
 const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Otro'];
-const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: todayLocalStr(), medio_pago: 'efectivo', banco: '' };
+const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: todayLocalStr(), medio_pago: 'efectivo', banco: '', num_cuotas: '' };
 
 // Componente fila con swipe para eliminar
 function MovRow({ m, onEdit, onDelete }) {
@@ -70,7 +70,9 @@ function MovRow({ m, onEdit, onDelete }) {
 // Se renderiza como una página normal, sin position:fixed ni overflow
 // especiales. Esto evita por completo los bugs de scroll táctil de iOS
 // que afectan a los modales superpuestos.
-function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit }) {
+function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta }) {
+  const medioActual = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
+  const esConTarjeta = form.tipo === 'gasto' && mediosPagoTarjeta?.has(medioActual);
   return (
     <PantallaCompleta title={editing ? 'Editar movimiento' : 'Nuevo movimiento'} onClose={onCancel}>
       <form onSubmit={onSubmit} className="space-y-4">
@@ -121,6 +123,14 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit 
             </div>
           )}
         </div>
+        {esConTarjeta && (
+          <div className="card p-3 bg-g-50">
+            <label className="section-label block mb-1 flex items-center gap-1.5"><i className="ti ti-credit-card text-sm"/> ¿A cuántas cuotas? <span className="text-g-300">(opcional)</span></label>
+            <input type="number" min="1" max="60" className="input" placeholder="1 = de contado"
+              value={form.num_cuotas} onChange={set('num_cuotas')}/>
+            <p className="text-[11px] text-g-400 mt-1">El total se suma completo a la tarjeta ahora — esto es solo para acordarte en cuántas cuotas quedó.</p>
+          </div>
+        )}
         <div>
           <label className="section-label block mb-1">Fecha</label>
           <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
@@ -148,6 +158,9 @@ export default function Movimientos() {
   const [verMedios, setVerMedios] = useState(false);
   const [mes, setMes]   = useState(hoy.getMonth() + 1);
   const [anio, setAnio] = useState(hoy.getFullYear());
+  const [mediosPagoTarjeta, setMediosPagoTarjeta] = useState(new Set());
+
+  useEffect(() => { getMediosPagoTarjeta().then(setMediosPagoTarjeta).catch(()=>{}); }, []);
 
   const esMesActual = mes === hoy.getMonth() + 1 && anio === hoy.getFullYear();
 
@@ -193,7 +206,17 @@ export default function Movimientos() {
     setForm({ ...initForm, fecha: fechaDefault });
     setModal(true);
   };
-  const openEdit = m  => { setEditing(m.id); setForm({tipo:m.tipo,monto:m.monto,categoria:m.categoria,descripcion:m.descripcion||'',fecha:m.fecha,medio_pago:m.medio_pago||'efectivo',banco:m.banco||''}); setModal(true); };
+  const openEdit = m => {
+    setEditing(m.id);
+    const esEfectivo = (m.medio_pago || 'efectivo') === 'efectivo';
+    setForm({
+      tipo: m.tipo, monto: m.monto, categoria: m.categoria, descripcion: m.descripcion || '', fecha: m.fecha,
+      medio_pago: esEfectivo ? 'efectivo' : 'transferencia',
+      banco: esEfectivo ? '' : m.medio_pago,
+      num_cuotas: '',
+    });
+    setModal(true);
+  };
 
   const submit = async e => {
     e.preventDefault();
@@ -336,6 +359,7 @@ export default function Movimientos() {
           set={set}
           onCancel={() => setModal(false)}
           onSubmit={submit}
+          mediosPagoTarjeta={mediosPagoTarjeta}
         />
       )}
     </div>
