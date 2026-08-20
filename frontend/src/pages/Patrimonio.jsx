@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { getActivos, crearActivo, eliminarActivo,
          getDeudas, crearDeuda, actualizarDeuda, eliminarDeuda,
+         getDeudaMovimientos, crearDeudaMovimiento, actualizarDeudaMovimiento, eliminarDeudaMovimiento,
+         getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado,
          getMetas, crearMeta, actualizarMeta, eliminarMeta,
          registrarRendimientoActivo } from '../utils/api';
-import { fmt, fmtDate, fmtShort, todayLocalStr } from '../utils/helpers';
+import { fmt, fmtDate, fmtShort, todayLocalStr, BANCOS } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
@@ -280,42 +282,139 @@ export function Activos() {
 }
 
 
+// Tipo de movimiento del historial de una deuda → ícono/color/signo.
+// Reusa los mismos tokens que el resto de la app: abono = pos (reduce lo
+// que debes, igual que cualquier "dinero a favor"), interés/mora = cargos
+// que SUMAN a lo que debes.
+const MOV_DEUDA_VISUAL = {
+  abono:   { label: 'Abono',   icon: 'ti-cash-banknote',   color: '#16A34A', signo: '−' },
+  interes: { label: 'Interés', icon: 'ti-percentage',      color: '#A8792E', signo: '+' },
+  mora:    { label: 'Mora',    icon: 'ti-alert-triangle',  color: '#E5484D', signo: '+' },
+};
+
 export function Deudas() {
   const [items, setItems]       = useState([]);
   const [modal, setModal]       = useState(false);
-  const [modalAbono, setModalAbono] = useState(null); // deuda seleccionada para abonar
-  const [abonoMonto, setAbonoMonto] = useState('');
-  const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:''});
+  const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:''});
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
   const load = () => getDeudas().then(setItems).catch(()=>toast.error('Error cargando deudas'));
   useEffect(()=>{load();},[]);
 
+  // ── Detalle de una deuda: historial, pago programado, etc. ──
+  const [detalle, setDetalle]           = useState(null);   // deuda seleccionada, o null
+  const [movimientos, setMovimientos]   = useState([]);
+  const [pagoProgramado, setPagoProgramado] = useState(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [modalMov, setModalMov]         = useState(null);   // {id?, tipo, monto, fecha, nota}
+  const [formEditar, setFormEditar]     = useState(null);   // editar datos de la deuda
+  const [modalProgramar, setModalProgramar] = useState(false);
+  const [formProgramar, setFormProgramar] = useState({ monto:'', dia_mes:1, medio_pago:'bancolombia' });
+
   const submit = async e => {
     e.preventDefault();
     try {
-      await crearDeuda({
-        ...form,
-        monto_total:  parseFloat(String(form.monto_total).replace(',','.')),
-        tasa_interes: form.tasa_interes ? parseFloat(String(form.tasa_interes).replace(',','.')) : null,
-      });
+      await crearDeuda(form);
       toast.success('Deuda registrada'); setModal(false);
-      setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:''});
+      setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:''});
       load();
     } catch { toast.error('Error guardando'); }
   };
 
-  const confirmarAbono = async () => {
-    const abono = parseFloat(String(abonoMonto).replace(',','.'));
-    if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
-    const nuevo = Math.min(parseFloat(modalAbono.monto_pagado) + abono, parseFloat(modalAbono.monto_total));
-    await actualizarDeuda(modalAbono.id, {...modalAbono, monto_pagado: nuevo, activa: nuevo < modalAbono.monto_total});
-    toast.success('Abono registrado');
-    setModalAbono(null); setAbonoMonto('');
+  const del = id => confirmToast('¿Eliminar esta deuda? También se borra todo su historial.', async () => {
+    await eliminarDeuda(id); toast.success('Eliminada');
+    if (detalle?.id === id) setDetalle(null);
     load();
+  });
+
+  const totalDeuda = items.filter(d=>d.activa).reduce((a,d)=>a+(parseFloat(d.monto_total)-parseFloat(d.monto_pagado)),0);
+
+  const abrirDetalle = async (d) => {
+    setDetalle(d); setLoadingDetalle(true);
+    try {
+      const [movs, pagos] = await Promise.all([getDeudaMovimientos(d.id), getPagosProgramados()]);
+      setMovimientos(movs);
+      setPagoProgramado(pagos.find(p => p.deuda_id === d.id && p.activo) || null);
+    } catch { toast.error('Error cargando el detalle'); }
+    finally { setLoadingDetalle(false); }
   };
 
-  const del = id => confirmToast('¿Eliminar esta deuda?', async () => { await eliminarDeuda(id); toast.success('Eliminada'); load(); });
-  const totalDeuda = items.filter(d=>d.activa).reduce((a,d)=>a+(parseFloat(d.monto_total)-parseFloat(d.monto_pagado)),0);
+  const refrescarDetalle = async (deudaId) => {
+    const actualizada = await getDeudas();
+    setItems(actualizada);
+    const d = actualizada.find(x => x.id === deudaId);
+    setDetalle(d || null);
+    if (d) setMovimientos(await getDeudaMovimientos(d.id));
+  };
+
+  const abrirNuevoMov = (tipo) => setModalMov({
+    tipo, monto: tipo === 'interes' && detalle.interes_mensual_monto ? String(detalle.interes_mensual_monto) : '',
+    fecha: todayLocalStr(), nota: '',
+  });
+  const abrirEditarMov = (m) => setModalMov({ id: m.id, tipo: m.tipo, monto: String(m.monto), fecha: m.fecha, nota: m.nota || '' });
+
+  const guardarMov = async () => {
+    const monto = parseFloat(String(modalMov.monto).replace(',','.'));
+    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    try {
+      if (modalMov.id) {
+        await actualizarDeudaMovimiento(modalMov.id, { tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota });
+        toast.success('Movimiento actualizado');
+      } else {
+        await crearDeudaMovimiento({ deuda_id: detalle.id, tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota });
+        toast.success(modalMov.tipo === 'abono' ? 'Abono registrado' : 'Movimiento registrado');
+      }
+      const id = detalle.id;
+      setModalMov(null);
+      refrescarDetalle(id);
+    } catch { toast.error('Error guardando el movimiento'); }
+  };
+
+  const borrarMov = (m) => confirmToast('¿Eliminar este movimiento del historial?', async () => {
+    const id = detalle.id;
+    await eliminarDeudaMovimiento(m.id);
+    toast.success('Eliminado');
+    refrescarDetalle(id);
+  });
+
+  const abrirEditarDeuda = () => setFormEditar({
+    nombre: detalle.nombre, tipo: detalle.tipo,
+    tasa_interes: detalle.tasa_interes ?? '', fecha_limite: detalle.fecha_limite ?? '',
+    interes_mensual_monto: detalle.interes_mensual_monto ?? '',
+  });
+
+  const guardarEditarDeuda = async e => {
+    e.preventDefault();
+    try {
+      await actualizarDeuda(detalle.id, formEditar);
+      toast.success('Deuda actualizada');
+      const id = detalle.id;
+      setFormEditar(null);
+      refrescarDetalle(id);
+    } catch { toast.error('Error actualizando'); }
+  };
+
+  const guardarProgramarPago = async e => {
+    e.preventDefault();
+    const monto = parseFloat(String(formProgramar.monto).replace(',','.'));
+    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    try {
+      await crearPagoProgramado({
+        nombre: `Cuota: ${detalle.nombre}`, monto, categoria: 'Deudas',
+        dia_mes: formProgramar.dia_mes, medio_pago: formProgramar.medio_pago,
+        activo: true, deuda_id: detalle.id,
+      });
+      toast.success('Pago programado — se abonará solo cada mes 🎉');
+      setModalProgramar(false);
+      const pagos = await getPagosProgramados();
+      setPagoProgramado(pagos.find(p => p.deuda_id === detalle.id && p.activo) || null);
+    } catch { toast.error('Error programando el pago'); }
+  };
+
+  const cancelarProgramacion = () => confirmToast('¿Cancelar el pago automático de esta deuda?', async () => {
+    await eliminarPagoProgramado(pagoProgramado.id);
+    setPagoProgramado(null);
+    toast.success('Pago automático cancelado');
+  });
 
   return (
     <div className="space-y-4 page-enter">
@@ -336,18 +435,20 @@ export function Deudas() {
           const pct = Math.round((parseFloat(d.monto_pagado)/parseFloat(d.monto_total))*100);
           const colorProgreso = pct >= 100 ? '#16A34A' : pct >= 66 ? '#4F8F76' : pct >= 33 ? '#C9A84C' : '#8A93A6';
           return (
-            <div key={d.id} className={`card p-4 ${!d.activa?'opacity-60':''}`}>
+            <button key={d.id} onClick={()=>abrirDetalle(d)}
+              className={`card p-4 w-full text-left active:scale-[0.99] transition-transform ${!d.activa?'opacity-60':''}`}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-g-900">{d.nombre}</p>
                     {!d.activa && <span className="badge-ok text-[10px]">Pagada ✓</span>}
                   </div>
-                  <p className="text-[11px] text-g-400">{d.tipo}{d.tasa_interes>0?` · ${d.tasa_interes}% EA`:''}</p>
+                  <p className="text-[11px] text-g-400">
+                    {d.tipo}{d.tasa_interes>0?` · ${d.tasa_interes}% EA`:''}{d.interes_mensual_monto>0?` · +${fmtShort(d.interes_mensual_monto)}/mes`:''}
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  {d.activa && <button onClick={()=>{ setModalAbono(d); setAbonoMonto(''); }} className="text-xs btn-secondary py-1.5 px-3">Abonar</button>}
-                  <button onClick={()=>del(d.id)} className="text-g-300 hover:text-red-500 p-1.5"><i className="ti ti-trash text-sm"/></button>
+                <div className="flex items-center gap-1 text-g-300">
+                  <i className="ti ti-chevron-right text-sm"/>
                 </div>
               </div>
               <div className="flex justify-between text-xs text-g-500 mb-2">
@@ -358,30 +459,12 @@ export function Deudas() {
                 <div className="h-full rounded-full transition-all" style={{width:`${pct}%`, background: colorProgreso}}/>
               </div>
               <p className="text-[10px] mt-1 font-medium" style={{ color: colorProgreso }}>{pct}% pagado</p>
-            </div>
+            </button>
           );
         })}
       </div>
-      {modalAbono && (
-        <PantallaCompleta title={`Abonar a: ${modalAbono.nombre}`} onClose={()=>{setModalAbono(null);setAbonoMonto('');}}>
-          <div className="space-y-4">
-            <div className="card p-4 bg-g-50">
-              <p className="section-label mb-1">Pendiente</p>
-              <p className="text-2xl font-medium text-red-600">
-                {fmt(parseFloat(modalAbono.monto_total)-parseFloat(modalAbono.monto_pagado))}
-              </p>
-              <p className="text-xs text-g-400 mt-1">Total: {fmt(modalAbono.monto_total)}</p>
-            </div>
-            <div>
-              <label className="section-label block mb-1">Monto del abono (COP)</label>
-              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
-                value={abonoMonto} onChange={e=>setAbonoMonto(e.target.value.replace(',','.'))}/>
-            </div>
-            <button onClick={confirmarAbono} className="btn-primary w-full py-4">Registrar abono</button>
-            <button onClick={()=>{setModalAbono(null);setAbonoMonto('');}} className="btn-secondary w-full py-3.5">Cancelar</button>
-          </div>
-        </PantallaCompleta>
-      )}
+
+      {/* Nueva deuda */}
       {modal && (
       <PantallaCompleta title="Nueva deuda" onClose={()=>setModal(false)}>
         <form onSubmit={submit} className="space-y-3">
@@ -391,6 +474,10 @@ export function Deudas() {
             <div><label className="section-label block mb-1">Monto total</label><input type="text" inputMode="numeric" className="input" placeholder="0" value={form.monto_total} onChange={set('monto_total')} required/></div>
             <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="text" inputMode="decimal" className="input" placeholder="0" value={form.tasa_interes} onChange={set('tasa_interes')}/></div>
           </div>
+          <div>
+            <label className="section-label block mb-1">Interés mensual fijo (opcional)</label>
+            <input type="text" inputMode="numeric" className="input" placeholder="Ej: 45.000 — si te cobran un interés fijo aparte cada mes" value={form.interes_mensual_monto} onChange={set('interes_mensual_monto')}/>
+          </div>
           <input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/>
           <div className="flex gap-2 pt-2 pb-4">
             <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
@@ -398,6 +485,184 @@ export function Deudas() {
           </div>
         </form>
       </PantallaCompleta>
+      )}
+
+      {/* Detalle de una deuda: resumen + historial completo + acciones */}
+      {detalle && (
+        <PantallaCompleta title={detalle.nombre} onClose={()=>setDetalle(null)}>
+          {loadingDetalle ? (
+            <div className="flex justify-center py-12"><i className="ti ti-loader animate-spin text-2xl text-g-300"/></div>
+          ) : (
+          <div className="space-y-4 pb-4">
+            {/* Resumen */}
+            <div className="card p-4 bg-g-50">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <p className="section-label">Capital original</p>
+                  <p className="text-base font-medium text-g-900">{fmt(detalle.capital_original ?? detalle.monto_total)}</p>
+                </div>
+                <div>
+                  <p className="section-label">Total actual</p>
+                  <p className="text-base font-medium text-g-900">{fmt(detalle.monto_total)}</p>
+                </div>
+                <div>
+                  <p className="section-label">Pagado</p>
+                  <p className="text-base font-medium text-pos">{fmt(detalle.monto_pagado)}</p>
+                </div>
+                <div>
+                  <p className="section-label">Pendiente</p>
+                  <p className="text-base font-medium text-red-600">{fmt(parseFloat(detalle.monto_total)-parseFloat(detalle.monto_pagado))}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 text-[11px] text-g-500 pt-2 border-t border-g-200/60">
+                {detalle.tasa_interes>0 && <span><i className="ti ti-percentage mr-1"/>{detalle.tasa_interes}% EA</span>}
+                {detalle.interes_mensual_monto>0 && <span><i className="ti ti-calendar-repeat mr-1"/>{fmtShort(detalle.interes_mensual_monto)}/mes fijo</span>}
+                {detalle.fecha_limite && <span><i className="ti ti-calendar mr-1"/>Vence {fmtDate(detalle.fecha_limite)}</span>}
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={()=>abrirNuevoMov('abono')} className="btn-primary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-cash-banknote text-sm"/> Abonar</button>
+              <button onClick={()=>abrirNuevoMov('interes')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-percentage text-sm"/> Agregar interés</button>
+              <button onClick={()=>abrirNuevoMov('mora')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-alert-triangle text-sm"/> Agregar mora</button>
+              <button onClick={abrirEditarDeuda} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-pencil text-sm"/> Editar deuda</button>
+            </div>
+
+            {/* Pago programado */}
+            <div className="card p-4">
+              <p className="text-sm font-medium text-g-900 mb-2 flex items-center gap-1.5"><i className="ti ti-calendar-stats text-sm text-g-400"/> Pago automático</p>
+              {pagoProgramado ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-g-700">{fmt(pagoProgramado.monto)} el día {pagoProgramado.dia_mes} de cada mes</p>
+                    <p className="text-[11px] text-g-400">Se abona sola cuando se procese</p>
+                  </div>
+                  <button onClick={cancelarProgramacion} className="text-g-300 hover:text-red-500 p-1.5"><i className="ti ti-trash text-sm"/></button>
+                </div>
+              ) : (
+                <button onClick={()=>{ setFormProgramar({ monto: '', dia_mes: 1, medio_pago: 'bancolombia' }); setModalProgramar(true); }}
+                  className="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-1.5">
+                  <i className="ti ti-plus text-sm"/> Programar pago mensual
+                </button>
+              )}
+            </div>
+
+            {/* Historial */}
+            <div>
+              <p className="section-label mb-2">Historial ({movimientos.length})</p>
+              {movimientos.length===0 && <p className="text-sm text-g-400 py-4 text-center">Sin movimientos todavía</p>}
+              <div className="space-y-2">
+                {movimientos.map(m => {
+                  const v = MOV_DEUDA_VISUAL[m.tipo];
+                  return (
+                    <div key={m.id} className="card p-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${v.color}1F` }}>
+                        <i className={`ti ${v.icon} text-sm`} style={{ color: v.color }}/>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-g-900">{v.label}</p>
+                          <p className="text-sm font-medium" style={{ color: v.color }}>{v.signo} {fmt(m.monto)}</p>
+                        </div>
+                        <p className="text-[11px] text-g-400">{fmtDate(m.fecha)}{m.nota ? ` · ${m.nota}` : ''}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={()=>abrirEditarMov(m)} className="text-g-300 hover:text-g-600 p-1"><i className="ti ti-pencil text-xs"/></button>
+                        <button onClick={()=>borrarMov(m)} className="text-g-300 hover:text-red-500 p-1"><i className="ti ti-trash text-xs"/></button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button onClick={()=>del(detalle.id)} className="text-red-500 text-xs w-full text-center py-2">Eliminar esta deuda por completo</button>
+          </div>
+          )}
+        </PantallaCompleta>
+      )}
+
+      {/* Crear/editar movimiento del historial */}
+      {modalMov && (
+        <PantallaCompleta title={modalMov.id ? 'Editar movimiento' : `Nuevo: ${MOV_DEUDA_VISUAL[modalMov.tipo].label}`} onClose={()=>setModalMov(null)}>
+          <div className="space-y-3 pb-4">
+            <div>
+              <label className="section-label block mb-1">Tipo</label>
+              <div className="flex gap-2">
+                {Object.entries(MOV_DEUDA_VISUAL).map(([k,v]) => (
+                  <button key={k} type="button" onClick={()=>setModalMov(m=>({...m, tipo:k}))}
+                    className={`flex-1 py-2 rounded-xl border text-xs font-medium transition-all ${modalMov.tipo===k ? 'border-current' : 'border-g-200/60 text-g-400'}`}
+                    style={modalMov.tipo===k ? { borderColor: v.color, color: v.color, background: `${v.color}14` } : {}}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto</label>
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
+                value={modalMov.monto} onChange={e=>setModalMov(m=>({...m, monto: e.target.value.replace(',','.')}))}/>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Fecha</label>
+              <input type="date" className="input" value={modalMov.fecha} onChange={e=>setModalMov(m=>({...m, fecha: e.target.value}))}/>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Nota (opcional)</label>
+              <input type="text" className="input" placeholder="Ej: pago de la cuota de marzo" value={modalMov.nota} onChange={e=>setModalMov(m=>({...m, nota: e.target.value}))}/>
+            </div>
+            <button onClick={guardarMov} className="btn-primary w-full py-3.5">{modalMov.id ? 'Guardar cambios' : 'Registrar'}</button>
+          </div>
+        </PantallaCompleta>
+      )}
+
+      {/* Editar datos de la deuda */}
+      {formEditar && (
+        <PantallaCompleta title="Editar deuda" onClose={()=>setFormEditar(null)}>
+          <form onSubmit={guardarEditarDeuda} className="space-y-3 pb-4">
+            <input className="input" placeholder="Nombre" value={formEditar.nombre} onChange={e=>setFormEditar(f=>({...f, nombre: e.target.value}))} required/>
+            <select className="select" value={formEditar.tipo} onChange={e=>setFormEditar(f=>({...f, tipo: e.target.value}))}>
+              {TIPOS_DEUDA.map(t=><option key={t}>{t}</option>)}
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="text" inputMode="decimal" className="input" value={formEditar.tasa_interes} onChange={e=>setFormEditar(f=>({...f, tasa_interes: e.target.value.replace(',','.')}))}/></div>
+              <div><label className="section-label block mb-1">Interés mensual fijo</label><input type="text" inputMode="numeric" className="input" value={formEditar.interes_mensual_monto} onChange={e=>setFormEditar(f=>({...f, interes_mensual_monto: e.target.value.replace(',','.')}))}/></div>
+            </div>
+            <div><label className="section-label block mb-1">Fecha límite</label><input type="date" className="input" value={formEditar.fecha_limite} onChange={e=>setFormEditar(f=>({...f, fecha_limite: e.target.value}))}/></div>
+            <p className="text-[11px] text-g-400">El monto total y lo pagado no se editan aquí — se calculan solos desde el historial de abonos/intereses/mora.</p>
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={()=>setFormEditar(null)} className="btn-secondary flex-1">Cancelar</button>
+              <button type="submit" className="btn-primary flex-1">Guardar</button>
+            </div>
+          </form>
+        </PantallaCompleta>
+      )}
+
+      {/* Programar pago mensual ligado a esta deuda */}
+      {modalProgramar && (
+        <PantallaCompleta title={`Programar pago: ${detalle?.nombre}`} onClose={()=>setModalProgramar(false)}>
+          <form onSubmit={guardarProgramarPago} className="space-y-3 pb-4">
+            <p className="text-xs text-g-400">Cada mes, en el día que elijas, se registrará el gasto y se abonará esta deuda automáticamente.</p>
+            <div>
+              <label className="section-label block mb-1">Monto de la cuota</label>
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
+                value={formProgramar.monto} onChange={e=>setFormProgramar(f=>({...f, monto: e.target.value.replace(',','.')}))} required/>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Día del mes</label>
+              <input type="number" min="1" max="31" className="input" value={formProgramar.dia_mes}
+                onChange={e=>setFormProgramar(f=>({...f, dia_mes: parseInt(e.target.value)||1}))} required/>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Medio de pago</label>
+              <select className="select" value={formProgramar.medio_pago} onChange={e=>setFormProgramar(f=>({...f, medio_pago: e.target.value}))}>
+                {BANCOS.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
+              </select>
+            </div>
+            <button type="submit" className="btn-primary w-full py-3.5">Programar</button>
+          </form>
+        </PantallaCompleta>
       )}
     </div>
   );
