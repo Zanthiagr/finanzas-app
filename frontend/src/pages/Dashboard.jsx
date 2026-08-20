@@ -230,40 +230,41 @@ export default function Dashboard() {
         </Link>
       )}
 
-      {/* Tarjetas de crédito — cupo usado/disponible + próximo corte, un
-          vistazo rápido sin tener que entrar a Deudas. Solo aparece si
-          hay al menos una tarjeta activa vinculada. */}
+      {/* Tarjetas de crédito — un vistazo rápido sin tener que entrar a
+          Deudas. Siempre muestra "% pagado" (no depende de tener cupo
+          configurado, que es opcional) — antes, sin cupo, solo se veía
+          el nombre y un número suelto sin ninguna etiqueta que dijera
+          qué era. El cupo, si está configurado, se muestra como info
+          extra debajo, no como la única fuente de la barra de progreso. */}
       {tarjetas.length > 0 && (
         <div className="space-y-2">
           <p className="section-label px-1">Tarjetas de crédito</p>
           {tarjetas.map(t => {
-            const pendiente = parseFloat(t.monto_total) - parseFloat(t.monto_pagado);
+            const total = parseFloat(t.monto_total) || 0;
+            const pendiente = total - parseFloat(t.monto_pagado || 0);
+            const pctPagado = total > 0 ? Math.min(Math.round(((total - pendiente) / total) * 100), 100) : 0;
             const cupo = parseFloat(t.cupo_total) || 0;
             const cupoDisponible = cupo > 0 ? Math.max(cupo - pendiente, 0) : null;
-            const pctUsado = cupo > 0 ? Math.min(Math.round((pendiente / cupo) * 100), 100) : null;
-            const colorUso = pctUsado === null ? '#4E7AA8' : pctUsado >= 80 ? '#E5484D' : pctUsado >= 50 ? '#C9A84C' : '#4E7AA8';
+            const colorBarra = pctPagado >= 100 ? '#16A34A' : pctPagado >= 50 ? '#4F8F76' : pctPagado >= 20 ? '#C9A84C' : '#E5484D';
             return (
               <Link key={t.id} to="/deudas" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${colorUso}1F` }}>
-                  <i className="ti ti-credit-card text-base" style={{ color: colorUso }}/>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${colorBarra}1F` }}>
+                  <i className="ti ti-credit-card text-base" style={{ color: colorBarra }}/>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
                     <p className="text-sm font-medium text-g-900 truncate">{t.nombre}</p>
                     <p className="text-sm font-medium text-red-600 flex-shrink-0">{fmtShort(pendiente)}</p>
                   </div>
-                  {cupo > 0 ? (
-                    <>
-                      <div className="h-1.5 bg-g-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${pctUsado}%`, background: colorUso }}/>
-                      </div>
-                      <p className="text-[10px] text-g-400 mt-1">{pctUsado}% del cupo · {fmtShort(cupoDisponible)} disponible</p>
-                    </>
-                  ) : (
-                    <p className="text-[10px] text-g-400">
-                      {t.dia_corte ? `Corte el día ${t.dia_corte}` : 'Sin cupo configurado'}
-                    </p>
-                  )}
+                  <p className="text-[10px] text-g-400 mb-1.5">Pendiente por pagar</p>
+                  <div className="h-1.5 bg-g-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pctPagado}%`, background: colorBarra }}/>
+                  </div>
+                  <p className="text-[10px] text-g-400 mt-1">
+                    {pctPagado}% pagado
+                    {cupo > 0 && ` · ${fmtShort(cupoDisponible)} de cupo disponible`}
+                    {cupo === 0 && t.dia_corte && ` · Corte el día ${t.dia_corte}`}
+                  </p>
                 </div>
               </Link>
             );
