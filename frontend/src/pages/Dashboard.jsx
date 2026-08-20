@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, marcarPagoUnicoComoPagado } from '../utils/api';
+import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, getDeudas, marcarPagoUnicoComoPagado } from '../utils/api';
 import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, labelMedioPago, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [presupuestos, setPresupuestos] = useState([]);
   const [gastosReales, setGastosReales] = useState({});
   const [cierres, setCierres]           = useState([]);
+  const [tarjetas, setTarjetas]         = useState([]);
   const [marcandoPagoId, setMarcandoPagoId] = useState(null);
   const [loading, setLoading]           = useState(true);
   const [modalCapital, setModalCapital] = useState(false);
@@ -59,12 +60,14 @@ export default function Dashboard() {
       getSaldoTotal(),
       getPresupuestos(),
       getCierres(anio),
-    ]).then(([r, m, s, pres, cierresData]) => {
+      getDeudas(),
+    ]).then(([r, m, s, pres, cierresData, deudasData]) => {
       setResumen(r);
       setMovRecientes(m.slice(0, 5));
       setSaldo(s);
       setPresupuestos(pres || []);
       setCierres(cierresData || []);
+      setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
       const gastosMap = {};
       r.porCategoria?.filter(c => c.tipo === 'gasto').forEach(c => {
         gastosMap[c.categoria] = parseFloat(c.total);
@@ -257,6 +260,47 @@ export default function Dashboard() {
           </div>
           <i className="ti ti-chevron-right text-white/30 flex-shrink-0 relative"/>
         </Link>
+      )}
+
+      {/* Tarjetas de crédito — cupo usado/disponible + próximo corte, un
+          vistazo rápido sin tener que entrar a Deudas. Solo aparece si
+          hay al menos una tarjeta activa vinculada. */}
+      {tarjetas.length > 0 && (
+        <div className="space-y-2">
+          <p className="section-label px-1">Tarjetas de crédito</p>
+          {tarjetas.map(t => {
+            const pendiente = parseFloat(t.monto_total) - parseFloat(t.monto_pagado);
+            const cupo = parseFloat(t.cupo_total) || 0;
+            const cupoDisponible = cupo > 0 ? Math.max(cupo - pendiente, 0) : null;
+            const pctUsado = cupo > 0 ? Math.min(Math.round((pendiente / cupo) * 100), 100) : null;
+            const colorUso = pctUsado === null ? '#4E7AA8' : pctUsado >= 80 ? '#E5484D' : pctUsado >= 50 ? '#C9A84C' : '#4E7AA8';
+            return (
+              <Link key={t.id} to="/deudas" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${colorUso}1F` }}>
+                  <i className="ti ti-credit-card text-base" style={{ color: colorUso }}/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-sm font-medium text-g-900 truncate">{t.nombre}</p>
+                    <p className="text-sm font-medium text-red-600 flex-shrink-0">{fmtShort(pendiente)}</p>
+                  </div>
+                  {cupo > 0 ? (
+                    <>
+                      <div className="h-1.5 bg-g-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pctUsado}%`, background: colorUso }}/>
+                      </div>
+                      <p className="text-[10px] text-g-400 mt-1">{pctUsado}% del cupo · {fmtShort(cupoDisponible)} disponible</p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-g-400">
+                      {t.dia_corte ? `Corte el día ${t.dia_corte}` : 'Sin cupo configurado'}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       )}
 
       {/* Salud financiera — gauge circular: es contenido motivacional, no
