@@ -149,12 +149,18 @@ export const getDeudas = async () => {
 
 export const crearDeuda = async (deuda) => {
   const userId = await getUserId();
+  const montoTotal = parseFloat(String(deuda.monto_total).replace(',','.'));
   const { data, error } = await supabase.from('deudas')
     .insert({
       ...deuda,
-      monto_total:  parseFloat(String(deuda.monto_total).replace(',','.')),
+      monto_total:  montoTotal,
+      capital_original: montoTotal, // fijo — monto_total va a crecer si se agregan intereses/mora
+      monto_pagado: 0,
       tasa_interes: deuda.tasa_interes
         ? parseFloat(String(deuda.tasa_interes).replace(',','.'))
+        : null,
+      interes_mensual_monto: deuda.interes_mensual_monto
+        ? parseFloat(String(deuda.interes_mensual_monto).replace(',','.'))
         : null,
       usuario_id: userId,
     }).select().single();
@@ -162,13 +168,19 @@ export const crearDeuda = async (deuda) => {
   return data;
 };
 
+// Edita los DATOS de una deuda (nombre, tipo, tasa, fecha límite, interés
+// mensual fijo). Ya NO toca monto_total/monto_pagado directamente — esos
+// se recalculan siempre desde el historial real (ver recalcularDeuda),
+// nunca se editan a mano, para que jamás se puedan desincronizar.
 export const actualizarDeuda = async (id, deuda) => {
-  const { data, error } = await supabase.from('deudas')
-    .update({
-      ...deuda,
-      monto_total:  parseFloat(String(deuda.monto_total).replace(',','.')),
-      monto_pagado: parseFloat(String(deuda.monto_pagado).replace(',','.')),
-    }).eq('id', id).select().single();
+  const payload = { nombre: deuda.nombre, tipo: deuda.tipo, fecha_limite: deuda.fecha_limite || null };
+  if (deuda.tasa_interes !== undefined) {
+    payload.tasa_interes = deuda.tasa_interes ? parseFloat(String(deuda.tasa_interes).replace(',','.')) : null;
+  }
+  if (deuda.interes_mensual_monto !== undefined) {
+    payload.interes_mensual_monto = deuda.interes_mensual_monto ? parseFloat(String(deuda.interes_mensual_monto).replace(',','.')) : null;
+  }
+  const { data, error } = await supabase.from('deudas').update(payload).eq('id', id).select().single();
   if (error) throw error;
   return data;
 };
@@ -176,6 +188,76 @@ export const actualizarDeuda = async (id, deuda) => {
 export const eliminarDeuda = async (id) => {
   const { error } = await supabase.from('deudas').delete().eq('id', id);
   if (error) throw error;
+};
+
+// Recalcula monto_total/monto_pagado/activa de una deuda A PARTIR de todo
+// su historial en deuda_movimientos — única fuente de verdad. Se llama
+// después de crear/editar/borrar cualquier movimiento del historial, así
+// nunca se puede desincronizar (antes 'monto_pagado' se sumaba/restaba a
+// mano en cada acción, sin ningún registro de por qué llegó a ese número).
+const recalcularDeuda = async (deudaId) => {
+  const { data: deuda, error: eDeuda } = await supabase
+    .from('deudas').select('capital_original, monto_total').eq('id', deudaId).single();
+  if (eDeuda) throw eDeuda;
+
+  const { data: movs, error: eMovs } = await supabase
+    .from('deuda_movimientos').select('tipo, monto').eq('deuda_id', deudaId);
+  if (eMovs) throw eMovs;
+
+  const capital = parseFloat(deuda.capital_original ?? deuda.monto_total);
+  const sumar = (tipo) => (movs || []).filter(m => m.tipo === tipo).reduce((a, m) => a + parseFloat(m.monto), 0);
+  const cargos   = sumar('interes') + sumar('mora'); // suman a lo que se debe
+  const abonado  = sumar('abono');                   // resta de lo que se debe
+
+  const montoTotal  = capital + cargos;               // "lo que debes hoy" = capital + lo acumulado
+  const montoPagado = Math.min(abonado, montoTotal);
+
+  const { error } = await supabase.from('deudas')
+    .update({ monto_total: montoTotal, monto_pagado: montoPagado, activa: montoPagado < montoTotal })
+    .eq('id', deudaId);
+  if (error) throw error;
+};
+
+// ── HISTORIAL DE DEUDA (abonos, intereses, mora) ──────────
+export const getDeudaMovimientos = async (deudaId) => {
+  const { data, error } = await supabase
+    .from('deuda_movimientos').select('*').eq('deuda_id', deudaId)
+    .order('fecha', { ascending: false }).order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const crearDeudaMovimiento = async ({ deuda_id, tipo, monto, fecha, nota }) => {
+  const userId = await getUserId();
+  const { data, error } = await supabase.from('deuda_movimientos').insert({
+    usuario_id: userId, deuda_id, tipo,
+    monto: parseFloat(String(monto).replace(',','.')),
+    fecha: fecha || todayLocalStr(),
+    nota: nota || null,
+  }).select().single();
+  if (error) throw error;
+  await recalcularDeuda(deuda_id);
+  return data;
+};
+
+// Editar un movimiento del historial — por si hubo un error al registrar
+// un abono/interés/mora. Recalcula la deuda completa después.
+export const actualizarDeudaMovimiento = async (id, { tipo, monto, fecha, nota }) => {
+  const { data, error } = await supabase.from('deuda_movimientos').update({
+    tipo, monto: parseFloat(String(monto).replace(',','.')), fecha, nota: nota || null,
+  }).eq('id', id).select().single();
+  if (error) throw error;
+  await recalcularDeuda(data.deuda_id);
+  return data;
+};
+
+export const eliminarDeudaMovimiento = async (id) => {
+  const { data, error: eGet } = await supabase
+    .from('deuda_movimientos').select('deuda_id').eq('id', id).single();
+  if (eGet) throw eGet;
+  const { error } = await supabase.from('deuda_movimientos').delete().eq('id', id);
+  if (error) throw error;
+  await recalcularDeuda(data.deuda_id);
 };
 
 // ── ACTIVOS ──────────────────────────────────────────────
@@ -620,6 +702,14 @@ export const procesarPagosPendientes = async () => {
       fecha: fechaStr,
       medio_pago: pago.medio_pago || 'otro_banco',
     });
+    // Si este pago programado pertenece a una deuda, el abono se registra
+    // solo en su historial — no hay que ir a Deudas a hacerlo aparte.
+    if (pago.deuda_id) {
+      await crearDeudaMovimiento({
+        deuda_id: pago.deuda_id, tipo: 'abono', monto: pago.monto,
+        fecha: fechaStr, nota: `Pago automático: ${pago.nombre}`,
+      });
+    }
     procesados++;
   }
   return procesados;
@@ -638,6 +728,12 @@ export const marcarPagoUnicoComoPagado = async (pago, fechaPago) => {
     fecha,
     medio_pago: pago.medio_pago || 'otro_banco',
   });
+  if (pago.deuda_id) {
+    await crearDeudaMovimiento({
+      deuda_id: pago.deuda_id, tipo: 'abono', monto: pago.monto,
+      fecha, nota: `Pago programado: ${pago.nombre}`,
+    });
+  }
   const { data, error } = await supabase
     .from('pagos_programados')
     .update({ pagado: true, activo: false, pagado_en: new Date().toISOString() })
