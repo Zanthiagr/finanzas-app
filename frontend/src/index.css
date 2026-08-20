@@ -86,6 +86,11 @@
     @apply pointer-events-none absolute rounded-full blur-3xl;
   }
 
+  /* Oculta la barra de scroll del carrusel de tarjetas del Dashboard —
+     el deslizamiento sigue funcionando igual, solo se ve más limpio sin
+     la barra visible (el indicador de puntos ya cumple ese rol). */
+  .scroll-hidden::-webkit-scrollbar { display: none; }
+
   /* Safe area SOLO para la barra de navegación inferior — es el único
      elemento pegado al borde físico del iPhone. Los modales usan
      padding fijo (pb-6) para evitar acumulación de safe-area en cascada. */
