@@ -1,10 +1,11 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, getDeudas, marcarPagoUnicoComoPagado } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, labelMedioPago, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL } from '../utils/helpers';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
+import CapitalCarousel from '../components/CapitalCarousel';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
 
@@ -138,50 +139,17 @@ export default function Dashboard() {
   return (
     <div className="space-y-4 page-enter">
 
-      {/* Dinero disponible — saldo real acumulado, NUNCA se reinicia por mes.
-          Tratado como la "tarjeta física" del producto: es el elemento que
-          más se ve cada día, así que lleva el tratamiento más premium. */}
-      <div className="card-premium">
-        {/* brillos decorativos — puramente atmosféricos, no interactivos */}
-        <div className="card-premium-glow -top-24 -right-16 w-64 h-64 bg-blue-500 opacity-20" />
-        <div className="card-premium-glow -bottom-20 -left-10 w-52 h-52 bg-gold opacity-[0.08]" />
-
-        <div className="relative flex items-center justify-between">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/60 font-medium">
-            Dinero disponible
-          </p>
-          {/* chip decorativo — guiño a tarjeta física */}
-          <div className="w-8 h-6 rounded-md bg-gradient-to-br from-gold to-gold-dark opacity-90" />
-        </div>
-
-        <div className="relative mt-3 flex items-center gap-2">
-          <span className={`text-[28px] md:text-[34px] font-semibold tracking-tight tabular-nums ${saldo?.saldoTotal < 0 ? 'text-red-300' : 'text-white'}`}>
-            {ocultarSaldo ? '••••••••' : fmt(saldo?.saldoTotal || 0)}
-          </span>
-          <button onClick={() => setOcultarSaldo(!ocultarSaldo)} className="text-white/50 hover:text-white/80 transition-colors flex-shrink-0">
-            <i className={`ti ${ocultarSaldo ? 'ti-eye' : 'ti-eye-off'} text-lg`} />
-          </button>
-        </div>
-        <p className="relative text-white/40 text-[11px] mt-1">Total acumulado — no se reinicia por mes</p>
-
-        {saldo?.porMedio && Object.keys(saldo.porMedio).length > 0 && (
-          <div className="relative flex gap-2 mt-4 overflow-x-auto pb-0.5">
-            {Object.entries(saldo.porMedio)
-              .filter(([key, d]) => key !== 'transferencia' && d && (d.ingresos !== 0 || d.gastos !== 0))
-              .map(([key, d]) => (
-                <div key={key} className="flex-shrink-0 bg-white/10 backdrop-blur rounded-lg px-2.5 py-1.5">
-                  <p className="text-[10px] text-white/50 whitespace-nowrap">{labelMedioPago(key)}</p>
-                  <p className="text-xs font-medium text-white">{ocultarSaldo ? '••••' : fmtShort(d.ingresos - d.gastos)}</p>
-                </div>
-              ))}
-          </div>
-        )}
-
-        <button onClick={() => setModalCapital(true)}
-          className="relative mt-4 text-[11px] text-white/50 hover:text-white/80 transition-colors flex items-center gap-1">
-          <i className="ti ti-pencil text-[11px]"/> Editar capital inicial
-        </button>
-      </div>
+      {/* Dinero disponible — ahora un carrusel: Total + una tarjeta por
+          cada banco/medio de pago con movimiento real. Antes las
+          pastillas de bancos debajo del total eran decorativas; ahora
+          cada una es su propia tarjeta deslizable con sus movimientos
+          recientes al entrar. */}
+      <CapitalCarousel
+        saldo={saldo}
+        ocultarSaldo={ocultarSaldo}
+        setOcultarSaldo={setOcultarSaldo}
+        onEditarCapital={() => setModalCapital(true)}
+      />
 
       {/* Pagos pendientes — fijos que caen hoy + únicos sin pagar (hoy o
           vencidos). Se muestra todo el día porque el filtro es por fecha,
