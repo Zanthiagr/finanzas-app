@@ -288,6 +288,7 @@ export function Activos() {
 // que SUMAN a lo que debes.
 const MOV_DEUDA_VISUAL = {
   abono:   { label: 'Abono',   icon: 'ti-cash-banknote',   color: '#16A34A', signo: '−' },
+  cargo:   { label: 'Compra',  icon: 'ti-credit-card',     color: '#B8663F', signo: '+' },
   interes: { label: 'Interés', icon: 'ti-percentage',      color: '#A8792E', signo: '+' },
   mora:    { label: 'Mora',    icon: 'ti-alert-triangle',  color: '#E5484D', signo: '+' },
 };
@@ -295,7 +296,7 @@ const MOV_DEUDA_VISUAL = {
 export function Deudas() {
   const [items, setItems]       = useState([]);
   const [modal, setModal]       = useState(false);
-  const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:''});
+  const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
   const load = () => getDeudas().then(setItems).catch(()=>toast.error('Error cargando deudas'));
   useEffect(()=>{load();},[]);
@@ -315,9 +316,12 @@ export function Deudas() {
     try {
       await crearDeuda(form);
       toast.success('Deuda registrada'); setModal(false);
-      setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:''});
+      setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
       load();
-    } catch { toast.error('Error guardando'); }
+    } catch (err) {
+      if (err?.code === '23505') toast.error('Ese medio de pago ya está vinculado a otra tarjeta activa');
+      else toast.error('Error guardando');
+    }
   };
 
   const del = id => confirmToast('¿Eliminar esta deuda? También se borra todo su historial.', async () => {
@@ -380,6 +384,9 @@ export function Deudas() {
     nombre: detalle.nombre, tipo: detalle.tipo,
     tasa_interes: detalle.tasa_interes ?? '', fecha_limite: detalle.fecha_limite ?? '',
     interes_mensual_monto: detalle.interes_mensual_monto ?? '',
+    medio_pago_vinculado: detalle.medio_pago_vinculado ?? '',
+    cupo_total: detalle.cupo_total ?? '', dia_corte: detalle.dia_corte ?? '',
+    pago_minimo_pct: detalle.pago_minimo_pct ?? '',
   });
 
   const guardarEditarDeuda = async e => {
@@ -390,7 +397,10 @@ export function Deudas() {
       const id = detalle.id;
       setFormEditar(null);
       refrescarDetalle(id);
-    } catch { toast.error('Error actualizando'); }
+    } catch (err) {
+      if (err?.code === '23505') toast.error('Ese medio de pago ya está vinculado a otra tarjeta activa');
+      else toast.error('Error actualizando');
+    }
   };
 
   const guardarProgramarPago = async e => {
@@ -479,6 +489,23 @@ export function Deudas() {
             <input type="text" inputMode="numeric" className="input" placeholder="Ej: 45.000 — si te cobran un interés fijo aparte cada mes" value={form.interes_mensual_monto} onChange={set('interes_mensual_monto')}/>
           </div>
           <input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/>
+          {form.tipo === 'Tarjeta de crédito' && (
+            <div className="card p-3 bg-g-50 space-y-3">
+              <p className="text-xs text-g-500 flex items-center gap-1.5"><i className="ti ti-link text-sm"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
+              <select className="select" value={form.medio_pago_vinculado} onChange={set('medio_pago_vinculado')}>
+                <option value="">Sin vincular (llevar manualmente)</option>
+                {BANCOS.filter(b=>b.value!=='otro_banco').map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="section-label block mb-1">Cupo total</label><input type="text" inputMode="numeric" className="input" placeholder="Opcional" value={form.cupo_total} onChange={set('cupo_total')}/></div>
+                <div><label className="section-label block mb-1">Día de corte</label><input type="number" min="1" max="31" className="input" placeholder="Opcional" value={form.dia_corte} onChange={set('dia_corte')}/></div>
+              </div>
+              <div>
+                <label className="section-label block mb-1">Pago mínimo (% estimado)</label>
+                <input type="text" inputMode="decimal" className="input" placeholder="Ej: 10 — confirma siempre en tu extracto" value={form.pago_minimo_pct} onChange={set('pago_minimo_pct')}/>
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 pt-2 pb-4">
             <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
             <button type="submit" className="btn-primary flex-1">Guardar</button>
@@ -518,7 +545,27 @@ export function Deudas() {
                 {detalle.tasa_interes>0 && <span><i className="ti ti-percentage mr-1"/>{detalle.tasa_interes}% EA</span>}
                 {detalle.interes_mensual_monto>0 && <span><i className="ti ti-calendar-repeat mr-1"/>{fmtShort(detalle.interes_mensual_monto)}/mes fijo</span>}
                 {detalle.fecha_limite && <span><i className="ti ti-calendar mr-1"/>Vence {fmtDate(detalle.fecha_limite)}</span>}
+                {detalle.medio_pago_vinculado && <span><i className="ti ti-link mr-1"/>{BANCOS.find(b=>b.value===detalle.medio_pago_vinculado)?.label || detalle.medio_pago_vinculado}</span>}
+                {detalle.dia_corte && <span><i className="ti ti-calendar-stats mr-1"/>Corte el {detalle.dia_corte}</span>}
               </div>
+              {(detalle.cupo_total>0 || detalle.pago_minimo_pct>0) && (
+                <div className="grid grid-cols-2 gap-3 pt-3 mt-3 border-t border-g-200/60">
+                  {detalle.cupo_total>0 && (
+                    <div>
+                      <p className="section-label">Cupo disponible</p>
+                      <p className="text-sm font-medium text-g-900">{fmt(Math.max(parseFloat(detalle.cupo_total)-(parseFloat(detalle.monto_total)-parseFloat(detalle.monto_pagado)),0))}</p>
+                      <p className="text-[10px] text-g-400">de {fmt(detalle.cupo_total)}</p>
+                    </div>
+                  )}
+                  {detalle.pago_minimo_pct>0 && (
+                    <div>
+                      <p className="section-label">Pago mínimo (estimado)</p>
+                      <p className="text-sm font-medium text-g-900">{fmt((parseFloat(detalle.monto_total)-parseFloat(detalle.monto_pagado))*parseFloat(detalle.pago_minimo_pct)/100)}</p>
+                      <p className="text-[10px] text-g-400">confirma en tu extracto</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Acciones */}
@@ -630,7 +677,24 @@ export function Deudas() {
               <div><label className="section-label block mb-1">Interés mensual fijo</label><input type="text" inputMode="numeric" className="input" value={formEditar.interes_mensual_monto} onChange={e=>setFormEditar(f=>({...f, interes_mensual_monto: e.target.value.replace(',','.')}))}/></div>
             </div>
             <div><label className="section-label block mb-1">Fecha límite</label><input type="date" className="input" value={formEditar.fecha_limite} onChange={e=>setFormEditar(f=>({...f, fecha_limite: e.target.value}))}/></div>
-            <p className="text-[11px] text-g-400">El monto total y lo pagado no se editan aquí — se calculan solos desde el historial de abonos/intereses/mora.</p>
+            {formEditar.tipo === 'Tarjeta de crédito' && (
+              <div className="card p-3 bg-g-50 space-y-3">
+                <p className="text-xs text-g-500 flex items-center gap-1.5"><i className="ti ti-link text-sm"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
+                <select className="select" value={formEditar.medio_pago_vinculado} onChange={e=>setFormEditar(f=>({...f, medio_pago_vinculado: e.target.value}))}>
+                  <option value="">Sin vincular (llevar manualmente)</option>
+                  {BANCOS.filter(b=>b.value!=='otro_banco').map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="section-label block mb-1">Cupo total</label><input type="text" inputMode="numeric" className="input" placeholder="Opcional" value={formEditar.cupo_total} onChange={e=>setFormEditar(f=>({...f, cupo_total: e.target.value.replace(',','.')}))}/></div>
+                  <div><label className="section-label block mb-1">Día de corte</label><input type="number" min="1" max="31" className="input" placeholder="Opcional" value={formEditar.dia_corte} onChange={e=>setFormEditar(f=>({...f, dia_corte: e.target.value}))}/></div>
+                </div>
+                <div>
+                  <label className="section-label block mb-1">Pago mínimo (% estimado)</label>
+                  <input type="text" inputMode="decimal" className="input" placeholder="Ej: 10" value={formEditar.pago_minimo_pct} onChange={e=>setFormEditar(f=>({...f, pago_minimo_pct: e.target.value.replace(',','.')}))}/>
+                </div>
+              </div>
+            )}
+            <p className="text-[11px] text-g-400">El monto total y lo pagado no se editan aquí — se calculan solos desde el historial de abonos/intereses/mora/compras.</p>
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={()=>setFormEditar(null)} className="btn-secondary flex-1">Cancelar</button>
               <button type="submit" className="btn-primary flex-1">Guardar</button>
