@@ -26,6 +26,20 @@ export const getMovimientos = async ({ mes, anio, tipo } = {}) => {
   return data;
 };
 
+// Movimientos más recientes de UN medio de pago específico — para el
+// carrusel de tarjetas del Dashboard (cada banco/tarjeta puede ver sus
+// propias transacciones recientes al entrar, sin filtrar por mes).
+export const getMovimientosPorMedio = async (medioPago, limite = 8) => {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('movimientos').select('*')
+    .eq('usuario_id', userId).eq('medio_pago', medioPago)
+    .order('fecha', { ascending: false }).order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data;
+};
+
 export const crearMovimiento = async (mov) => {
   const userId = await getUserId();
   const fecha = mov.fecha ? parseLocalDate(mov.fecha) : new Date();
