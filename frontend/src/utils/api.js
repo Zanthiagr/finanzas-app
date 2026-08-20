@@ -58,7 +58,7 @@ export const crearMovimiento = async (mov) => {
   // automáticamente, sin que el usuario tenga que ir a Deudas a hacerlo
   // aparte. El movimiento en sí queda igual (para categorías/reportes);
   // solo se excluye del cálculo de "capital disponible" (ver getSaldoTotal).
-  await sincronizarCargoTarjeta(userId, medioPago, payload.tipo, payload.monto, payload.fecha, data.id, mov.descripcion || mov.categoria);
+  await sincronizarCargoTarjeta(userId, medioPago, payload.tipo, payload.monto, payload.fecha, data.id, mov.descripcion || mov.categoria, mov.num_cuotas);
 
   return data;
 };
@@ -78,13 +78,25 @@ const buscarTarjetaVinculada = async (userId, medioPago) => {
 // cargo/abono correspondiente en el historial de la deuda. 'gasto' con
 // esa tarjeta = 'cargo' (aumenta lo que debes); 'ingreso' con esa tarjeta
 // = 'abono' (ej. un reembolso reduce lo que debes).
-const sincronizarCargoTarjeta = async (userId, medioPago, tipoMov, monto, fecha, movimientoId, nota) => {
+const sincronizarCargoTarjeta = async (userId, medioPago, tipoMov, monto, fecha, movimientoId, nota, numCuotas) => {
   const deudaId = await buscarTarjetaVinculada(userId, medioPago);
   if (!deudaId) return;
   await crearDeudaMovimiento({
     deuda_id: deudaId, tipo: tipoMov === 'ingreso' ? 'abono' : 'cargo',
     monto, fecha, nota, movimiento_id: movimientoId,
+    num_cuotas: tipoMov === 'ingreso' ? null : numCuotas,
   });
+};
+
+// Medios de pago vinculados a alguna tarjeta de crédito activa del
+// usuario — se usa en el formulario de gastos para mostrar el campo de
+// cuotas solo cuando de verdad aplica (pagando con una tarjeta vinculada).
+export const getMediosPagoTarjeta = async () => {
+  const userId = await getUserId();
+  const { data } = await supabase
+    .from('deudas').select('medio_pago_vinculado')
+    .eq('usuario_id', userId).eq('activa', true).not('medio_pago_vinculado', 'is', null);
+  return new Set((data || []).map(d => d.medio_pago_vinculado));
 };
 
 export const actualizarMovimiento = async (id, mov) => {
@@ -117,7 +129,7 @@ export const actualizarMovimiento = async (id, mov) => {
   // sitio", porque el medio de pago pudo cambiar de tarjeta a efectivo o
   // viceversa, o pudo cambiar el monto.
   await borrarCargoVinculado(id);
-  await sincronizarCargoTarjeta(userId, medioPago, payload.tipo, payload.monto, payload.fecha, id, mov.descripcion || mov.categoria);
+  await sincronizarCargoTarjeta(userId, medioPago, payload.tipo, payload.monto, payload.fecha, id, mov.descripcion || mov.categoria, mov.num_cuotas);
 
   return data;
 };
@@ -291,7 +303,7 @@ export const getDeudaMovimientos = async (deudaId) => {
   return data;
 };
 
-export const crearDeudaMovimiento = async ({ deuda_id, tipo, monto, fecha, nota, movimiento_id }) => {
+export const crearDeudaMovimiento = async ({ deuda_id, tipo, monto, fecha, nota, movimiento_id, num_cuotas }) => {
   const userId = await getUserId();
   const { data, error } = await supabase.from('deuda_movimientos').insert({
     usuario_id: userId, deuda_id, tipo,
@@ -299,6 +311,7 @@ export const crearDeudaMovimiento = async ({ deuda_id, tipo, monto, fecha, nota,
     fecha: fecha || todayLocalStr(),
     nota: nota || null,
     movimiento_id: movimiento_id || null,
+    num_cuotas: num_cuotas && num_cuotas > 1 ? parseInt(num_cuotas) : null,
   }).select().single();
   if (error) throw error;
   await recalcularDeuda(deuda_id);
@@ -307,9 +320,10 @@ export const crearDeudaMovimiento = async ({ deuda_id, tipo, monto, fecha, nota,
 
 // Editar un movimiento del historial — por si hubo un error al registrar
 // un abono/interés/mora. Recalcula la deuda completa después.
-export const actualizarDeudaMovimiento = async (id, { tipo, monto, fecha, nota }) => {
+export const actualizarDeudaMovimiento = async (id, { tipo, monto, fecha, nota, num_cuotas }) => {
   const { data, error } = await supabase.from('deuda_movimientos').update({
     tipo, monto: parseFloat(String(monto).replace(',','.')), fecha, nota: nota || null,
+    num_cuotas: num_cuotas && num_cuotas > 1 ? parseInt(num_cuotas) : null,
   }).eq('id', id).select().single();
   if (error) throw error;
   await recalcularDeuda(data.deuda_id);
