@@ -5,7 +5,7 @@ import { getActivos, crearActivo, eliminarActivo,
          getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado,
          getMetas, crearMeta, actualizarMeta, eliminarMeta,
          registrarRendimientoActivo } from '../utils/api';
-import { fmt, fmtDate, fmtShort, todayLocalStr, BANCOS } from '../utils/helpers';
+import { fmt, fmtDate, fmtShort, todayLocalStr, parseLocalDate, BANCOS } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
@@ -354,17 +354,17 @@ export function Deudas() {
     tipo, monto: tipo === 'interes' && detalle.interes_mensual_monto ? String(detalle.interes_mensual_monto) : '',
     fecha: todayLocalStr(), nota: '',
   });
-  const abrirEditarMov = (m) => setModalMov({ id: m.id, tipo: m.tipo, monto: String(m.monto), fecha: m.fecha, nota: m.nota || '' });
+  const abrirEditarMov = (m) => setModalMov({ id: m.id, tipo: m.tipo, monto: String(m.monto), fecha: m.fecha, nota: m.nota || '', num_cuotas: m.num_cuotas || '' });
 
   const guardarMov = async () => {
     const monto = parseFloat(String(modalMov.monto).replace(',','.'));
     if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
     try {
       if (modalMov.id) {
-        await actualizarDeudaMovimiento(modalMov.id, { tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota });
+        await actualizarDeudaMovimiento(modalMov.id, { tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
         toast.success('Movimiento actualizado');
       } else {
-        await crearDeudaMovimiento({ deuda_id: detalle.id, tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota });
+        await crearDeudaMovimiento({ deuda_id: detalle.id, tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
         toast.success(modalMov.tipo === 'abono' ? 'Abono registrado' : 'Movimiento registrado');
       }
       const id = detalle.id;
@@ -571,9 +571,10 @@ export function Deudas() {
             {/* Acciones */}
             <div className="grid grid-cols-2 gap-2">
               <button onClick={()=>abrirNuevoMov('abono')} className="btn-primary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-cash-banknote text-sm"/> Abonar</button>
+              <button onClick={()=>abrirNuevoMov('cargo')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-credit-card text-sm"/> Registrar compra</button>
               <button onClick={()=>abrirNuevoMov('interes')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-percentage text-sm"/> Agregar interés</button>
               <button onClick={()=>abrirNuevoMov('mora')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-alert-triangle text-sm"/> Agregar mora</button>
-              <button onClick={abrirEditarDeuda} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-pencil text-sm"/> Editar deuda</button>
+              <button onClick={abrirEditarDeuda} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5 col-span-2"><i className="ti ti-pencil text-sm"/> Editar deuda</button>
             </div>
 
             {/* Pago programado */}
@@ -602,6 +603,13 @@ export function Deudas() {
               <div className="space-y-2">
                 {movimientos.map(m => {
                   const v = MOV_DEUDA_VISUAL[m.tipo];
+                  const infoCuota = m.tipo === 'cargo' && m.num_cuotas > 1 ? (() => {
+                    const f = parseLocalDate(m.fecha);
+                    const hoy = new Date();
+                    const mesesTranscurridos = (hoy.getFullYear()-f.getFullYear())*12 + (hoy.getMonth()-f.getMonth()) + 1;
+                    const cuotaActual = Math.min(Math.max(mesesTranscurridos,1), m.num_cuotas);
+                    return { cuotaActual, valorCuota: parseFloat(m.monto)/m.num_cuotas, terminada: cuotaActual >= m.num_cuotas };
+                  })() : null;
                   return (
                     <div key={m.id} className="card p-3 flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${v.color}1F` }}>
@@ -613,6 +621,11 @@ export function Deudas() {
                           <p className="text-sm font-medium" style={{ color: v.color }}>{v.signo} {fmt(m.monto)}</p>
                         </div>
                         <p className="text-[11px] text-g-400">{fmtDate(m.fecha)}{m.nota ? ` · ${m.nota}` : ''}</p>
+                        {infoCuota && (
+                          <p className="text-[11px] mt-0.5" style={{ color: v.color }}>
+                            {infoCuota.terminada ? 'Cuotas terminadas' : `Cuota ${infoCuota.cuotaActual}/${m.num_cuotas} · ${fmtShort(infoCuota.valorCuota)}/mes`}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button onClick={()=>abrirEditarMov(m)} className="text-g-300 hover:text-g-600 p-1"><i className="ti ti-pencil text-xs"/></button>
@@ -659,6 +672,13 @@ export function Deudas() {
               <label className="section-label block mb-1">Nota (opcional)</label>
               <input type="text" className="input" placeholder="Ej: pago de la cuota de marzo" value={modalMov.nota} onChange={e=>setModalMov(m=>({...m, nota: e.target.value}))}/>
             </div>
+            {modalMov.tipo === 'cargo' && (
+              <div>
+                <label className="section-label block mb-1">¿A cuántas cuotas? <span className="text-g-300">(opcional)</span></label>
+                <input type="number" min="1" max="60" className="input" placeholder="1 = de contado"
+                  value={modalMov.num_cuotas || ''} onChange={e=>setModalMov(m=>({...m, num_cuotas: e.target.value}))}/>
+              </div>
+            )}
             <button onClick={guardarMov} className="btn-primary w-full py-3.5">{modalMov.id ? 'Guardar cambios' : 'Registrar'}</button>
           </div>
         </PantallaCompleta>
