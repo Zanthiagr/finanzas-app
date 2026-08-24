@@ -1,58 +1,59 @@
-export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
-        // Escala "g" repurpuesta: de verde a navy/azul premium. Mismos nombres
-        // de clase (g-50…g-900) para que TODA la app herede el rebrand sin
-        // tener que tocar cada archivo — solo cambia el valor hexadecimal.
-        g: {
-          900: '#0B1220', // ink — texto principal, casi negro con tinte navy
-          800: '#0B1E4D', // navy profundo — paneles oscuros Y hover de botones
-                          // (el azul se "asoma" solo un instante al interactuar)
-          700: '#151B2E', // tinta casi negra — botones primarios, estados activos
-          600: '#2B3348', // slate oscuro — hover/links secundarios (ya NO es azul)
-          500: '#667085', // gris medio — texto secundario
-          400: '#8A93A6', // gris neutro — texto/íconos apagados (chrome estilo Nu)
-          300: '#C7CEDD', // gris claro — bordes sutiles
-          200: '#DCE1EC', // gris azulado claro — bordes
-          100: '#EEF0F5', // relleno sutil
-          50:  '#F6F7FB', // fondo de la app
+        // Base — deep marine navy, like the sky over open water
+        void: "#0A1220",
+        surface: {
+          DEFAULT: "#101A2C",   // ink-raised: panels
+          raised: "#101A2C",
+          elevated: "#14213A",  // ink-elevated: nested cards, table cells
         },
-        // Escala navy independiente para gradientes de "tarjeta física"
-        navy: { 900: '#060B18', 800: '#0B1E4D', 700: '#10224F' },
-        // Azul de marca — RESERVADO. Úsalo solo en el hero card y momentos
-        // puntuales de énfasis (ej. indicador activo del nav). Nunca en
-        // botones o filtros de uso frecuente — por eso dejó de estar en la
-        // escala "g". Si el azul aparece en todos lados, deja de ser especial.
-        blue: { 600: '#2452FF', 500: '#3E6BFF', 400: '#6E93FF', 100: '#E8EDFF', 50: '#F3F6FF' },
-        // Acentos compartidos — 8 colores con nombre, todos apagados/de
-        // la misma familia tonal que navy+dorado (nada de rainbow
-        // saturado). Se usan para categorías, el menú "Más", y cualquier
-        // otro lugar que necesite distinguir varios ítems por color.
-        // Ingresos y Deudas usan pos/neg (arriba), NO un acento — así el
-        // significado "dinero entra/sale" se mantiene igual en toda la
-        // app en vez de competir con un color decorativo.
-        accent: {
-          terracota: '#B8663F', // Alimentación
-          azul:      '#4E7AA8', // Transporte, Cierre Semanal, Coach
-          violeta:   '#7C7594', // Servicios, Calculadoras
-          rosa:      '#B15C7C', // Salud
-          bronce:    '#A8792E', // Educación — familia del dorado, pero
-                                 // deliberadamente distinto de `gold`
-                                 // (ese queda reservado para "premium")
-          coral:     '#BC7748', // Entretenimiento
-          salvia:    '#4F8F76', // Ropa, Metas
-          pizarra:   '#5B6472', // Vivienda, Reporte PDF, Perfil
+        hairline: {
+          DEFAULT: "rgba(255,255,255,.055)",
+          strong: "rgba(255,255,255,.14)",
         },
-        // Semántica de dinero, INDEPENDIENTE de la marca — nunca debe volverse azul
-        pos: '#16A34A',
-        neg: '#E5484D',
-        // Acento cálido puntual (chip de tarjeta, badges "premium") — con cuentagotas
-        gold: { DEFAULT: '#C9A84C', light: '#F5E8C0', dark: '#9A7530' },
+        // Primary brand accent — "signal", like a plotter trace. Reserved for
+        // data, active states, and the Meridian Line instrument. Never used
+        // for gain/loss semantics.
+        signal: {
+          DEFAULT: "#7DD3FC",
+          soft: "rgba(125,211,252,.12)",
+          glow: "rgba(125,211,252,.45)",
+        },
+        // Reserved exclusively for AI Coach / insights / risk warnings.
+        // Never decorative — its presence always means "pay attention".
+        amber: {
+          DEFAULT: "#E8A33D",
+          soft: "rgba(232,163,61,.12)",
+        },
+        gain: {
+          DEFAULT: "#34D399",
+          soft: "rgba(52,211,153,.10)",
+        },
+        loss: {
+          DEFAULT: "#F87171",
+          soft: "rgba(248,113,113,.10)",
+        },
+        ink: {
+          1: "#EAF2FB",
+          2: "#93A4BD",
+          3: "#5C6B84",
+        },
       },
-      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+      fontFamily: {
+        display: ["var(--font-display)", "sans-serif"],
+        body: ["var(--font-body)", "sans-serif"],
+        mono: ["var(--font-mono)", "monospace"],
+      },
+      borderRadius: {
+        card: "14px",
+      },
     },
   },
   plugins: [],
 };
+export default config;
