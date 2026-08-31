@@ -1,72 +1,159 @@
-// Se separó de Dashboard.jsx a propósito: `recharts` es la librería más
-// pesada del proyecto (~150-250KB) y Dashboard es la única pantalla que
-// NO usa lazy() (carga de inmediato porque es lo primero que ve el
-// usuario). Si recharts se queda dentro de Dashboard.jsx, se mete en el
-// bundle principal y se descarga en TODAS las pantallas, no solo en el
-// Dashboard. Aislándolo acá y cargándolo con lazy() desde Dashboard.jsx,
-// el resto de la app (nav, layout, todas las demás páginas) deja de
-// pagar ese peso.
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+import { BarChart3, PieChart as PieIcon } from 'lucide-react';
 
-export default function DashboardCharts({ chartData, gastosCategoria, fmt, fmtShort, CATEGORIAS_COLORES }) {
+interface DashboardChartsProps {
+  chartData: { semana: string; ingreso: number; gasto: number }[];
+  gastosCategoria: { name: string; value: number; pct: number }[];
+  fmt: (n: number) => string;
+  fmtShort: (n: number) => string;
+  CATEGORIAS_COLORES: Record<string, string>;
+}
+
+export default function DashboardCharts({
+  chartData,
+  gastosCategoria,
+  fmt,
+  fmtShort,
+  CATEGORIAS_COLORES,
+}: DashboardChartsProps) {
+  const tieneDatosGrafica = chartData.some((d) => d.ingreso > 0 || d.gasto > 0);
+
   return (
-    <>
-      {/* Gráfica — full width en móvil */}
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-g-900">Ingresos vs Gastos</p>
-          <div className="flex gap-3 text-[11px] text-g-400">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-blue-600 inline-block"/>Ingresos</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gold inline-block"/>Gastos</span>
+    <div className="space-y-4">
+      {/* Gráfica Ingresos vs Gastos */}
+      <div className="card p-5 bg-white border border-g-200/50 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-g-500" />
+            <p className="text-sm font-semibold text-g-900">Flujo Semanal (Mes)</p>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-g-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span className="w-2.5 h-2.5 rounded-sm bg-blue-600 inline-block" />
+              Ingresos
+            </span>
+            <span className="flex items-center gap-1.5 font-medium">
+              <span className="w-2.5 h-2.5 rounded-sm bg-gold inline-block" />
+              Gastos
+            </span>
           </div>
         </div>
-        {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={110}>
-            <BarChart data={chartData} barSize={10} barGap={3}>
-              <XAxis dataKey="semana" tick={{ fontSize: 10, fill: '#8A93A6' }} axisLine={false} tickLine={false}/>
-              <YAxis hide/>
-              <Tooltip
-                formatter={(v) => fmt(v)}
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: '0.5px solid #DCE1EC' }}
-                cursor={{ fill: 'rgba(36,82,255,0.06)' }}
-                isAnimationActive={false}
-                wrapperStyle={{ zIndex: 20 }}
-              />
-              <Bar dataKey="ingreso" fill="#2452FF" radius={[3,3,0,0]}/>
-              <Bar dataKey="gasto"   fill="#C9A84C" radius={[3,3,0,0]}/>
-            </BarChart>
-          </ResponsiveContainer>
+
+        {tieneDatosGrafica ? (
+          <div className="h-32 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barSize={12} barGap={4}>
+                <XAxis
+                  dataKey="semana"
+                  tick={{ fontSize: 11, fill: '#8A93A6', fontWeight: 500 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis hide />
+                <Tooltip
+                  formatter={(value: any) => [fmt(Number(value)), '']}
+                  contentStyle={{
+                    backgroundColor: '#0B1220',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    padding: '8px 12px',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+                  }}
+                  itemStyle={{ color: '#ffffff', padding: '2px 0' }}
+                  cursor={{ fill: 'rgba(36, 82, 255, 0.05)' }}
+                />
+                <Bar dataKey="ingreso" fill="#2452FF" radius={[4, 4, 0, 0]} name="Ingresos" />
+                <Bar dataKey="gasto" fill="#C9A84C" radius={[4, 4, 0, 0]} name="Gastos" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
-          <div className="h-24 flex items-center justify-center text-g-400 text-sm">
-            <i className="ti ti-chart-bar-off mr-2"/> Aún no hay datos este mes
+          <div className="h-28 flex flex-col items-center justify-center text-g-400 text-xs gap-1">
+            <BarChart3 className="w-6 h-6 stroke-1 text-g-300" />
+            <p>Aún no hay transacciones registradas este mes</p>
           </div>
         )}
       </div>
 
-      {/* Categorías — solo en desktop */}
+      {/* Categorías de gasto */}
       {gastosCategoria.length > 0 && (
-        <div className="hidden md:block card p-4">
-          <p className="text-sm font-medium text-g-900 mb-3">Gastos por categoría</p>
-          <div className="flex items-center gap-3">
-            <PieChart width={90} height={90}>
-              <Pie data={gastosCategoria} dataKey="total" cx="50%" cy="50%" innerRadius={28} outerRadius={44} paddingAngle={2}>
-                {gastosCategoria.map((c, i) => <Cell key={i} fill={CATEGORIAS_COLORES[c.categoria] || '#2452FF'}/>)}
-              </Pie>
-            </PieChart>
-            <div className="flex flex-col gap-1.5 flex-1">
-              {gastosCategoria.map((c, i) => (
-                <div key={i} className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: CATEGORIAS_COLORES[c.categoria] || '#2452FF' }}/>
-                    <span className="text-g-700 truncate max-w-[80px]">{c.categoria}</span>
+        <div className="card p-5 bg-white border border-g-200/50 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <PieIcon className="w-4 h-4 text-g-500" />
+              <p className="text-sm font-semibold text-g-900">Distribución de Gastos</p>
+            </div>
+            <span className="text-xs text-g-400 font-medium">Este mes</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <div className="h-36 w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={gastosCategoria}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={36}
+                    outerRadius={58}
+                    paddingAngle={3}
+                  >
+                    {gastosCategoria.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={CATEGORIAS_COLORES[entry.name] || '#8A93A6'}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: any) => [fmt(Number(val)), '']}
+                    contentStyle={{
+                      backgroundColor: '#0B1220',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      padding: '8px 12px',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="space-y-2">
+              {gastosCategoria.slice(0, 4).map((c) => (
+                <div key={c.name} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: CATEGORIAS_COLORES[c.name] || '#8A93A6' }}
+                    />
+                    <span className="text-g-700 font-medium truncate max-w-[120px]">{c.name}</span>
                   </div>
-                  <span className="text-g-500 font-medium">{fmtShort(c.total)}</span>
+                  <div className="flex items-center gap-2 text-right">
+                    <span className="text-g-900 font-semibold">{fmtShort(c.value)}</span>
+                    <span className="text-g-400 w-8">{c.pct}%</span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
