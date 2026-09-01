@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
-import { eliminarCuentaCompleta } from '../utils/api';
+import { eliminarCuentaCompleta, exportarDatosCompletos } from '../utils/api';
 import toast from 'react-hot-toast';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
@@ -20,6 +20,7 @@ export default function Perfil() {
   const [modalEliminar, setModalEliminar] = useState(false);
   const [confirmTexto, setConfirmTexto] = useState('');
   const [eliminando, setEliminando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const nombre = (perfil?.nombre || user?.user_metadata?.full_name || '').split(' ')[0];
 
   useEffect(() => {
@@ -53,6 +54,22 @@ export default function Perfil() {
   };
 
   const initials = form.nombre.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'U';
+
+  const descargarRespaldo = async () => {
+    setExportando(true);
+    try {
+      const datos = await exportarDatosCompletos();
+      const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fintual_respaldo_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Respaldo descargado');
+    } catch { toast.error('Error generando el respaldo'); }
+    finally { setExportando(false); }
+  };
 
   const eliminarCuenta = async () => {
     if (confirmTexto !== 'ELIMINAR') return;
@@ -153,6 +170,19 @@ export default function Perfil() {
         <button onClick={() => { logout(); }} className="w-full flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 py-1">
           <Icon name="logout" className="w-3.5 h-3.5"/>
           Cerrar sesión
+        </button>
+      </div>
+
+      {/* Tus datos */}
+      <div className="card p-5">
+        <p className="text-sm font-medium text-g-900 mb-1">Tus datos</p>
+        <p className="text-xs text-g-400 mb-3 leading-relaxed">
+          Descarga una copia de todo lo que has registrado (movimientos, deudas, activos, metas, hábitos, presupuestos y más) en un archivo JSON.
+        </p>
+        <button onClick={descargarRespaldo} disabled={exportando}
+          className="btn-secondary w-full flex items-center justify-center gap-2 disabled:opacity-50">
+          <Icon name="download" className="w-3.5 h-3.5"/>
+          {exportando ? 'Generando...' : 'Descargar mis datos'}
         </button>
       </div>
 

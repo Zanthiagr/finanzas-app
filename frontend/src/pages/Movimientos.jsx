@@ -3,6 +3,7 @@ import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimien
 import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../utils/confirm';
 import Icon from '../utils/icons';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -155,6 +156,8 @@ export default function Movimientos() {
   const [form, setForm]         = useState(initForm);
   const [editing, setEditing]   = useState(null);
   const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [busqueda, setBusqueda] = useState('');
   const [resumenMedio, setResumenMedio] = useState(null);
   const [verMedios, setVerMedios] = useState(false);
   const [mes, setMes]   = useState(hoy.getMonth() + 1);
@@ -230,14 +233,45 @@ export default function Movimientos() {
     } catch { toast.error('Error guardando'); }
   };
 
-  const remove = async id => {
-    await eliminarMovimiento(id);
-    toast.success('Eliminado');
-    load();
+  const remove = id => {
+    confirmToast('¿Eliminar este movimiento?', async () => {
+      await eliminarMovimiento(id);
+      toast.success('Eliminado');
+      load();
+    });
   };
 
   const totalIngresos = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+parseFloat(m.monto),0);
   const totalGastos   = movs.filter(m=>m.tipo==='gasto').reduce((a,m)=>a+parseFloat(m.monto),0);
+
+  // Búsqueda + categoría se filtran en el cliente sobre lo ya cargado del
+  // mes (el tipo sí va al servidor en `load()`, porque cambia la consulta).
+  const movsFiltrados = movs.filter(m => {
+    if (filtroCategoria && m.categoria !== filtroCategoria) return false;
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase();
+      if (!(m.descripcion||'').toLowerCase().includes(q) && !m.categoria.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const todasCategorias = [...new Set([...CATS_GASTO, ...CATS_INGRESO])];
+
+  const exportarCSV = () => {
+    if (movs.length === 0) return toast.error('No hay movimientos este mes para exportar');
+    const headers = 'Fecha,Tipo,Monto,Categoria,Descripcion,Medio de pago\n';
+    const rows = movs.map(m =>
+      `"${m.fecha}","${m.tipo}","${m.monto}","${m.categoria}","${(m.descripcion||'').replace(/"/g,'""')}","${labelMedioPago(m.medio_pago||'efectivo')}"`
+    ).join('\n');
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `movimientos_${MESES[mes-1].toLowerCase()}_${anio}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV descargado');
+  };
 
   return (
     <div className="space-y-4 page-enter">
@@ -247,9 +281,15 @@ export default function Movimientos() {
           <h2 className="text-lg font-medium text-g-900">Movimientos</h2>
           <p className="text-sm text-g-400">Historial completo, mes a mes</p>
         </div>
-        <button onClick={openNew} className="btn-primary flex items-center gap-2">
-          <Icon name="plus" className="w-3.5 h-3.5"/> <span className="hidden md:inline">Registrar</span><span className="md:hidden">Nuevo</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportarCSV} title="Exportar CSV"
+            className="btn-secondary w-10 h-10 !p-0 flex-shrink-0">
+            <Icon name="download" className="w-3.5 h-3.5"/>
+          </button>
+          <button onClick={openNew} className="btn-primary flex items-center gap-2">
+            <Icon name="plus" className="w-3.5 h-3.5"/> <span className="hidden md:inline">Registrar</span><span className="md:hidden">Nuevo</span>
+          </button>
+        </div>
       </div>
 
       {/* Navegador de mes — el listado de abajo siempre es de ESTE mes seleccionado */}
@@ -285,6 +325,20 @@ export default function Movimientos() {
             {fmtShort(totalIngresos-totalGastos)}
           </p>
         </div>
+      </div>
+
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Icon name="search" className="w-3.5 h-3.5 text-g-300 absolute left-3 top-1/2 -translate-y-1/2"/>
+          <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+            placeholder="Buscar por descripción o categoría..."
+            className="input pl-9 text-xs py-2"/>
+        </div>
+        <select value={filtroCategoria} onChange={e=>setFiltroCategoria(e.target.value)}
+          className="select text-xs py-2 w-40 flex-shrink-0">
+          <option value="">Todas las categorías</option>
+          {todasCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
 
       <div className="flex gap-2">
@@ -334,20 +388,24 @@ export default function Movimientos() {
       <div className="card overflow-hidden divide-y divide-g-100/60">
         {loading ? (
           <div className="flex justify-center items-center h-40"><Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/></div>
-        ) : movs.length===0 ? (
+        ) : movsFiltrados.length===0 ? (
           <div className="text-center py-16">
-            <Icon name="inbox" className="w-4 h-4 text-4xl text-g-200 block mb-2"/>
-            <p className="text-g-400 text-sm">No hay movimientos</p>
-            <button onClick={openNew} className="text-xs text-g-600 underline mt-2 block mx-auto">Registrar el primero</button>
+            <Icon name="inbox" className="w-8 h-8 text-g-200 block mx-auto mb-2"/>
+            <p className="text-g-400 text-sm">{movs.length===0 ? 'No hay movimientos' : 'Nada coincide con el filtro'}</p>
+            {movs.length===0
+              ? <button onClick={openNew} className="text-xs text-g-600 underline mt-2 block mx-auto">Registrar el primero</button>
+              : <button onClick={()=>{setBusqueda('');setFiltroCategoria('');}} className="text-xs text-g-600 underline mt-2 block mx-auto">Limpiar filtros</button>}
           </div>
-        ) : movs.map(m => (
+        ) : movsFiltrados.map(m => (
           <MovRow key={m.id} m={m} onEdit={openEdit} onDelete={remove}/>
         ))}
       </div>
 
-      {movs.length > 0 && (
-        <p className="text-center text-[11px] text-g-400 md:hidden">
-          ← Desliza una fila para eliminar
+      {movsFiltrados.length > 0 && (
+        <p className="text-center text-[11px] text-g-400">
+          {movsFiltrados.length} {movsFiltrados.length===1?'movimiento':'movimientos'}
+          {(busqueda || filtroCategoria) && ` de ${movs.length}`}
+          <span className="md:hidden"> · Desliza una fila para eliminar</span>
         </p>
       )}
 

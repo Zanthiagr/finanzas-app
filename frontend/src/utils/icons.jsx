@@ -15,7 +15,7 @@ import {
   Loader2, LogOut, NotebookPen, Pencil, Percent, Plane, Plus, Quote,
   Receipt, RefreshCw, Repeat, Bot, Scale, GraduationCap, Send, Shield,
   Shirt, ShoppingCart, Sparkles, Tag, Target, Trash2, TrendingDown,
-  TrendingUp, UserCircle, Wallet, Wifi, X,
+  TrendingUp, UserCircle, Wallet, Wifi, X, Search,
 } from 'lucide-react';
 
 export const ICONOS = {
@@ -86,6 +86,7 @@ export const ICONOS = {
   'repeat': Repeat,
   'robot': Bot,
   'scale': Scale,
+  'search': Search,
   'school': GraduationCap,
   'send': Send,
   'shield': Shield,
