@@ -364,6 +364,42 @@ export default function CierreSemanal() {
         </div>
       )}
 
+      {/* Historial de cierres del año — antes solo se veía la reflexión
+          de la semana seleccionada; esto da una vista completa de todas
+          las semanas ya selladas en {anioSel}, ordenadas por semana. */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 px-1">
+          <Icon name="calendar-stats" className="w-3.5 h-3.5 text-g-400"/>
+          <h4 className="text-xs font-medium text-g-600">Historial de cierres ({anioSel})</h4>
+        </div>
+        {cierres.length === 0 ? (
+          <div className="card p-5 text-center text-xs text-g-400">
+            Aún no has sellado semanas este año.
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {[...cierres].sort((a,b)=> b.mes_num - a.mes_num || b.semana_num - a.semana_num).map(c => {
+              const balance = parseFloat(c.ingresos||0) - parseFloat(c.gastos||0);
+              const infoAnimo = getEstadoAnimo(c.estado_animo);
+              return (
+                <div key={c.id} className="card p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-lg flex-shrink-0">{infoAnimo?.emoji || '📋'}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-g-800">Semana {c.semana_num} · {MESES[c.mes_num-1]}</p>
+                      {c.reflexion && <p className="text-[11px] text-g-400 italic truncate">"{c.reflexion}"</p>}
+                    </div>
+                  </div>
+                  <p className={`text-xs font-medium flex-shrink-0 ${balance>=0?'text-pos':'text-red-500'}`}>
+                    {balance>=0?'+':''}{fmtShort(balance)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Tarjeta-resumen tras cerrar — el "recibo emocional" de la semana.
           Reemplaza el toast genérico de antes: le devuelve al usuario algo
           que vale la pena mirar, no solo una confirmación. */}

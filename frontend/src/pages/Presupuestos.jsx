@@ -11,8 +11,10 @@ const CATEGORIAS_GASTO = ['Alimentación','Transporte','Servicios','Salud','Educ
 export default function Presupuestos() {
   const [presupuestos, setPresupuestos] = useState([]);
   const [gastosReales, setGastosReales] = useState({});
+  const [totalGastadoMes, setTotalGastadoMes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal]     = useState(false);
+  const [editando, setEditando] = useState(false);
   const [form, setForm]       = useState({ categoria: '', monto_limite: '' });
 
   const load = async () => {
@@ -24,6 +26,7 @@ export default function Presupuestos() {
         getResumen({ mes: now.getMonth() + 1, anio: now.getFullYear() }),
       ]);
       setPresupuestos(pres);
+      setTotalGastadoMes(resumen.gastos || 0);
       const gastosMap = {};
       resumen.porCategoria?.filter(c => c.tipo === 'gasto').forEach(c => {
         gastosMap[c.categoria] = parseFloat(c.total);
@@ -58,16 +61,28 @@ export default function Presupuestos() {
 
   const categoriasConPresupuesto = presupuestos.map(p => p.categoria);
   const categoriasDisponibles = CATEGORIAS_GASTO.filter(c => !categoriasConPresupuesto.includes(c));
+  const totalPresupuestado = presupuestos.reduce((a, p) => a + parseFloat(p.monto_limite), 0);
+  const margenDisponible = totalPresupuestado - totalGastadoMes;
 
-  // El <select> solo lista categorías SIN presupuesto todavía. Si el
-  // formulario abriera con una categoría que ya tiene presupuesto (ej. un
-  // valor fijo por defecto), el <select> no tendría esa opción para
-  // mostrar pero el estado seguiría apuntando a ella — al guardar,
-  // actualizaría el presupuesto existente en vez de crear el nuevo que el
-  // usuario cree estar creando. Por eso siempre se fija explícitamente a
-  // la primera categoría disponible al abrir el modal.
+  // El <select> solo lista categorías SIN presupuesto todavía cuando se
+  // está creando uno nuevo. Si el formulario abriera con una categoría
+  // que ya tiene presupuesto (ej. un valor fijo por defecto), el <select>
+  // no tendría esa opción para mostrar pero el estado seguiría apuntando
+  // a ella — al guardar, actualizaría el presupuesto existente en vez de
+  // crear el nuevo que el usuario cree estar creando. Por eso siempre se
+  // fija explícitamente a la primera categoría disponible al abrir el modal.
   const abrirModal = () => {
+    setEditando(false);
     setForm({ categoria: categoriasDisponibles[0] || '', monto_limite: '' });
+    setModal(true);
+  };
+
+  // Editar reutiliza guardarPresupuesto (ya hace upsert por categoría en
+  // el backend) — la diferencia es que el <select> debe poder mostrar la
+  // categoría actual aunque ya tenga presupuesto asignado.
+  const abrirEditar = (p) => {
+    setEditando(true);
+    setForm({ categoria: p.categoria, monto_limite: String(p.monto_limite) });
     setModal(true);
   };
 
@@ -86,6 +101,30 @@ export default function Presupuestos() {
           </button>
         )}
       </div>
+
+      {presupuestos.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card p-3 md:p-4">
+            <p className="section-label mb-1">Presupuestado</p>
+            <p className="text-base md:text-xl font-medium text-g-900">{fmtShort(totalPresupuestado)}</p>
+            <p className="text-[10px] text-g-400 mt-0.5">{presupuestos.length} categorías</p>
+          </div>
+          <div className="card p-3 md:p-4">
+            <p className="section-label mb-1">Gastado este mes</p>
+            <p className="text-base md:text-xl font-medium text-red-500">{fmtShort(totalGastadoMes)}</p>
+            <p className="text-[10px] text-g-400 mt-0.5">
+              {totalPresupuestado > 0 ? Math.round((totalGastadoMes / totalPresupuestado) * 100) : 0}% consumido
+            </p>
+          </div>
+          <div className="card p-3 md:p-4">
+            <p className="section-label mb-1">Margen disponible</p>
+            <p className={`text-base md:text-xl font-medium ${margenDisponible >= 0 ? 'text-pos' : 'text-red-500'}`}>
+              {fmtShort(margenDisponible)}
+            </p>
+            <p className="text-[10px] text-g-400 mt-0.5">{margenDisponible >= 0 ? 'Dentro del objetivo' : 'Límite excedido'}</p>
+          </div>
+        </div>
+      )}
 
       {presupuestos.length === 0 ? (
         <div className="card p-12 text-center">
@@ -116,9 +155,14 @@ export default function Presupuestos() {
                       <p className="text-xs text-g-400">Límite: {fmt(limite)}</p>
                     </div>
                   </div>
-                  <button onClick={() => eliminar(p.id)} className="text-g-300 hover:text-red-500 p-1.5">
-                    <Icon name="trash" className="w-3.5 h-3.5"/>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => abrirEditar(p)} className="text-g-300 hover:text-blue-600 p-1.5">
+                      <Icon name="pencil" className="w-3.5 h-3.5"/>
+                    </button>
+                    <button onClick={() => eliminar(p.id)} className="text-g-300 hover:text-red-500 p-1.5">
+                      <Icon name="trash" className="w-3.5 h-3.5"/>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex justify-between text-xs mb-1.5">
@@ -149,13 +193,14 @@ export default function Presupuestos() {
       )}
 
       {modal && (
-        <PantallaCompleta title="Nuevo presupuesto" onClose={() => setModal(false)}>
+        <PantallaCompleta title={editando ? 'Editar presupuesto' : 'Nuevo presupuesto'} onClose={() => setModal(false)}>
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="section-label block mb-1">Categoría</label>
-              <select className="select" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
-                {categoriasDisponibles.map(c => <option key={c}>{c}</option>)}
+              <select className="select" disabled={editando} value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
+                {(editando ? [form.categoria] : categoriasDisponibles).map(c => <option key={c}>{c}</option>)}
               </select>
+              {editando && <p className="text-[11px] text-g-400 mt-1">La categoría no se puede cambiar al editar — elimina y crea uno nuevo si necesitas otra.</p>}
             </div>
             <div>
               <label className="section-label block mb-1">Límite mensual (COP)</label>

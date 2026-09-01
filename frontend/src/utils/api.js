@@ -442,9 +442,34 @@ export const getHabitos = async () => {
   const { data: logs } = await supabase.from('habitos_log').select('*')
     .eq('usuario_id', userId).eq('fecha', hoy);
 
+  // Racha: días consecutivos completados, contando hacia atrás desde hoy
+  // (o desde ayer si hoy aún no se marcó, para no cortar la racha a medio
+  // día). Se trae una ventana de 90 días — suficiente para cualquier
+  // racha realista sin cargar todo el historial.
+  const desde = new Date();
+  desde.setDate(desde.getDate() - 90);
+  const { data: logsHistoricos } = await supabase.from('habitos_log').select('habito_id,fecha,completado')
+    .eq('usuario_id', userId).eq('completado', true).gte('fecha', todayLocalStr(desde));
+
+  const calcularRacha = (habitoId) => {
+    const fechasCompletadas = new Set(
+      (logsHistoricos || []).filter(l => l.habito_id === habitoId).map(l => l.fecha)
+    );
+    let racha = 0;
+    let cursor = new Date();
+    // si hoy no está completado, arranca a contar desde ayer
+    if (!fechasCompletadas.has(hoy)) cursor.setDate(cursor.getDate() - 1);
+    while (fechasCompletadas.has(todayLocalStr(cursor))) {
+      racha++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return racha;
+  };
+
   return habitos.map(h => ({
     ...h,
     completado_hoy: logs?.some(l => l.habito_id === h.id && l.completado) || false,
+    racha: calcularRacha(h.id),
   }));
 };
 
@@ -899,4 +924,26 @@ export const eliminarCuentaCompleta = async () => {
 
   await supabase.auth.signOut();
   return { cuentaAuthEliminada };
+};
+
+// Respaldo completo de todos los datos del usuario en un solo JSON —
+// consulta directa sin los límites/filtros de las vistas normales (que
+// están pensadas para una pantalla, no para un backup). Uso: botón
+// "Descargar mis datos" en Perfil. Solo lectura — no modifica nada.
+export const exportarDatosCompletos = async () => {
+  const userId = await getUserId();
+  const tablas = [
+    'movimientos', 'deudas', 'deuda_movimientos', 'activos', 'metas',
+    'habitos', 'habitos_log', 'diario_financiero', 'cierres_semanales',
+    'presupuestos', 'pagos_programados', 'saldos_iniciales',
+  ];
+  const resultado = { exportado_en: new Date().toISOString(), version: 1 };
+  for (const tabla of tablas) {
+    const { data, error } = await supabase.from(tabla).select('*').eq('usuario_id', userId);
+    if (error) { console.error(`Error exportando ${tabla}:`, error); resultado[tabla] = []; }
+    else resultado[tabla] = data;
+  }
+  const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', userId).maybeSingle();
+  resultado.perfil = perfil;
+  return resultado;
 };

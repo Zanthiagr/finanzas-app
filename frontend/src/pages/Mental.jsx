@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getHabitos, toggleHabito, getDiario, crearEntradaDiario } from '../utils/api';
 import toast from 'react-hot-toast';
 import Icon from '../utils/icons';
+import confetti from 'canvas-confetti';
 
 const FRASES = [
   { txt: '"No es cuánto ganas lo que determina tu riqueza — es cuánto conservas."', autor: 'Robert Kiyosaki' },
@@ -45,7 +46,16 @@ export default function Mental() {
     try {
       const r = await toggleHabito(h.id, h.puntos);
       // Sincronizar con el valor real devuelto por la BD
-      setHabitos(prev => prev.map(x => x.id===h.id ? {...x, completado_hoy: r.completado} : x));
+      setHabitos(prev => {
+        const actualizados = prev.map(x => x.id===h.id ? {...x, completado_hoy: r.completado} : x);
+        // Racha completa del día — celebración discreta, solo la primera
+        // vez que se cierra el último hábito pendiente (no en cada toggle).
+        if (r.completado && actualizados.length > 0 && actualizados.every(x => x.completado_hoy)) {
+          confetti({ particleCount: 60, spread: 55, startVelocity: 28, gravity: 0.9,
+            colors: ['#C9A84C', '#E8D9A8', '#2452FF'], origin: { y: 0.65 } });
+        }
+        return actualizados;
+      });
       if (r.completado) toast.success(`+${h.puntos} XP 🎉`);
     } catch (err) {
       // Revertir si falló
@@ -128,7 +138,14 @@ export default function Mental() {
                   <p className={`text-sm ${h.completado_hoy?'line-through text-g-400':'text-g-900 font-medium'}`}>{h.nombre}</p>
                   <p className="text-[10px] text-g-400">{h.momento?.replace('_',' ')}</p>
                 </div>
-                <span className="text-[11px] text-gold font-medium">+{h.puntos} XP</span>
+                <span className="flex items-center gap-2 flex-shrink-0">
+                  {h.racha > 0 && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
+                      <Icon name="flame" className="w-3 h-3"/>{h.racha}d
+                    </span>
+                  )}
+                  <span className="text-[11px] text-gold font-medium">+{h.puntos} XP</span>
+                </span>
               </button>
             ))}
           </div>

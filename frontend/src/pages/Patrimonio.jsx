@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getActivos, crearActivo, eliminarActivo,
+import { getActivos, crearActivo, actualizarActivo, eliminarActivo,
          getDeudas, crearDeuda, actualizarDeuda, eliminarDeuda,
          getDeudaMovimientos, crearDeudaMovimiento, actualizarDeudaMovimiento, eliminarDeudaMovimiento,
          getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado,
@@ -44,6 +44,7 @@ const TIPO_ACTIVO_VISUAL = {
 export function Activos() {
   const [items, setItems]         = useState([]);
   const [modal, setModal]         = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
   const [modalRend, setModalRend] = useState(null);
   const [rendMonto, setRendMonto] = useState('');
   const [rendFecha, setRendFecha] = useState(todayLocalStr());
@@ -66,19 +67,46 @@ export function Activos() {
   const submit = async e => {
     e.preventDefault();
     try {
-      await crearActivo({
+      const payload = {
         ...form,
         valor_inicial: parseFloat(String(form.valor_inicial).replace(',','.')),
         valor_actual:  parseFloat(String(form.valor_actual||form.valor_inicial).replace(',','.')),
         tasa_rendimiento: (form.tipo_rendimiento==='manual'||form.tipo_rendimiento==='variable')
           ? null
           : (parseFloat(String(form.tasa_rendimiento).replace(',','.')) || null),
-      });
-      toast.success('Activo registrado');
+      };
+      if (editandoId) {
+        await actualizarActivo(editandoId, payload);
+        toast.success('Activo actualizado');
+      } else {
+        await crearActivo(payload);
+        toast.success('Activo registrado');
+      }
       setModal(false);
+      setEditandoId(null);
       setForm({nombre:'',tipo:'Inversión',valor_inicial:'',valor_actual:'',fecha_adquisicion:'',descripcion:'',tasa_rendimiento:'',tipo_rendimiento:'manual'});
       load();
     } catch(err) { toast.error('Error guardando'); console.error(err); }
+  };
+
+  const abrirEditar = (a) => {
+    setEditandoId(a.id);
+    setForm({
+      nombre: a.nombre, tipo: a.tipo,
+      valor_inicial: String(a.valor_inicial ?? ''),
+      valor_actual: String(a.valor_actual ?? ''),
+      fecha_adquisicion: a.fecha_adquisicion || '',
+      descripcion: a.descripcion || '',
+      tasa_rendimiento: a.tasa_rendimiento != null ? String(a.tasa_rendimiento) : '',
+      tipo_rendimiento: a.tipo_rendimiento || 'manual',
+    });
+    setModal(true);
+  };
+
+  const abrirNuevo = () => {
+    setEditandoId(null);
+    setForm({nombre:'',tipo:'Inversión',valor_inicial:'',valor_actual:'',fecha_adquisicion:'',descripcion:'',tasa_rendimiento:'',tipo_rendimiento:'manual'});
+    setModal(true);
   };
 
   const registrarRend = async () => {
@@ -104,7 +132,7 @@ export function Activos() {
     <div className="space-y-4 page-enter">
       <div className="flex items-center justify-between">
         <div><h2 className="text-lg font-medium text-g-900">Activos</h2><p className="text-sm text-g-400">Todo lo que tienes y vale</p></div>
-        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> Agregar</button>
+        <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> Agregar</button>
       </div>
 
       <div className="relative overflow-hidden bg-g-800 rounded-2xl p-4 text-white">
@@ -161,7 +189,10 @@ export function Activos() {
                     </div>
                   </div>
                 </div>
-                <button onClick={()=>del(a.id)} className="text-g-300 hover:text-red-500 p-1"><Icon name="trash" className="w-3.5 h-3.5"/></button>
+                <div className="flex items-center gap-0.5">
+                  <button onClick={()=>abrirEditar(a)} className="text-g-300 hover:text-blue-600 p-1"><Icon name="pencil" className="w-3.5 h-3.5"/></button>
+                  <button onClick={()=>del(a.id)} className="text-g-300 hover:text-red-500 p-1"><Icon name="trash" className="w-3.5 h-3.5"/></button>
+                </div>
               </div>
               <p className="text-2xl font-medium text-g-900">{fmt(a.valor_actual)}</p>
               <p className={`text-xs mt-0.5 ${g>=0?'text-g-500':'text-red-500'}`}>{g>=0?'+':''}{fmt(g)} vs capital inicial</p>
@@ -209,9 +240,9 @@ export function Activos() {
         </PantallaCompleta>
       )}
 
-      {/* Modal nuevo activo */}
+      {/* Modal nuevo/editar activo */}
       {modal && (
-        <PantallaCompleta title="Nuevo activo" onClose={()=>setModal(false)}>
+        <PantallaCompleta title={editandoId ? 'Editar activo' : 'Nuevo activo'} onClose={()=>{setModal(false);setEditandoId(null);}}>
           <form onSubmit={submit} className="space-y-3">
             <div>
               <label className="section-label block mb-1">Nombre del activo</label>
@@ -273,7 +304,7 @@ export function Activos() {
               </div>
             )}
             <div className="flex gap-2 pb-4">
-              <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
+              <button type="button" onClick={()=>{setModal(false);setEditandoId(null);}} className="btn-secondary flex-1">Cancelar</button>
               <button type="submit" className="btn-primary flex-1">Guardar activo</button>
             </div>
           </form>
