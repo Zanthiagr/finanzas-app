@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getResumen, getMovimientos, getDeudas, getMetas, getCierres } from '../utils/api';
 import { fmt, fmtShort, fmtDate, CATEGORIAS_COLORES, getEstadoAnimo } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
+import Icon from '../utils/icons';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -42,7 +43,7 @@ export default function Reporte() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64 flex-col gap-3">
-      <i className="ti ti-loader animate-spin text-2xl text-g-400"/>
+      <Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/>
       <p className="text-sm text-g-400">Cargando datos del reporte...</p>
     </div>
   );
@@ -87,7 +88,7 @@ export default function Reporte() {
           </div>
           <button onClick={descargarPDF} disabled={generando}
             className="btn-primary flex items-center gap-2 flex-shrink-0">
-            <i className="ti ti-download text-sm"/>
+            <Icon name="download" className="w-3.5 h-3.5"/>
             <span className="hidden sm:inline">{generando ? 'Preparando...' : 'Descargar PDF'}</span>
             <span className="sm:hidden">{generando ? '...' : 'PDF'}</span>
           </button>
@@ -108,14 +109,14 @@ export default function Reporte() {
             </select>
           </div>
           <button onClick={cargar} className="btn-secondary flex items-center justify-center gap-2 sm:w-auto">
-            <i className="ti ti-refresh text-sm"/> Actualizar
+            <Icon name="refresh" className="w-3.5 h-3.5"/> Actualizar
           </button>
         </div>
 
         {/* Preview card */}
         <div className="card p-4 bg-g-50 border-dashed">
           <p className="text-xs text-g-500 flex items-center gap-2 mb-1">
-            <i className="ti ti-eye text-sm"/> Vista previa del reporte
+            <Icon name="eye" className="w-3.5 h-3.5"/> Vista previa del reporte
           </p>
           <p className="text-sm text-g-700">
             {MESES[mes-1]} {anio} · {nombre} · {movimientos?.length || 0} movimientos

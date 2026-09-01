@@ -3,6 +3,7 @@ import { getSaldosIniciales, guardarSaldoInicial, eliminarSaldoInicial } from '.
 import { MEDIOS_PAGO, labelMedioPago, fmt } from '../utils/helpers';
 import { confirmToast } from '../utils/confirm';
 import toast from 'react-hot-toast';
+import Icon from '../utils/icons';
 
 /**
  * Formulario para registrar el capital que ya se tiene (efectivo + cada
@@ -98,7 +99,7 @@ export default function CapitalInicialForm({ dark = false, onChange }) {
               <div className="flex items-center gap-2.5">
                 <span className={`text-sm font-medium ${textCls}`}>{fmt(s.monto)}</span>
                 <button onClick={() => quitar(s.medio_pago)} className={subCls}>
-                  <i className="ti ti-x text-xs"/>
+                  <Icon name="x" className="w-3 h-3"/>
                 </button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { supabase } from '../utils/supabase';
 import { fmt, fmtShort } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import Ring from '../components/Ring';
+import Icon from '../utils/icons';
 
 const LIMITE_MENSAJES = 15;
 const SUGERENCIAS = [
@@ -23,7 +24,7 @@ function MsgBubble({ msg }) {
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
       {!isUser && (
         <div className="w-8 h-8 rounded-full bg-g-800 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
-          <i className="ti ti-robot text-g-200 text-sm"/>
+          <Icon name="robot" className="w-3.5 h-3.5 text-g-200"/>
         </div>
       )}
       <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
@@ -78,7 +79,7 @@ function UpgradeModal({ onClose }) {
         <div className="text-center mb-5">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
             style={{ background: 'linear-gradient(135deg, #10224F 0%, #0B1E4D 55%, #060B18 100%)' }}>
-            <i className="ti ti-robot text-gold text-2xl"/>
+            <Icon name="robot" className="w-6 h-6 text-gold"/>
           </div>
           <h3 className="text-lg font-medium text-g-900 mb-1">Coach ilimitado</h3>
           <p className="text-sm text-g-500">Conversa sin límites con tu coach financiero personal</p>
@@ -93,7 +94,7 @@ function UpgradeModal({ onClose }) {
           ].map((f, i) => (
             <div key={i} className="flex items-center gap-2.5">
               <div className="w-5 h-5 rounded-full bg-g-400 flex items-center justify-center flex-shrink-0">
-                <i className="ti ti-check text-white text-[10px]"/>
+                <Icon name="check" className="w-2.5 h-2.5 text-white"/>
               </div>
               <p className="text-sm text-g-700">{f}</p>
             </div>
@@ -290,7 +291,7 @@ LÍMITES IMPORTANTES:
 
   if (cargandoCtx) return (
     <div className="flex items-center justify-center h-64 flex-col gap-3">
-      <i className="ti ti-loader animate-spin text-2xl text-g-400"/>
+      <Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/>
       <p className="text-sm text-g-400">Leyendo tus datos financieros...</p>
     </div>
   );
@@ -303,7 +304,7 @@ LÍMITES IMPORTANTES:
         <div className="card-premium-glow -top-10 -right-6 w-32 h-32 bg-gold opacity-[0.1]"/>
         <div className="relative w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: 'linear-gradient(135deg, #10224F 0%, #0B1E4D 55%, #060B18 100%)' }}>
-          <i className="ti ti-robot text-gold text-lg"/>
+          <Icon name="robot" className="w-5 h-5 text-gold"/>
         </div>
         <div className="relative flex-1">
           <p className="text-white font-medium text-sm">Coach financiero IA</p>
@@ -334,7 +335,7 @@ LÍMITES IMPORTANTES:
         {loading && (
           <div className="flex justify-start mb-3">
             <div className="w-8 h-8 rounded-full bg-g-800 flex items-center justify-center flex-shrink-0 mr-2">
-              <i className="ti ti-robot text-g-200 text-sm"/>
+              <Icon name="robot" className="w-3.5 h-3.5 text-g-200"/>
             </div>
             <div className="bg-white border border-g-200/60 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
               <div className="flex gap-1 items-center h-5">
@@ -369,7 +370,7 @@ LÍMITES IMPORTANTES:
         <div className="flex-shrink-0">
           <button onClick={() => setShowUpgrade(true)}
             className="w-full bg-g-800 text-white font-medium py-3 rounded-xl text-sm hover:bg-g-900 transition-colors flex items-center justify-center gap-2">
-            <i className="ti ti-sparkles text-gold"/>
+            <Icon name="sparkles" className="w-4 h-4 text-gold"/>
             Obtener mensajes ilimitados para seguir
           </button>
         </div>
@@ -386,7 +387,7 @@ LÍMITES IMPORTANTES:
           <button onClick={() => enviar()}
             disabled={!input.trim() || loading}
             className="w-11 h-11 rounded-xl bg-g-700 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40 hover:bg-g-800 active:scale-95 transition-all self-end">
-            <i className="ti ti-send text-sm"/>
+            <Icon name="send" className="w-3.5 h-3.5"/>
           </button>
         </div>
       )}

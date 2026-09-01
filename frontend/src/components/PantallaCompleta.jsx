@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import Icon from '../utils/icons';
 
 export default function PantallaCompleta({ title, onClose, children }) {
   // Bloquear scroll del body mientras el modal está abierto
@@ -28,13 +29,13 @@ export default function PantallaCompleta({ title, onClose, children }) {
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center flex-shrink-0">
-            <i className="ti ti-arrow-left text-g-700"/>
+            <Icon name="arrow-left" className="w-4 h-4 text-g-700"/>
           </button>
           <h3 className="font-medium text-g-900 truncate mx-3 flex-1 text-center text-sm">{title}</h3>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center flex-shrink-0 md:flex hidden">
-            <i className="ti ti-x text-g-700 text-sm"/>
+            <Icon name="x" className="w-3.5 h-3.5 text-g-700"/>
           </button>
           <div className="w-9 flex-shrink-0 md:hidden"/>
         </div>

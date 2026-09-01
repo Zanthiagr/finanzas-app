@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import Ring from '../components/Ring';
+import Icon from '../utils/icons';
+import confetti from 'canvas-confetti';
 
 const MODULOS = [
   {
@@ -46,7 +48,7 @@ const MODULOS = [
                 <p className={`text-[10px] uppercase tracking-wider font-medium mb-2 ${c.ok ? 'text-emerald-700' : 'text-red-600'}`}>{c.tipo}</p>
                 {c.items.map((it, i) => (
                   <div key={i} className="flex items-start gap-1.5 mb-1.5">
-                    <i className={`ti ${c.ok ? 'ti-check text-emerald-600' : 'ti-x text-red-500'} text-xs mt-0.5`} />
+                    <Icon name={c.ok ? 'check' : 'x'} className={`w-3 h-3 mt-0.5 ${c.ok ? 'text-emerald-600' : 'text-red-500'}`}/>
                     <p className="text-xs text-g-800">{it}</p>
                   </div>
                 ))}
@@ -255,6 +257,11 @@ export default function Academia() {
       setQuizResp({});
     } else {
       toast.success('¡Módulo completado! 🎓');
+      confetti({
+        particleCount: 100, spread: 70, startVelocity: 35, gravity: 0.95,
+        colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'],
+        origin: { y: 0.55 },
+      });
       const idxActual = MODULOS_IDS.indexOf(moduloActivo);
       const siguiente = MODULOS_IDS[idxActual + 1];
       if (siguiente) {
@@ -289,13 +296,13 @@ export default function Academia() {
               className={`relative card p-3 text-left transition-all ${moduloActivo === m.id ? 'border-g-400 bg-g-50' : 'hover:border-g-200'}`}>
               <div className="flex items-start justify-between mb-2">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: m.bg }}>
-                  <i className={`ti ${m.icon} text-sm`} style={{ color: m.color }} />
+                  <Icon name={m.icon} className="w-3.5 h-3.5" style={{ color: m.color }}/>
                 </div>
                 <div className="relative w-7 h-7 flex-shrink-0">
                   <Ring pct={pctModulo} size={28} stroke={2.5} color={hecho === m.lecciones.length ? '#16A34A' : '#C9A84C'}/>
                   {hecho === m.lecciones.length && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <i className="ti ti-check text-[10px] text-emerald-600"/>
+                      <Icon name="check" className="w-2.5 h-2.5 text-emerald-600"/>
                     </div>
                   )}
                 </div>
@@ -312,7 +319,7 @@ export default function Academia() {
         <div className="card overflow-hidden">
           <div className="flex items-center gap-3 p-4 border-b border-g-100" style={{ borderLeftWidth: 3, borderLeftColor: modulo.color }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: modulo.bg }}>
-              <i className={`ti ${modulo.icon}`} style={{ color: modulo.color }} />
+              <Icon name={modulo.icon} className="w-4 h-4" style={{ color: modulo.color }}/>
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-g-900">{leccion.titulo}</p>

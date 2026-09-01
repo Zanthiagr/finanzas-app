@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import Icon from '../utils/icons';
 
 export default function AuthPage() {
   const [loading, setLoading] = useState(false);
@@ -43,7 +44,7 @@ export default function AuthPage() {
           ].map((f, i) => (
             <div key={i} className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-g-700 flex items-center justify-center">
-                <i className={`ti ${f.icon} text-g-200 text-sm`} />
+                <Icon name={f.icon} className="w-3.5 h-3.5 text-g-200"/>
               </div>
               <span className="text-white/60 text-sm">{f.text}</span>
             </div>
@@ -70,7 +71,7 @@ export default function AuthPage() {
             className="w-full flex items-center justify-center gap-3 bg-white text-gray-700 font-medium py-3.5 rounded-xl text-sm hover:bg-gray-50 transition-colors disabled:opacity-60"
           >
             {loading ? (
-              <i className="ti ti-loader animate-spin text-lg" />
+              <Icon name="loader" className="w-5 h-5 animate-spin"/>
             ) : (
               <svg width="18" height="18" viewBox="0 0 18 18">
                 <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>

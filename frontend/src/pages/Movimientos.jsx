@@ -3,6 +3,7 @@ import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimien
 import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
+import Icon from '../utils/icons';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
@@ -35,7 +36,7 @@ function MovRow({ m, onEdit, onDelete }) {
     <div className="relative overflow-hidden">
       <div className="absolute right-0 top-0 bottom-0 w-20 bg-red-500 flex items-center justify-center rounded-r-xl">
         <button onClick={() => onDelete(m.id)} className="text-white flex flex-col items-center gap-0.5">
-          <i className="ti ti-trash text-lg"/>
+          <Icon name="trash" className="w-5 h-5"/>
           <span className="text-[10px]">Eliminar</span>
         </button>
       </div>
@@ -49,7 +50,7 @@ function MovRow({ m, onEdit, onDelete }) {
       >
         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
           style={{ background: (CATEGORIAS_COLORES[m.categoria]||'#2452FF')+'25', color: CATEGORIAS_COLORES[m.categoria]||'#2452FF' }}>
-          <i className={`ti ${CATEGORIAS_ICONOS[m.categoria]||'ti-tag'}`}/>
+          <Icon name={CATEGORIAS_ICONOS[m.categoria]||'ti-tag'} className="w-4 h-4"/>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-g-900 truncate">{m.descripcion||m.categoria}</p>
@@ -60,7 +61,7 @@ function MovRow({ m, onEdit, onDelete }) {
         <span className={`text-sm font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-pos':'text-g-900'}`}>
           {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
         </span>
-        <i className="ti ti-chevron-right text-g-300 text-xs hidden md:block"/>
+        <Icon name="chevron-right" className="w-3 h-3 text-g-300 hidden md:block"/>
       </div>
     </div>
   );
@@ -125,7 +126,7 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
         </div>
         {esConTarjeta && (
           <div className="card p-3 bg-g-50">
-            <label className="section-label block mb-1 flex items-center gap-1.5"><i className="ti ti-credit-card text-sm"/> ¿A cuántas cuotas? <span className="text-g-300">(opcional)</span></label>
+            <label className="section-label block mb-1 flex items-center gap-1.5"><Icon name="credit-card" className="w-3.5 h-3.5"/> ¿A cuántas cuotas? <span className="text-g-300">(opcional)</span></label>
             <input type="number" min="1" max="60" className="input" placeholder="1 = de contado"
               value={form.num_cuotas} onChange={set('num_cuotas')}/>
             <p className="text-[11px] text-g-400 mt-1">El total se suma completo a la tarjeta ahora — esto es solo para acordarte en cuántas cuotas quedó.</p>
@@ -247,14 +248,14 @@ export default function Movimientos() {
           <p className="text-sm text-g-400">Historial completo, mes a mes</p>
         </div>
         <button onClick={openNew} className="btn-primary flex items-center gap-2">
-          <i className="ti ti-plus text-sm"/> <span className="hidden md:inline">Registrar</span><span className="md:hidden">Nuevo</span>
+          <Icon name="plus" className="w-3.5 h-3.5"/> <span className="hidden md:inline">Registrar</span><span className="md:hidden">Nuevo</span>
         </button>
       </div>
 
       {/* Navegador de mes — el listado de abajo siempre es de ESTE mes seleccionado */}
       <div className="card p-2.5 flex items-center justify-between">
         <button onClick={()=>navMes(-1)} className="w-8 h-8 rounded-full bg-g-50 flex items-center justify-center active:scale-90 flex-shrink-0">
-          <i className="ti ti-chevron-left text-g-700 text-sm"/>
+          <Icon name="chevron-left" className="w-3.5 h-3.5 text-g-700"/>
         </button>
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-g-900 capitalize">{MESES[mes-1]} {anio}</p>
@@ -265,21 +266,21 @@ export default function Movimientos() {
         </div>
         <button onClick={()=>navMes(1)} disabled={esMesActual}
           className="w-8 h-8 rounded-full bg-g-50 flex items-center justify-center active:scale-90 disabled:opacity-30 flex-shrink-0">
-          <i className="ti ti-chevron-right text-g-700 text-sm"/>
+          <Icon name="chevron-right" className="w-3.5 h-3.5 text-g-700"/>
         </button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="card p-3 md:p-4">
-          <p className="section-label flex items-center gap-1"><i className="ti ti-arrow-down text-pos text-[11px]"/>Ingresos</p>
+          <p className="section-label flex items-center gap-1"><Icon name="arrow-down" className="w-3 h-3 text-pos"/>Ingresos</p>
           <p className="text-base md:text-xl font-medium text-pos">{fmtShort(totalIngresos)}</p>
         </div>
         <div className="card p-3 md:p-4">
-          <p className="section-label flex items-center gap-1"><i className="ti ti-arrow-up text-red-500 text-[11px]"/>Gastos</p>
+          <p className="section-label flex items-center gap-1"><Icon name="arrow-up" className="w-3 h-3 text-red-500"/>Gastos</p>
           <p className="text-base md:text-xl font-medium text-red-500">{fmtShort(totalGastos)}</p>
         </div>
         <div className="card p-3 md:p-4">
-          <p className="section-label flex items-center gap-1"><i className={`ti ${totalIngresos-totalGastos>=0?'ti-trending-up text-pos':'ti-trending-down text-red-500'} text-[11px]`}/>Balance</p>
+          <p className="section-label flex items-center gap-1"><Icon name={totalIngresos-totalGastos>=0?'trending-up':'trending-down'} className={`w-3 h-3 ${totalIngresos-totalGastos>=0?'text-pos':'text-red-500'}`}/>Balance</p>
           <p className={`text-base md:text-xl font-medium ${totalIngresos-totalGastos>=0?'text-pos':'text-red-500'}`}>
             {fmtShort(totalIngresos-totalGastos)}
           </p>
@@ -295,7 +296,7 @@ export default function Movimientos() {
         ))}
         <button onClick={()=>setVerMedios(!verMedios)}
           className={`text-xs px-3 py-1.5 rounded-full border transition-all ml-auto ${verMedios?'bg-g-700 text-white border-g-700':'bg-white text-g-500 border-g-200/60'}`}>
-          <i className="ti ti-wallet text-xs mr-1"/>Medios
+          <Icon name="wallet" className="w-3 h-3 mr-1"/>Medios
         </button>
       </div>
 
@@ -332,10 +333,10 @@ export default function Movimientos() {
 
       <div className="card overflow-hidden divide-y divide-g-100/60">
         {loading ? (
-          <div className="flex justify-center items-center h-40"><i className="ti ti-loader animate-spin text-2xl text-g-400"/></div>
+          <div className="flex justify-center items-center h-40"><Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/></div>
         ) : movs.length===0 ? (
           <div className="text-center py-16">
-            <i className="ti ti-inbox text-4xl text-g-200 block mb-2"/>
+            <Icon name="inbox" className="w-4 h-4 text-4xl text-g-200 block mb-2"/>
             <p className="text-g-400 text-sm">No hay movimientos</p>
             <button onClick={openNew} className="text-xs text-g-600 underline mt-2 block mx-auto">Registrar el primero</button>
           </div>

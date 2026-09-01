@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { getResumen, getCierres, crearCierre } from '../utils/api';
 import { fmtShort, getCurrentWeek, ESTADOS_ANIMO, getEstadoAnimo } from '../utils/helpers';
 import toast from 'react-hot-toast';
+import Icon from '../utils/icons';
+import confetti from 'canvas-confetti';
 
 const PREGUNTAS = [
   '¿Qué gasté de más esta semana?',
@@ -108,8 +110,18 @@ export default function CierreSemanal() {
         semana_num: semanaSel, mes_num: mesSel, anio_num: anioSel,
         reflexion, ingresos: ing, gastos: gas, estado_animo: estadoAnimo,
       });
+      const balanceFinal = parseFloat(ing) - parseFloat(gas);
+      // Celebración discreta solo cuando la semana cierra en positivo —
+      // reforzar el hábito de cerrar bien, no solo el hábito de cerrar.
+      if (balanceFinal >= 0) {
+        confetti({
+          particleCount: 90, spread: 65, startVelocity: 32, gravity: 1,
+          colors: ['#C9A84C', '#E8D9A8', '#2452FF'],
+          origin: { y: 0.4 },
+        });
+      }
       setFinalData({
-        semana: semanaSel, balance: parseFloat(ing) - parseFloat(gas),
+        semana: semanaSel, balance: balanceFinal,
         ingresos: parseFloat(ing), gastos: parseFloat(gas),
         reflexion, estadoAnimo, categoriaTop,
       });
@@ -163,7 +175,7 @@ export default function CierreSemanal() {
     };
   });
 
-  if (loading) return <div className="flex justify-center items-center h-64"><i className="ti ti-loader animate-spin text-2xl text-g-400"/></div>;
+  if (loading) return <div className="flex justify-center items-center h-64"><Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/></div>;
 
   return (
     <div className="space-y-5 page-enter">
@@ -175,11 +187,11 @@ export default function CierreSemanal() {
         <div className="flex items-center gap-1 flex-shrink-0">
           <button onClick={() => cambiarMes(-1)} title="Mes anterior"
             className="w-8 h-8 rounded-lg border border-g-200/60 flex items-center justify-center text-g-500 hover:bg-g-50 active:scale-95 transition-all">
-            <i className="ti ti-chevron-left text-sm"/>
+            <Icon name="chevron-left" className="w-3.5 h-3.5"/>
           </button>
           <button onClick={() => cambiarMes(1)} disabled={esMesActual} title="Mes siguiente"
             className="w-8 h-8 rounded-lg border border-g-200/60 flex items-center justify-center text-g-500 hover:bg-g-50 active:scale-95 transition-all disabled:opacity-30 disabled:hover:bg-transparent">
-            <i className="ti ti-chevron-right text-sm"/>
+            <Icon name="chevron-right" className="w-3.5 h-3.5"/>
           </button>
         </div>
       </div>
@@ -269,7 +281,7 @@ export default function CierreSemanal() {
       {semanaSel && !semanaYaCerrada && (gastoSemanaActual > 0 || categoriaTop) && (
         <div className="card p-4 bg-g-50/60 border-dashed">
           <p className="text-xs text-g-500 flex items-center gap-1.5 mb-2">
-            <i className="ti ti-sparkles text-sm"/> Antes de cerrar, un vistazo rápido
+            <Icon name="sparkles" className="w-3.5 h-3.5"/> Antes de cerrar, un vistazo rápido
           </p>
           <div className="space-y-1.5">
             {cambioPct !== null && (
@@ -296,7 +308,7 @@ export default function CierreSemanal() {
       {semanaSel && (
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-1">
-            <i className="ti ti-calendar-check text-g-600"/>
+            <Icon name="calendar-check" className="w-4 h-4 text-g-600"/>
             <p className="text-sm font-medium text-g-900">
               {semanaYaCerrada ? `Semana ${semanaSel} — Ya cerrada` : `Cerrar semana ${semanaSel}`}
             </p>
@@ -332,7 +344,7 @@ export default function CierreSemanal() {
                 value={reflexion} onChange={e => setReflexion(e.target.value)}/>
               <button onClick={cerrarSemana} disabled={cerrando}
                 className="btn-primary w-full mt-3 justify-center flex items-center gap-2">
-                <i className="ti ti-calendar-check text-sm"/>
+                <Icon name="calendar-check" className="w-3.5 h-3.5"/>
                 {cerrando ? 'Cerrando...' : `Cerrar semana ${semanaSel}`}
               </button>
             </>
@@ -340,7 +352,7 @@ export default function CierreSemanal() {
 
           {semanaYaCerrada && cierres.find(c=>c.semana_num===semanaSel && c.mes_num===mesSel)?.reflexion && (
             <div className="relative overflow-hidden bg-g-50 rounded-xl p-4 border border-g-200/60">
-              <i className="ti ti-quote absolute -top-1 -right-1 text-4xl text-g-200/50"/>
+              <Icon name="quote" className="w-4 h-4 absolute -top-1 -right-1 text-4xl text-g-200/50"/>
               {getEstadoAnimo(cierres.find(c=>c.semana_num===semanaSel && c.mes_num===mesSel)?.estado_animo) && (
                 <p className="text-lg mb-1">{getEstadoAnimo(cierres.find(c=>c.semana_num===semanaSel && c.mes_num===mesSel)?.estado_animo).emoji}</p>
               )}

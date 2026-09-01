@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getHabitos, toggleHabito, getDiario, crearEntradaDiario } from '../utils/api';
 import toast from 'react-hot-toast';
+import Icon from '../utils/icons';
 
 const FRASES = [
   { txt: '"No es cuánto ganas lo que determina tu riqueza — es cuánto conservas."', autor: 'Robert Kiyosaki' },
@@ -89,7 +90,7 @@ export default function Mental() {
           <p className="text-white/30 text-xs">{frase.autor ? `— ${frase.autor}` : ''}</p>
           <button onClick={()=>setFraseIdx((fraseIdx+1)%FRASES.length)}
             className="text-gold/70 hover:text-gold text-xs flex items-center gap-1">
-            <i className="ti ti-refresh text-xs"/> Nueva
+            <Icon name="refresh" className="w-3 h-3"/> Nueva
           </button>
         </div>
       </div>
@@ -99,7 +100,7 @@ export default function Mental() {
         {TABS.map(t => (
           <button key={t.id} onClick={()=>setTab(t.id)}
             className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[10px] font-medium transition-all ${tab===t.id?'bg-white text-g-700 shadow-sm':'text-g-400'}`}>
-            <i className={`ti ${t.icon} text-sm`}/>
+            <Icon name={t.icon} className="w-3.5 h-3.5"/>
             {t.label}
           </button>
         ))}
@@ -121,7 +122,7 @@ export default function Mental() {
               <button key={h.id} onClick={()=>handleToggle(h)}
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-g-50 active:bg-g-100 transition-colors text-left">
                 <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${h.completado_hoy?'bg-g-700 border-g-700':'border-g-300'}`}>
-                  {h.completado_hoy && <i className="ti ti-check text-white text-xs"/>}
+                  {h.completado_hoy && <Icon name="check" className="w-3 h-3 text-white"/>}
                 </div>
                 <div className="flex-1">
                   <p className={`text-sm ${h.completado_hoy?'line-through text-g-400':'text-g-900 font-medium'}`}>{h.nombre}</p>
@@ -149,7 +150,7 @@ export default function Mental() {
                   <p className="text-[9px] uppercase tracking-wider text-red-600 font-medium mb-0.5">Antes</p>
                   <p className="text-xs text-red-800">{c.lim}</p>
                 </div>
-                <i className="ti ti-arrow-right text-gold flex-shrink-0"/>
+                <Icon name="arrow-right" className="w-4 h-4 text-gold flex-shrink-0"/>
                 <div className="flex-1 bg-gold/8 rounded-xl p-3">
                   <p className="text-[9px] uppercase tracking-wider text-gold-dark font-medium mb-0.5">Ahora</p>
                   <p className="text-xs text-g-800">{c.pot}</p>
@@ -170,10 +171,10 @@ export default function Mental() {
                 className={`w-full card p-4 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${hecha?'border-gold/40 bg-gold/5':''}`}>
                 <div className="relative w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{background: a.color+'15'}}>
-                  <i className={`ti ${a.ico} text-lg`} style={{color:a.color}}/>
+                  <Icon name={a.ico} className="w-5 h-5" style={{color:a.color}}/>
                   {hecha && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold flex items-center justify-center">
-                      <i className="ti ti-check text-g-900 text-[9px]"/>
+                      <Icon name="check" className="w-2.5 h-2.5 text-g-900"/>
                     </span>
                   )}
                 </div>
@@ -214,7 +215,7 @@ export default function Mental() {
           <div className="space-y-3 mt-3">
             {entradas.slice(0,3).map(e=>(
               <div key={e.id} className="card p-4 relative overflow-hidden">
-                <i className="ti ti-quote absolute -top-1 -right-1 text-4xl text-g-50"/>
+                <Icon name="quote" className="w-4 h-4 absolute -top-1 -right-1 text-4xl text-g-50"/>
                 <p className="text-[11px] text-g-500 mb-1.5 relative">{e.pregunta}</p>
                 <p className="text-sm text-g-800 font-serif italic leading-relaxed relative">"{e.respuesta}"</p>
                 <p className="text-[10px] text-g-400 mt-2 relative">{new Date(e.created_at).toLocaleDateString('es-CO')}</p>

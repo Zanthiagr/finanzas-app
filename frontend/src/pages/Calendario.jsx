@@ -5,6 +5,7 @@ import { fmt, fmtShort, todayLocalStr, getSemanaDelMes, CATEGORIAS_ICONOS, CATEG
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
+import Icon from '../utils/icons';
 
 const DIAS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -185,7 +186,7 @@ export default function Calendario() {
           <p className="text-sm text-g-400">Historial y pagos programados</p>
         </div>
         <button onClick={()=>setModalPago(true)} className="btn-primary flex items-center gap-2">
-          <i className="ti ti-calendar-plus text-sm"/> Programar
+          <Icon name="calendar-plus" className="w-3.5 h-3.5"/> Programar
         </button>
       </div>
 
@@ -197,7 +198,7 @@ export default function Calendario() {
         return (
           <div className="card p-4 border-red-200 bg-red-50">
             <div className="flex items-center gap-2 mb-3">
-              <i className="ti ti-bell-ringing text-red-600"/>
+              <Icon name="bell-ringing" className="w-4 h-4 text-red-600"/>
               <p className="text-sm font-medium text-red-800">
                 {pendientesUnico.length} pago{pendientesUnico.length>1?'s':''} pendiente{pendientesUnico.length>1?'s':''} por confirmar
               </p>
@@ -243,7 +244,7 @@ export default function Calendario() {
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
                     style={{ background: (CATEGORIAS_COLORES[p.categoria]||'#2452FF')+'22', color: CATEGORIAS_COLORES[p.categoria]||'#2452FF' }}>
-                    <i className={`ti ${CATEGORIAS_ICONOS[p.categoria]||'ti-tag'} text-[10px]`}/>
+                    <Icon name={CATEGORIAS_ICONOS[p.categoria]||'ti-tag'} className="w-2.5 h-2.5"/>
                   </div>
                   <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex-shrink-0">Día {p.dia_mes}</span>
                   <span className="text-xs text-amber-800 truncate">{p.nombre}</span>
@@ -251,7 +252,7 @@ export default function Calendario() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs font-medium text-amber-700">{fmtShort(p.monto)}</span>
                   <button onClick={()=>eliminarPago(p.id)} className="text-amber-400 hover:text-red-500">
-                    <i className="ti ti-x text-xs"/>
+                    <Icon name="x" className="w-3 h-3"/>
                   </button>
                 </div>
               </div>
@@ -264,14 +265,14 @@ export default function Calendario() {
       <div className="card p-4">
         <div className="flex items-center justify-between mb-4">
           <button onClick={()=>navMes(-1)} className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center active:scale-90">
-            <i className="ti ti-chevron-left text-g-700"/>
+            <Icon name="chevron-left" className="w-4 h-4 text-g-700"/>
           </button>
           <div className="text-center">
             <p className="font-medium text-g-900">{MESES[mes]}</p>
             <p className="text-xs text-g-400">{año}</p>
           </div>
           <button onClick={()=>navMes(1)} className="w-9 h-9 rounded-full bg-g-50 flex items-center justify-center active:scale-90">
-            <i className="ti ti-chevron-right text-g-700"/>
+            <Icon name="chevron-right" className="w-4 h-4 text-g-700"/>
           </button>
         </div>
 
@@ -325,7 +326,7 @@ export default function Calendario() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-6"><i className="ti ti-loader animate-spin text-g-400 text-xl"/></div>
+          <div className="flex justify-center py-6"><Icon name="loader" className="w-5 h-5 animate-spin text-g-400"/></div>
         ) : (
           <>
             {/* Resumen */}
@@ -355,7 +356,7 @@ export default function Calendario() {
                 {diaData.pagosDia.map((p,i)=>(
                   <div key={i} className="flex justify-between items-center py-2 border-b border-amber-100 last:border-0 gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <i className="ti ti-calendar-event text-amber-500 text-sm flex-shrink-0"/>
+                      <Icon name="calendar-event" className="w-3.5 h-3.5 text-amber-500 flex-shrink-0"/>
                       <span className="text-sm text-g-700 truncate">{p.nombre}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -397,7 +398,7 @@ export default function Calendario() {
                 <div className="flex gap-2 flex-wrap">
                   {diaData.habsDia.map((_,i)=>(
                     <span key={i} className="badge-ok flex items-center gap-1 text-[11px]">
-                      <i className="ti ti-check text-xs"/> Hábito {i+1}
+                      <Icon name="check" className="w-3 h-3"/> Hábito {i+1}
                     </span>
                   ))}
                 </div>
@@ -415,7 +416,7 @@ export default function Calendario() {
             {/* Sin datos */}
             {diaData.movsDia.length===0 && diaData.habsDia.length===0 && !diaData.cierre && diaData.pagosDia.length===0 && (
               <div className="text-center py-6">
-                <i className="ti ti-calendar-off text-3xl text-g-200 block mb-2"/>
+                <Icon name="calendar-off" className="w-7 h-7 text-g-200 block mb-2"/>
                 <p className="text-sm text-g-400">Sin registros para este día</p>
               </div>
             )}
@@ -432,11 +433,11 @@ export default function Calendario() {
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={()=>setFormPago(f=>({...f,tipo:'fijo'}))}
                   className={`py-3 rounded-xl text-sm font-medium border transition-all text-center ${formPago.tipo==='fijo'?'bg-g-900 border-g-900 text-white':'bg-white border-g-200/60 text-g-500'}`}>
-                  <i className="ti ti-repeat block mb-1"/> Fijo (recurrente)
+                  <Icon name="repeat" className="w-4 h-4 block mb-1"/> Fijo (recurrente)
                 </button>
                 <button type="button" onClick={()=>setFormPago(f=>({...f,tipo:'unico'}))}
                   className={`py-3 rounded-xl text-sm font-medium border transition-all text-center ${formPago.tipo==='unico'?'bg-g-900 border-g-900 text-white':'bg-white border-g-200/60 text-g-500'}`}>
-                  <i className="ti ti-calendar-event block mb-1"/> Único (una vez)
+                  <Icon name="calendar-event" className="w-4 h-4 block mb-1"/> Único (una vez)
                 </button>
               </div>
               <p className="text-xs text-g-400 mt-1.5">
