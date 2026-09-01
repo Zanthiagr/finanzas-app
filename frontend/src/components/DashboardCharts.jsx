@@ -7,6 +7,7 @@
 // el resto de la app (nav, layout, todas las demás páginas) deja de
 // pagar ese peso.
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import Icon from '../utils/icons';
 
 export default function DashboardCharts({ chartData, gastosCategoria, fmt, fmtShort, CATEGORIAS_COLORES }) {
   return (
@@ -38,7 +39,7 @@ export default function DashboardCharts({ chartData, gastosCategoria, fmt, fmtSh
           </ResponsiveContainer>
         ) : (
           <div className="h-24 flex items-center justify-center text-g-400 text-sm">
-            <i className="ti ti-chart-bar-off mr-2"/> Aún no hay datos este mes
+            <Icon name="chart-bar-off" className="w-4 h-4 mr-2"/> Aún no hay datos este mes
           </div>
         )}
       </div>

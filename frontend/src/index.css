@@ -46,11 +46,13 @@
   .card { @apply bg-white border border-g-200/40 rounded-2xl; }
   .btn-primary {
     @apply bg-g-700 text-white text-sm font-medium px-4 py-2 rounded-xl
-           hover:bg-g-800 active:scale-[0.98] transition-all duration-150;
+           hover:bg-g-800 active:scale-[0.98] transition-all duration-150
+           inline-flex items-center justify-center gap-2;
   }
   .btn-secondary {
     @apply bg-white text-g-800 text-sm font-medium px-4 py-2 rounded-xl
-           border border-g-200/60 hover:bg-g-50 active:scale-[0.98] transition-all;
+           border border-g-200/60 hover:bg-g-50 active:scale-[0.98] transition-all
+           inline-flex items-center justify-center gap-2;
   }
   .input {
     @apply w-full border border-g-200/60 rounded-xl px-3 py-2 text-sm
@@ -70,9 +72,11 @@
   .badge-ok   { @apply text-xs px-2.5 py-0.5 rounded-full bg-pos/10 text-pos; }
   .badge-warn { @apply text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700; }
   .badge-bad  { @apply text-xs px-2.5 py-0.5 rounded-full bg-neg/10 text-neg; }
-  .text-pos   { color: theme('colors.pos'); font-weight: 500; }
-  .text-neg   { color: theme('colors.neg'); font-weight: 500; }
+  .text-pos   { color: theme('colors.pos'); font-weight: 600; }
+  .text-neg   { color: theme('colors.neg'); font-weight: 600; }
   .section-label { @apply text-[10px] uppercase tracking-widest text-g-400 font-medium; }
+  .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
 
   /* Card "premium" — la tarjeta física de gradiente navy que sirve de hero
      en Dashboard y en cualquier panel que deba sentirse como el elemento
@@ -95,12 +99,13 @@
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: #C7D6FF; border-radius: 4px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C7CEDD; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #8A93A6; }
 
-/* Animaciones */
-.page-enter { animation: fadeUp 0.2s ease; }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+.page-enter { animation: fadeUp 0.25s ease-out; }

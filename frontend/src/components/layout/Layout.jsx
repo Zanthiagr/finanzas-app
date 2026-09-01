@@ -1,7 +1,13 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import Ring from '../Ring';
+import {
+  LayoutDashboard, ArrowLeftRight, CalendarRange, CalendarDays, Wallet,
+  FileDown, Landmark, CreditCard, Target, Brain, GraduationCap, Calculator,
+  Bot, MoreHorizontal, X, LogOut, Plus, ArrowLeft, UserCircle,
+} from 'lucide-react';
 
 // Apaga el Coach IA en toda la app (menú desktop, menú "Más" móvil y
 // título de la página) sin borrar nada del código. Cuando vuelvas a
@@ -26,71 +32,67 @@ function LogoMark({ size = 32 }) {
 }
 
 const NAV_DESKTOP = [
-  { to: '/',             icon: 'ti-layout-dashboard', label: 'Resumen',        group: 'principal' },
-  { to: '/movimientos',  icon: 'ti-arrows-exchange',  label: 'Movimientos',    group: 'principal' },
-  { to: '/cierre',       icon: 'ti-calendar-stats',   label: 'Cierre semanal', group: 'principal' },
-  { to: '/calendario',  icon: 'ti-calendar-month',   label: 'Calendario',     group: 'principal' },
-  { to: '/presupuestos', icon: 'ti-wallet',           label: 'Presupuestos',   group: 'principal' },
-  { to: '/reporte',      icon: 'ti-file-download',    label: 'Reporte PDF',    group: 'principal' },
-  { to: '/activos',      icon: 'ti-building-bank',    label: 'Activos',        group: 'patrimonio' },
-  { to: '/deudas',       icon: 'ti-credit-card',      label: 'Deudas',         group: 'patrimonio' },
-  { to: '/metas',        icon: 'ti-target',           label: 'Metas',          group: 'patrimonio' },
-  { to: '/mental',       icon: 'ti-brain',            label: 'Mentalidad',     group: 'crecimiento' },
-  { to: '/academia',     icon: 'ti-school',           label: 'Academia',       group: 'crecimiento' },
-  { to: '/calculadora',  icon: 'ti-calculator',       label: 'Calculadoras',   group: 'crecimiento' },
-  ...(COACH_HABILITADO ? [{ to: '/coach', icon: 'ti-robot', label: 'Coach IA', group: 'crecimiento' }] : []),
+  { to: '/',             icon: LayoutDashboard, label: 'Resumen',        group: 'principal' },
+  { to: '/movimientos',  icon: ArrowLeftRight,  label: 'Movimientos',    group: 'principal' },
+  { to: '/cierre',       icon: CalendarRange,   label: 'Cierre semanal', group: 'principal' },
+  { to: '/calendario',   icon: CalendarDays,    label: 'Calendario',     group: 'principal' },
+  { to: '/presupuestos', icon: Wallet,          label: 'Presupuestos',   group: 'principal' },
+  { to: '/reporte',      icon: FileDown,        label: 'Reporte PDF',    group: 'principal' },
+  { to: '/activos',      icon: Landmark,        label: 'Activos',        group: 'patrimonio' },
+  { to: '/deudas',       icon: CreditCard,      label: 'Deudas',         group: 'patrimonio' },
+  { to: '/metas',        icon: Target,          label: 'Metas',          group: 'patrimonio' },
+  { to: '/mental',       icon: Brain,           label: 'Mentalidad',     group: 'crecimiento' },
+  { to: '/academia',     icon: GraduationCap,   label: 'Academia',       group: 'crecimiento' },
+  { to: '/calculadora',  icon: Calculator,      label: 'Calculadoras',   group: 'crecimiento' },
+  ...(COACH_HABILITADO ? [{ to: '/coach', icon: Bot, label: 'Coach IA', group: 'crecimiento' }] : []),
 ];
 
 // Tabs principales móvil — los 4 más usados + "Más"
 // Calendario en el centro: es de uso frecuente (pagos programados,
 // historial por día) y no depende de una función externa como el Coach.
 const NAV_MOBILE_MAIN = [
-  { to: '/',            icon: 'ti-layout-dashboard', label: 'Inicio' },
-  { to: '/movimientos', icon: 'ti-arrows-exchange',  label: 'Gastos' },
-  { to: '/calendario',  icon: 'ti-calendar-month',   label: 'Calendario' },
-  { to: '/mental',      icon: 'ti-brain',            label: 'Mente' },
+  { to: '/',            icon: LayoutDashboard, label: 'Inicio' },
+  { to: '/movimientos', icon: ArrowLeftRight,  label: 'Gastos' },
+  { to: '/calendario',  icon: CalendarDays,    label: 'Calendario' },
+  { to: '/mental',      icon: Brain,           label: 'Mente' },
 ];
 
 // Secciones del menú "Más" — agrupadas con el mismo criterio que el
 // sidebar de escritorio (Patrimonio / Seguimiento / Crecimiento), más un
-// grupo de Cuenta. Antes era una sola parrilla plana de 9 iconos sin
-// jerarquía; agrupar reduce la carga cognitiva de escanear el menú.
-// Mismos 8 acentos que las categorías (ver `accent` en tailwind.config.js)
-// — antes este menú tenía sus propios 10 colores inventados aparte, sin
-// relación con el resto de la app. El fondo claro de cada ícono se genera
-// agregando transparencia al mismo color (sufijo hex de alpha), así no
-// hay que mantener una segunda lista de "versión clara" de cada color.
+// grupo de Cuenta. Mismos acentos que las categorías — el fondo claro de
+// cada ícono se genera agregando transparencia al mismo color (sufijo hex
+// de alpha), así no hay que mantener una segunda lista de "versión clara".
 const conFondoClaro = (hex) => `${hex}1F`; // ~12% de opacidad
 
 const NAV_MOBILE_MAS_GRUPOS = [
   {
     label: 'Patrimonio',
     items: [
-      { to: '/activos',      icon: 'ti-building-bank', label: 'Activos',      color: '#4E7AA8', bg: conFondoClaro('#4E7AA8') },
-      { to: '/deudas',       icon: 'ti-credit-card',   label: 'Deudas',       color: '#E5484D', bg: conFondoClaro('#E5484D') },
-      { to: '/metas',        icon: 'ti-target',        label: 'Metas',        color: '#4F8F76', bg: conFondoClaro('#4F8F76') },
-      { to: '/presupuestos', icon: 'ti-wallet',        label: 'Presupuestos', color: '#C9A84C', bg: conFondoClaro('#C9A84C') },
+      { to: '/activos',      icon: Landmark,   label: 'Activos',      color: '#4E7AA8' },
+      { to: '/deudas',       icon: CreditCard, label: 'Deudas',       color: '#E5484D' },
+      { to: '/metas',        icon: Target,     label: 'Metas',        color: '#4F8F76' },
+      { to: '/presupuestos', icon: Wallet,     label: 'Presupuestos', color: '#C9A84C' },
     ],
   },
   {
     label: 'Seguimiento',
     items: [
-      { to: '/cierre',  icon: 'ti-calendar-stats', label: 'Cierre',      color: '#4E7AA8', bg: conFondoClaro('#4E7AA8') },
-      { to: '/reporte', icon: 'ti-file-download',  label: 'Reporte PDF', color: '#5B6472', bg: conFondoClaro('#5B6472') },
+      { to: '/cierre',  icon: CalendarRange, label: 'Cierre',      color: '#4E7AA8' },
+      { to: '/reporte', icon: FileDown,      label: 'Reporte PDF', color: '#5B6472' },
     ],
   },
   {
     label: 'Crecimiento',
     items: [
-      { to: '/academia',    icon: 'ti-school',     label: 'Academia',     color: '#A8792E', bg: conFondoClaro('#A8792E') },
-      { to: '/calculadora', icon: 'ti-calculator', label: 'Calculadoras', color: '#7C7594', bg: conFondoClaro('#7C7594') },
-      ...(COACH_HABILITADO ? [{ to: '/coach', icon: 'ti-robot', label: 'Coach IA', color: '#4E7AA8', bg: conFondoClaro('#4E7AA8') }] : []),
+      { to: '/academia',    icon: GraduationCap, label: 'Academia',     color: '#A8792E' },
+      { to: '/calculadora', icon: Calculator,    label: 'Calculadoras', color: '#7C7594' },
+      ...(COACH_HABILITADO ? [{ to: '/coach', icon: Bot, label: 'Coach IA', color: '#4E7AA8' }] : []),
     ],
   },
   {
     label: 'Cuenta',
     items: [
-      { to: '/perfil', icon: 'ti-user-circle', label: 'Mi perfil', color: '#5B6472', bg: conFondoClaro('#5B6472') },
+      { to: '/perfil', icon: UserCircle, label: 'Mi perfil', color: '#5B6472' },
     ],
   },
 ];
@@ -157,26 +159,29 @@ export default function Layout({ children }) {
           {groups.map(g => (
             <div key={g.key} className="mb-1">
               <p className="text-[9px] uppercase tracking-widest text-white/25 font-medium px-5 mb-1.5 mt-4">{g.label}</p>
-              {NAV_DESKTOP.filter(n => n.group === g.key).map(n => (
-                <NavLink key={n.to} to={n.to} end={n.to === '/'}
-                  className={({ isActive }) =>
-                    `relative flex items-center gap-2.5 mx-3 px-3 py-2 rounded-lg text-[13px] transition-all ${
-                      isActive
-                        ? 'text-white bg-white/[0.07]'
-                        : 'text-white/50 hover:text-white/85 hover:bg-white/5'
-                    }`}>
-                  {({ isActive }) => (
-                    <>
-                      {isActive && <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-gold"/>}
-                      <i className={`ti ${n.icon} text-base ${isActive ? 'text-gold' : ''}`}/>
-                      {n.label}
-                      {n.to === '/coach' && (
-                        <span className="ml-auto text-[9px] bg-blue-500/20 text-blue-200 px-1.5 py-0.5 rounded-full">IA</span>
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+              {NAV_DESKTOP.filter(n => n.group === g.key).map(n => {
+                const NavIcon = n.icon;
+                return (
+                  <NavLink key={n.to} to={n.to} end={n.to === '/'}
+                    className={({ isActive }) =>
+                      `relative flex items-center gap-2.5 mx-3 px-3 py-2 rounded-lg text-[13px] transition-all ${
+                        isActive
+                          ? 'text-white bg-white/[0.07]'
+                          : 'text-white/50 hover:text-white/85 hover:bg-white/5'
+                      }`}>
+                    {({ isActive }) => (
+                      <>
+                        {isActive && <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-gold"/>}
+                        <NavIcon className={`w-[17px] h-[17px] ${isActive ? 'text-gold' : ''}`} strokeWidth={2}/>
+                        {n.label}
+                        {n.to === '/coach' && (
+                          <span className="ml-auto text-[9px] bg-blue-500/20 text-blue-200 px-1.5 py-0.5 rounded-full">IA</span>
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
             </div>
           ))}
         </nav>
@@ -239,14 +244,14 @@ export default function Layout({ children }) {
           <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-g-100 flex-shrink-0">
             <button onClick={() => navigate('/')}
               className="w-8 h-8 rounded-full bg-g-50 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform">
-              <i className="ti ti-arrow-left text-g-700 text-sm"/>
+              <ArrowLeft className="w-4 h-4 text-g-700"/>
             </button>
             <p className="text-sm font-medium text-g-900">{pageTitle}</p>
           </div>
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 md:pb-6 page-enter"
+        <main key={location.pathname} className="flex-1 overflow-y-auto p-4 md:p-6 md:pb-6 page-enter"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}>
           <div className="max-w-2xl mx-auto md:pb-0">
             {children}
@@ -254,53 +259,63 @@ export default function Layout({ children }) {
         </main>
 
         {/* ── MENÚ MÁS (sheet desde abajo) ── */}
-        {/* Siempre montado (no solo cuando masOpen) para poder animar tanto
-            la apertura como el cierre con transform/opacity — antes aparecía
-            de golpe sin transición. */}
-        <div
-          className={`md:hidden fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ${
-            masOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-          onClick={() => setMasOpen(false)}
-        />
-        <div
-          className={`md:hidden fixed left-0 right-0 bg-white rounded-t-[28px] z-50 p-5 shadow-2xl
-            transition-transform duration-300 ease-out ${masOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'}`}
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)', maxHeight: '75vh', overflowY: 'auto' }}>
-          <div className="flex justify-center mb-4">
-            <div className="w-10 h-1 rounded-full bg-g-200"/>
-          </div>
-
-          <div className="space-y-4 mb-4">
-            {NAV_MOBILE_MAS_GRUPOS.map(grupo => (
-              <div key={grupo.label}>
-                <p className="text-[10px] uppercase tracking-widest text-g-400 font-medium mb-2">{grupo.label}</p>
-                <div className="grid grid-cols-4 gap-2.5">
-                  {grupo.items.map(n => {
-                    const activo = location.pathname === n.to;
-                    return (
-                      <button key={n.to} onClick={() => irA(n.to)}
-                        className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all active:scale-95"
-                        style={{ background: n.bg }}>
-                        {activo && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gold"/>}
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: n.color + '20' }}>
-                          <i className={`ti ${n.icon} text-base`} style={{ color: n.color }}/>
-                        </div>
-                        <span className="text-[10px] font-medium text-g-800 text-center leading-tight">{n.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+        <AnimatePresence>
+          {masOpen && (
+            <motion.div
+              key="overlay"
+              className="md:hidden fixed inset-0 bg-black/40 z-40"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMasOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {masOpen && (
+            <motion.div
+              key="sheet"
+              className="md:hidden fixed left-0 right-0 bg-white rounded-t-[28px] z-50 p-5 shadow-2xl"
+              style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)', maxHeight: '75vh', overflowY: 'auto' }}
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 32, stiffness: 320 }}>
+              <div className="flex justify-center mb-4">
+                <div className="w-10 h-1 rounded-full bg-g-200"/>
               </div>
-            ))}
-          </div>
 
-          <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
-            <i className="ti ti-logout text-sm"/>
-            Cerrar sesión
-          </button>
-        </div>
+              <div className="space-y-4 mb-4">
+                {NAV_MOBILE_MAS_GRUPOS.map(grupo => (
+                  <div key={grupo.label}>
+                    <p className="text-[10px] uppercase tracking-widest text-g-400 font-medium mb-2">{grupo.label}</p>
+                    <div className="grid grid-cols-4 gap-2.5">
+                      {grupo.items.map(n => {
+                        const activo = location.pathname === n.to;
+                        const NavIcon = n.icon;
+                        return (
+                          <button key={n.to} onClick={() => irA(n.to)}
+                            className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all active:scale-95"
+                            style={{ background: conFondoClaro(n.color) }}>
+                            {activo && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gold"/>}
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: n.color + '20' }}>
+                              <NavIcon className="w-[18px] h-[18px]" style={{ color: n.color }} strokeWidth={2}/>
+                            </div>
+                            <span className="text-[10px] font-medium text-g-800 text-center leading-tight">{n.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
+                <LogOut className="w-4 h-4"/>
+                Cerrar sesión
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── BOTTOM NAV MÓVIL ── */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-g-200/40 z-50"
@@ -308,13 +323,14 @@ export default function Layout({ children }) {
           <div className="flex items-center h-16">
             {NAV_MOBILE_MAIN.map((n, i) => {
               const isCenter = i === 2;
+              const NavIcon = n.icon;
               if (isCenter) return (
                 <div key={n.to} className="flex-1 flex justify-center -mt-5">
                   <NavLink to={n.to}
                     className={({ isActive }) =>
                       `w-14 h-14 rounded-full flex flex-col items-center justify-center shadow-lg transition-all ${
                         isActive ? 'bg-blue-600 text-white' : 'bg-g-800 text-white'}`}>
-                    <i className={`ti ${n.icon} text-xl`}/>
+                    <NavIcon className="w-5 h-5" strokeWidth={2}/>
                   </NavLink>
                 </div>
               );
@@ -326,7 +342,7 @@ export default function Layout({ children }) {
                   {({ isActive }) => (
                     <>
                       <span className="relative">
-                        <i className={`ti ${n.icon} text-xl`}/>
+                        <NavIcon className="w-5 h-5" strokeWidth={2}/>
                         {isActive && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gold"/>}
                       </span>
                       <span className="text-[9px] font-medium">{n.label}</span>
@@ -341,7 +357,7 @@ export default function Layout({ children }) {
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                 enMenuMas || masOpen ? 'text-blue-600' : 'text-g-400'}`}>
               <span className="relative">
-                <i className={`ti ${masOpen ? 'ti-x' : 'ti-dots'} text-xl`}/>
+                {masOpen ? <X className="w-5 h-5" strokeWidth={2}/> : <MoreHorizontal className="w-5 h-5" strokeWidth={2}/>}
                 {enMenuMas && !masOpen && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gold"/>}
               </span>
               <span className="text-[9px] font-medium">{masOpen ? 'Cerrar' : 'Más'}</span>
@@ -354,7 +370,7 @@ export default function Layout({ children }) {
           <button onClick={() => navigate('/movimientos')}
             className="md:hidden fixed right-4 w-12 h-12 rounded-full bg-g-700 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)' }}>
-            <i className="ti ti-plus text-xl"/>
+            <Plus className="w-5 h-5" strokeWidth={2.5}/>
           </button>
         )}
       </div>

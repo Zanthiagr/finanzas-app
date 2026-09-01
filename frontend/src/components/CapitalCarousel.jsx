@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { getMovimientosPorMedio } from '../utils/api';
 import { fmt, fmtShort, fmtDate, labelMedioPago, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import Icon from '../utils/icons';
 
 // La tarjeta "Dinero disponible" del Dashboard. Muestra SIEMPRE una sola
 // tarjeta (Total o un banco puntual) — las pastillas de cada banco viven
@@ -63,7 +64,7 @@ export default function CapitalCarousel({ saldo, ocultarSaldo, setOcultarSaldo, 
               {ocultarSaldo ? '••••••••' : fmt(cardActiva.monto)}
             </span>
             <button onClick={() => setOcultarSaldo(!ocultarSaldo)} className="text-white/50 hover:text-white/80 transition-colors flex-shrink-0">
-              <i className={`ti ${ocultarSaldo ? 'ti-eye' : 'ti-eye-off'} text-lg`} />
+              <Icon name={ocultarSaldo ? 'eye' : 'eye-off'} className="w-5 h-5"/>
             </button>
           </div>
           <p className="text-white/40 text-[11px] mt-1">
@@ -87,12 +88,12 @@ export default function CapitalCarousel({ saldo, ocultarSaldo, setOcultarSaldo, 
           {cardActiva.esTotal ? (
             <button onClick={onEditarCapital}
               className="mt-4 text-[11px] text-white/50 hover:text-white/80 transition-colors flex items-center gap-1">
-              <i className="ti ti-pencil text-[11px]"/> Editar capital inicial
+              <Icon name="pencil" className="w-3 h-3"/> Editar capital inicial
             </button>
           ) : (
             <button onClick={toggleMovs}
               className="mt-4 text-[11px] text-white/50 hover:text-white/80 transition-colors flex items-center gap-1">
-              <i className={`ti ${mostrarMovs ? 'ti-chevron-up' : 'ti-receipt'} text-[11px]`}/>
+              <Icon name={mostrarMovs ? 'chevron-up' : 'receipt'} className="w-3 h-3"/>
               {mostrarMovs ? 'Ocultar movimientos' : 'Ver movimientos recientes'}
             </button>
           )}
@@ -103,14 +104,14 @@ export default function CapitalCarousel({ saldo, ocultarSaldo, setOcultarSaldo, 
       {mostrarMovs && !cardActiva.esTotal && (
         <div className="card p-3 mt-2.5">
           {cargando && !movsActivos ? (
-            <div className="flex justify-center py-6"><i className="ti ti-loader animate-spin text-lg text-g-300"/></div>
+            <div className="flex justify-center py-6"><Icon name="loader" className="w-5 h-5 animate-spin text-g-300"/></div>
           ) : movsActivos?.length ? (
             <div className="divide-y divide-g-100">
               {movsActivos.map(m => (
                 <div key={m.id} className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ background: (CATEGORIAS_COLORES[m.categoria]||'#8A93A6') + '1F' }}>
-                    <i className={`ti ${CATEGORIAS_ICONOS[m.categoria] || 'ti-dots'} text-xs`} style={{ color: CATEGORIAS_COLORES[m.categoria]||'#8A93A6' }}/>
+                    <Icon name={CATEGORIAS_ICONOS[m.categoria] || 'ti-dots'} className="w-3 h-3" style={{ color: CATEGORIAS_COLORES[m.categoria]||'#8A93A6' }}/>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-g-800 truncate">{m.descripcion || m.categoria}</p>

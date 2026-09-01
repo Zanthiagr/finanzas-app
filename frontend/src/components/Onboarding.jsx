@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import CapitalInicialForm from './CapitalInicialForm';
+import Icon from '../utils/icons';
 
 // Onboarding reducido a lo esencial: una intro breve y UNA sola acción —
 // definir el capital inicial (o posponerlo). Todo lo demás (primer
@@ -14,7 +15,7 @@ export default function Onboarding({ onComplete }) {
 
         {/* Intro breve */}
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto bg-gold/20">
-          <i className="ti ti-hand-stop text-3xl text-gold" />
+          <Icon name="hand-stop" className="w-7 h-7 text-gold"/>
         </div>
         <h2 className="text-xl font-medium text-white text-center mb-2">¡Bienvenido a Fintual!</h2>
         <p className="text-white/50 text-sm text-center leading-relaxed mb-8">
@@ -24,7 +25,7 @@ export default function Onboarding({ onComplete }) {
         {/* Único paso: capital inicial */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-1.5">
-            <i className="ti ti-wallet text-gold" />
+            <Icon name="wallet" className="w-4 h-4 text-gold"/>
             <h3 className="text-white font-medium text-sm">¿Con cuánto empiezas?</h3>
           </div>
           <p className="text-white/40 text-xs leading-relaxed mb-4">

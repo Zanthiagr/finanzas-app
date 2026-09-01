@@ -6,6 +6,7 @@ import Layout, { COACH_HABILITADO } from './components/layout/Layout';
 import Onboarding from './components/Onboarding';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
+import Icon from './utils/icons';
 
 // Code-splitting: Dashboard y Auth cargan de inmediato (lo primero que ve
 // el usuario), todo lo demás se descarga bajo demanda al navegar a esa
@@ -27,7 +28,7 @@ const Calculadora = lazy(() => import('./pages/Calculadora'));
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-64 flex-col gap-3">
-      <i className="ti ti-loader animate-spin text-2xl text-g-400"/>
+      <Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/>
       <p className="text-sm text-g-400">Cargando...</p>
     </div>
   );

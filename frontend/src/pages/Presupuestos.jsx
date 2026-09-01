@@ -4,6 +4,7 @@ import { fmt, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/h
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
+import Icon from '../utils/icons';
 
 const CATEGORIAS_GASTO = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas'];
 
@@ -70,7 +71,7 @@ export default function Presupuestos() {
     setModal(true);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-64"><i className="ti ti-loader animate-spin text-2xl text-g-400"/></div>;
+  if (loading) return <div className="flex justify-center items-center h-64"><Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/></div>;
 
   return (
     <div className="space-y-4 page-enter">
@@ -81,14 +82,14 @@ export default function Presupuestos() {
         </div>
         {categoriasDisponibles.length > 0 && (
           <button onClick={abrirModal} className="btn-primary flex items-center gap-2">
-            <i className="ti ti-plus text-sm"/> <span className="hidden md:inline">Nuevo</span>
+            <Icon name="plus" className="w-3.5 h-3.5"/> <span className="hidden md:inline">Nuevo</span>
           </button>
         )}
       </div>
 
       {presupuestos.length === 0 ? (
         <div className="card p-12 text-center">
-          <i className="ti ti-wallet text-4xl text-g-200 block mb-3"/>
+          <Icon name="wallet" className="w-4 h-4 text-4xl text-g-200 block mb-3"/>
           <p className="text-g-700 font-medium mb-1">Aún no tienes presupuestos</p>
           <p className="text-g-400 text-sm mb-4">Define cuánto quieres gastar máximo en cada categoría y la app te avisará cuando te acerques al límite.</p>
           <button onClick={abrirModal} className="btn-primary">Crear mi primer presupuesto</button>
@@ -108,7 +109,7 @@ export default function Presupuestos() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                       style={{ background: (CATEGORIAS_COLORES[p.categoria]||'#2452FF')+'25', color: CATEGORIAS_COLORES[p.categoria]||'#2452FF' }}>
-                      <i className={`ti ${CATEGORIAS_ICONOS[p.categoria]||'ti-tag'}`}/>
+                      <Icon name={CATEGORIAS_ICONOS[p.categoria]||'ti-tag'} className="w-4 h-4"/>
                     </div>
                     <div>
                       <p className="font-medium text-g-900">{p.categoria}</p>
@@ -116,7 +117,7 @@ export default function Presupuestos() {
                     </div>
                   </div>
                   <button onClick={() => eliminar(p.id)} className="text-g-300 hover:text-red-500 p-1.5">
-                    <i className="ti ti-trash text-sm"/>
+                    <Icon name="trash" className="w-3.5 h-3.5"/>
                   </button>
                 </div>
 
@@ -133,12 +134,12 @@ export default function Presupuestos() {
 
                 {excedido && (
                   <p className="text-xs text-red-600 mt-2 flex items-center gap-1">
-                    <i className="ti ti-alert-triangle text-xs"/> Superaste el límite por {fmtShort(gastado - limite)}
+                    <Icon name="alert-triangle" className="w-3 h-3"/> Superaste el límite por {fmtShort(gastado - limite)}
                   </p>
                 )}
                 {enAlerta && (
                   <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-                    <i className="ti ti-alert-circle text-xs"/> Te acercas al límite — quedan {fmtShort(limite - gastado)}
+                    <Icon name="alert-circle" className="w-3 h-3"/> Te acercas al límite — quedan {fmtShort(limite - gastado)}
                   </p>
                 )}
               </div>

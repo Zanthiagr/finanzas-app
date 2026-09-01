@@ -10,6 +10,8 @@ import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
 import Ring from '../components/Ring';
+import Icon from '../utils/icons';
+import confetti from 'canvas-confetti';
 
 const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','CDT','Vehículo','Inmueble','Negocio','Préstamo otorgado','Otro'];
 const TIPOS_DEUDA  = ['Tarjeta de crédito','Crédito bancario','Préstamo personal','Hipoteca','Gota a gota','Otro'];
@@ -102,7 +104,7 @@ export function Activos() {
     <div className="space-y-4 page-enter">
       <div className="flex items-center justify-between">
         <div><h2 className="text-lg font-medium text-g-900">Activos</h2><p className="text-sm text-g-400">Todo lo que tienes y vale</p></div>
-        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><i className="ti ti-plus text-sm"/> Agregar</button>
+        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> Agregar</button>
       </div>
 
       <div className="relative overflow-hidden bg-g-800 rounded-2xl p-4 text-white">
@@ -117,7 +119,7 @@ export function Activos() {
             <div className="text-right">
               <p className="text-[10px] uppercase tracking-widest text-g-200 mb-1">Rend. mensual est.</p>
               <p className="text-xl font-medium text-gold flex items-center gap-1 justify-end">
-                <i className="ti ti-trending-up text-sm"/>{fmt(rendTotal)}
+                <Icon name="trending-up" className="w-3.5 h-3.5"/>{fmt(rendTotal)}
               </p>
             </div>
           )}
@@ -127,7 +129,7 @@ export function Activos() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {items.length===0 && (
           <div className="card col-span-2 p-12 text-center">
-            <i className="ti ti-building-bank text-4xl text-g-200 block mb-2"/>
+            <Icon name="building-bank" className="w-4 h-4 text-4xl text-g-200 block mb-2"/>
             <p className="text-g-400 text-sm">No tienes activos registrados</p>
           </div>
         )}
@@ -142,7 +144,7 @@ export function Activos() {
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: visual.color + '18', color: visual.color }}>
-                    <i className={`ti ${visual.icon} text-base`}/>
+                    <Icon name={visual.icon} className="w-4 h-4"/>
                   </div>
                   <div>
                     <p className="font-medium text-g-900">{a.nombre}</p>
@@ -159,7 +161,7 @@ export function Activos() {
                     </div>
                   </div>
                 </div>
-                <button onClick={()=>del(a.id)} className="text-g-300 hover:text-red-500 p-1"><i className="ti ti-trash text-sm"/></button>
+                <button onClick={()=>del(a.id)} className="text-g-300 hover:text-red-500 p-1"><Icon name="trash" className="w-3.5 h-3.5"/></button>
               </div>
               <p className="text-2xl font-medium text-g-900">{fmt(a.valor_actual)}</p>
               <p className={`text-xs mt-0.5 ${g>=0?'text-g-500':'text-red-500'}`}>{g>=0?'+':''}{fmt(g)} vs capital inicial</p>
@@ -172,7 +174,7 @@ export function Activos() {
               {a.tipo_rendimiento==='variable' && <p className="text-xs text-g-400 mt-1">Ingresos variables — registra cada rendimiento</p>}
               <button onClick={()=>{ setModalRend(a); setRendMonto(rend>0?Math.round(rend).toString():''); setRendFecha(todayLocalStr()); }}
                 className="w-full btn-secondary text-xs py-2 mt-3 flex items-center justify-center gap-1">
-                <i className="ti ti-trending-up text-xs"/> Registrar rendimiento
+                <Icon name="trending-up" className="w-3 h-3"/> Registrar rendimiento
               </button>
             </div>
           );
@@ -247,7 +249,7 @@ export function Activos() {
                   <button key={t.value} type="button"
                     onClick={()=>setForm(f=>({...f,tipo_rendimiento:t.value,tasa_rendimiento:''}))}
                     className={`flex flex-col items-start p-3 rounded-xl border transition-all ${form.tipo_rendimiento===t.value?'bg-g-50 border-g-400':'bg-white border-g-200/60'}`}>
-                    <i className={`ti ${t.icon} text-base mb-1 ${form.tipo_rendimiento===t.value?'text-g-700':'text-g-400'}`}/>
+                    <Icon name={t.icon} className={`w-4 h-4 mb-1 ${form.tipo_rendimiento===t.value?'text-g-700':'text-g-400'}`}/>
                     <p className={`text-xs font-medium leading-tight ${form.tipo_rendimiento===t.value?'text-g-800':'text-g-600'}`}>{t.label}</p>
                     <p className="text-[10px] text-g-400 leading-tight mt-0.5">{t.sub}</p>
                   </button>
@@ -430,7 +432,7 @@ export function Deudas() {
     <div className="space-y-4 page-enter">
       <div className="flex items-center justify-between">
         <div><h2 className="text-lg font-medium text-g-900">Deudas</h2><p className="text-sm text-g-400">Lo que debes y cómo vas pagando</p></div>
-        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><i className="ti ti-plus text-sm"/> Agregar</button>
+        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> Agregar</button>
       </div>
       <div className="relative overflow-hidden bg-red-700 rounded-2xl p-4 text-white">
         <div className="card-premium-glow -top-10 -right-10 w-36 h-36 bg-white opacity-[0.06]"/>
@@ -439,7 +441,7 @@ export function Deudas() {
         <p className="relative text-white/40 text-xs mt-1">{items.filter(d=>d.activa).length} deuda{items.filter(d=>d.activa).length!==1?'s':''} activa{items.filter(d=>d.activa).length!==1?'s':''}</p>
       </div>
       <div className="space-y-3">
-        {items.length===0 && <div className="card p-12 text-center"><i className="ti ti-credit-card text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Sin deudas registradas! 🎉</p></div>}
+        {items.length===0 && <div className="card p-12 text-center"><Icon name="credit-card" className="w-4 h-4 text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Sin deudas registradas! 🎉</p></div>}
         {items.map(d=>{
           const pendiente = parseFloat(d.monto_total)-parseFloat(d.monto_pagado);
           const pct = Math.round((parseFloat(d.monto_pagado)/parseFloat(d.monto_total))*100);
@@ -458,7 +460,7 @@ export function Deudas() {
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-g-300">
-                  <i className="ti ti-chevron-right text-sm"/>
+                  <Icon name="chevron-right" className="w-3.5 h-3.5"/>
                 </div>
               </div>
               <div className="flex justify-between text-xs text-g-500 mb-2">
@@ -491,7 +493,7 @@ export function Deudas() {
           <input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/>
           {form.tipo === 'Tarjeta de crédito' && (
             <div className="card p-3 bg-g-50 space-y-3">
-              <p className="text-xs text-g-500 flex items-center gap-1.5"><i className="ti ti-link text-sm"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
+              <p className="text-xs text-g-500 flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
               <select className="select" value={form.medio_pago_vinculado} onChange={set('medio_pago_vinculado')}>
                 <option value="">Sin vincular (llevar manualmente)</option>
                 {BANCOS.filter(b=>b.value!=='otro_banco').map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
@@ -518,7 +520,7 @@ export function Deudas() {
       {detalle && (
         <PantallaCompleta title={detalle.nombre} onClose={()=>setDetalle(null)}>
           {loadingDetalle ? (
-            <div className="flex justify-center py-12"><i className="ti ti-loader animate-spin text-2xl text-g-300"/></div>
+            <div className="flex justify-center py-12"><Icon name="loader" className="w-6 h-6 animate-spin text-g-300"/></div>
           ) : (
           <div className="space-y-4 pb-4">
             {/* Resumen */}
@@ -542,11 +544,11 @@ export function Deudas() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 text-[11px] text-g-500 pt-2 border-t border-g-200/60">
-                {detalle.tasa_interes>0 && <span><i className="ti ti-percentage mr-1"/>{detalle.tasa_interes}% EA</span>}
-                {detalle.interes_mensual_monto>0 && <span><i className="ti ti-calendar-repeat mr-1"/>{fmtShort(detalle.interes_mensual_monto)}/mes fijo</span>}
-                {detalle.fecha_limite && <span><i className="ti ti-calendar mr-1"/>Vence {fmtDate(detalle.fecha_limite)}</span>}
-                {detalle.medio_pago_vinculado && <span><i className="ti ti-link mr-1"/>{BANCOS.find(b=>b.value===detalle.medio_pago_vinculado)?.label || detalle.medio_pago_vinculado}</span>}
-                {detalle.dia_corte && <span><i className="ti ti-calendar-stats mr-1"/>Corte el {detalle.dia_corte}</span>}
+                {detalle.tasa_interes>0 && <span><Icon name="percentage" className="w-4 h-4 mr-1"/>{detalle.tasa_interes}% EA</span>}
+                {detalle.interes_mensual_monto>0 && <span><Icon name="calendar-repeat" className="w-4 h-4 mr-1"/>{fmtShort(detalle.interes_mensual_monto)}/mes fijo</span>}
+                {detalle.fecha_limite && <span><Icon name="calendar" className="w-4 h-4 mr-1"/>Vence {fmtDate(detalle.fecha_limite)}</span>}
+                {detalle.medio_pago_vinculado && <span><Icon name="link" className="w-4 h-4 mr-1"/>{BANCOS.find(b=>b.value===detalle.medio_pago_vinculado)?.label || detalle.medio_pago_vinculado}</span>}
+                {detalle.dia_corte && <span><Icon name="calendar-stats" className="w-4 h-4 mr-1"/>Corte el {detalle.dia_corte}</span>}
               </div>
               {(detalle.cupo_total>0 || detalle.pago_minimo_pct>0) && (
                 <div className="grid grid-cols-2 gap-3 pt-3 mt-3 border-t border-g-200/60">
@@ -570,28 +572,28 @@ export function Deudas() {
 
             {/* Acciones */}
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={()=>abrirNuevoMov('abono')} className="btn-primary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-cash-banknote text-sm"/> Abonar</button>
-              <button onClick={()=>abrirNuevoMov('cargo')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-credit-card text-sm"/> Registrar compra</button>
-              <button onClick={()=>abrirNuevoMov('interes')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-percentage text-sm"/> Agregar interés</button>
-              <button onClick={()=>abrirNuevoMov('mora')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><i className="ti ti-alert-triangle text-sm"/> Agregar mora</button>
-              <button onClick={abrirEditarDeuda} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5 col-span-2"><i className="ti ti-pencil text-sm"/> Editar deuda</button>
+              <button onClick={()=>abrirNuevoMov('abono')} className="btn-primary py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="cash-banknote" className="w-3.5 h-3.5"/> Abonar</button>
+              <button onClick={()=>abrirNuevoMov('cargo')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="credit-card" className="w-3.5 h-3.5"/> Registrar compra</button>
+              <button onClick={()=>abrirNuevoMov('interes')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="percentage" className="w-3.5 h-3.5"/> Agregar interés</button>
+              <button onClick={()=>abrirNuevoMov('mora')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="alert-triangle" className="w-3.5 h-3.5"/> Agregar mora</button>
+              <button onClick={abrirEditarDeuda} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5 col-span-2"><Icon name="pencil" className="w-3.5 h-3.5"/> Editar deuda</button>
             </div>
 
             {/* Pago programado */}
             <div className="card p-4">
-              <p className="text-sm font-medium text-g-900 mb-2 flex items-center gap-1.5"><i className="ti ti-calendar-stats text-sm text-g-400"/> Pago automático</p>
+              <p className="text-sm font-medium text-g-900 mb-2 flex items-center gap-1.5"><Icon name="calendar-stats" className="w-3.5 h-3.5 text-g-400"/> Pago automático</p>
               {pagoProgramado ? (
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-g-700">{fmt(pagoProgramado.monto)} el día {pagoProgramado.dia_mes} de cada mes</p>
                     <p className="text-[11px] text-g-400">Se abona sola cuando se procese</p>
                   </div>
-                  <button onClick={cancelarProgramacion} className="text-g-300 hover:text-red-500 p-1.5"><i className="ti ti-trash text-sm"/></button>
+                  <button onClick={cancelarProgramacion} className="text-g-300 hover:text-red-500 p-1.5"><Icon name="trash" className="w-3.5 h-3.5"/></button>
                 </div>
               ) : (
                 <button onClick={()=>{ setFormProgramar({ monto: '', dia_mes: 1, medio_pago: 'bancolombia' }); setModalProgramar(true); }}
                   className="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-1.5">
-                  <i className="ti ti-plus text-sm"/> Programar pago mensual
+                  <Icon name="plus" className="w-3.5 h-3.5"/> Programar pago mensual
                 </button>
               )}
             </div>
@@ -613,7 +615,7 @@ export function Deudas() {
                   return (
                     <div key={m.id} className="card p-3 flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${v.color}1F` }}>
-                        <i className={`ti ${v.icon} text-sm`} style={{ color: v.color }}/>
+                        <Icon name={v.icon} className="w-3.5 h-3.5" style={{ color: v.color }}/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
@@ -628,8 +630,8 @@ export function Deudas() {
                         )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={()=>abrirEditarMov(m)} className="text-g-300 hover:text-g-600 p-1"><i className="ti ti-pencil text-xs"/></button>
-                        <button onClick={()=>borrarMov(m)} className="text-g-300 hover:text-red-500 p-1"><i className="ti ti-trash text-xs"/></button>
+                        <button onClick={()=>abrirEditarMov(m)} className="text-g-300 hover:text-g-600 p-1"><Icon name="pencil" className="w-3 h-3"/></button>
+                        <button onClick={()=>borrarMov(m)} className="text-g-300 hover:text-red-500 p-1"><Icon name="trash" className="w-3 h-3"/></button>
                       </div>
                     </div>
                   );
@@ -699,7 +701,7 @@ export function Deudas() {
             <div><label className="section-label block mb-1">Fecha límite</label><input type="date" className="input" value={formEditar.fecha_limite} onChange={e=>setFormEditar(f=>({...f, fecha_limite: e.target.value}))}/></div>
             {formEditar.tipo === 'Tarjeta de crédito' && (
               <div className="card p-3 bg-g-50 space-y-3">
-                <p className="text-xs text-g-500 flex items-center gap-1.5"><i className="ti ti-link text-sm"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
+                <p className="text-xs text-g-500 flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
                 <select className="select" value={formEditar.medio_pago_vinculado} onChange={e=>setFormEditar(f=>({...f, medio_pago_vinculado: e.target.value}))}>
                   <option value="">Sin vincular (llevar manualmente)</option>
                   {BANCOS.filter(b=>b.value!=='otro_banco').map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
@@ -780,8 +782,19 @@ export function Metas() {
     const abono = parseFloat(String(aporteMonto).replace(',','.'));
     if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
     const nuevo = Math.min(parseFloat(modalAporte.monto_actual) + abono, parseFloat(modalAporte.monto_objetivo));
+    const seCompleta = nuevo >= modalAporte.monto_objetivo && !modalAporte.completada;
     await actualizarMeta(modalAporte.id, {...modalAporte, monto_actual: nuevo, completada: nuevo >= modalAporte.monto_objetivo});
     toast.success(nuevo >= modalAporte.monto_objetivo ? '¡Meta lograda! 🎉' : 'Aporte registrado');
+    // Confetti solo la primera vez que la meta cruza el 100% — un
+    // pequeño "premio" visual reservado para el momento que de verdad
+    // lo amerita, no un efecto que se repite en cada aporte.
+    if (seCompleta) {
+      confetti({
+        particleCount: 120, spread: 75, startVelocity: 38, gravity: 0.9,
+        colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'],
+        origin: { y: 0.6 },
+      });
+    }
     setModalAporte(null); setAporteMonto('');
     load();
   };
@@ -792,10 +805,10 @@ export function Metas() {
     <div className="space-y-4 page-enter">
       <div className="flex items-center justify-between">
         <div><h2 className="text-lg font-medium text-g-900">Metas de ahorro</h2><p className="text-sm text-g-400">Visualiza hacia dónde va tu dinero</p></div>
-        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><i className="ti ti-plus text-sm"/> Nueva</button>
+        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> Nueva</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {items.length===0 && <div className="card col-span-2 p-12 text-center"><i className="ti ti-target text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Crea tu primera meta!</p></div>}
+        {items.length===0 && <div className="card col-span-2 p-12 text-center"><Icon name="target" className="w-4 h-4 text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Crea tu primera meta!</p></div>}
         {items.map(m=>{
           const pct = Math.min(Math.round((parseFloat(m.monto_actual)/parseFloat(m.monto_objetivo))*100),100);
           const colorMeta = m.completada ? '#16A34A' : pct >= 66 ? '#4F8F76' : pct >= 33 ? '#C9A84C' : '#8A93A6';
@@ -806,7 +819,7 @@ export function Metas() {
                   <div className="relative w-12 h-12 flex-shrink-0">
                     <Ring pct={pct} size={48} stroke={4} color={colorMeta}/>
                     <div className="absolute inset-[6px] rounded-full bg-g-50 flex items-center justify-center">
-                      <i className={`ti ${m.icono} text-sm`} style={{ color: colorMeta }}/>
+                      <Icon name={m.icono} className="w-3.5 h-3.5" style={{ color: colorMeta }}/>
                     </div>
                   </div>
                   <div>
@@ -815,7 +828,7 @@ export function Metas() {
                       : <span className="text-xs font-medium" style={{ color: colorMeta }}>{pct}% del objetivo</span>}
                   </div>
                 </div>
-                <button onClick={()=>del(m.id)} className="text-g-300 hover:text-red-500 p-1"><i className="ti ti-trash text-sm"/></button>
+                <button onClick={()=>del(m.id)} className="text-g-300 hover:text-red-500 p-1"><Icon name="trash" className="w-3.5 h-3.5"/></button>
               </div>
               <div className="flex justify-between text-xs text-g-500 mb-2">
                 <span className="font-medium text-g-700">{fmt(m.monto_actual)}</span><span>de {fmt(m.monto_objetivo)}</span>
@@ -867,7 +880,7 @@ export function Metas() {
               {ICONOS_META.map(ic=>(
                 <button key={ic} type="button" onClick={()=>setForm(f=>({...f,icono:ic}))}
                   className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${form.icono===ic?'bg-g-700 text-white':'bg-g-50 text-g-500'}`}>
-                  <i className={`ti ${ic}`}/>
+                  <Icon name={ic} className="w-4 h-4"/>
                 </button>
               ))}
             </div>

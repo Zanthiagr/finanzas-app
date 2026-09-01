@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { eliminarCuentaCompleta } from '../utils/api';
 import toast from 'react-hot-toast';
 import Ring from '../components/Ring';
+import Icon from '../utils/icons';
 
 export default function Perfil() {
   const { user, perfil, logout } = useAuth();
@@ -142,7 +143,7 @@ export default function Perfil() {
         </div>
 
         <button type="submit" disabled={saving} className="btn-primary w-full py-3 flex items-center justify-center gap-2">
-          <i className="ti ti-check text-sm"/>
+          <Icon name="check" className="w-3.5 h-3.5"/>
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </form>
@@ -150,7 +151,7 @@ export default function Perfil() {
       {/* Cerrar sesión */}
       <div className="card p-4">
         <button onClick={() => { logout(); }} className="w-full flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 py-1">
-          <i className="ti ti-logout text-sm"/>
+          <Icon name="logout" className="w-3.5 h-3.5"/>
           Cerrar sesión
         </button>
       </div>
@@ -164,7 +165,7 @@ export default function Perfil() {
         </p>
         <button onClick={() => setModalEliminar(true)}
           className="w-full flex items-center justify-center gap-2 text-sm text-red-600 border border-red-200 rounded-xl py-2.5 hover:bg-red-50 transition-colors">
-          <i className="ti ti-trash text-sm"/>
+          <Icon name="trash" className="w-3.5 h-3.5"/>
           Eliminar mi cuenta
         </button>
       </div>
@@ -173,7 +174,7 @@ export default function Perfil() {
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-5">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-              <i className="ti ti-alert-triangle text-red-600 text-xl"/>
+              <Icon name="alert-triangle" className="w-5 h-5 text-red-600"/>
             </div>
             <h3 className="text-lg font-medium text-g-900 mb-2">¿Eliminar tu cuenta?</h3>
             <p className="text-sm text-g-500 mb-4 leading-relaxed">

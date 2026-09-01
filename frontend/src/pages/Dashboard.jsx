@@ -11,8 +11,24 @@ import { confirmToast } from '../utils/confirm';
 
 const DashboardCharts = lazy(() => import('../components/DashboardCharts'));
 import Ring from '../components/Ring';
+import Icon from '../utils/icons';
+import { motion } from 'motion/react';
 
 const DIAS_CORTO = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+
+// Envoltorio de entrada — pequeño desvanecido + deslizamiento hacia
+// arriba, escalonado por índice de sección. Puramente decorativo: no
+// toca ningún dato ni lógica, solo cómo aparece cada bloque al cargar.
+function Reveal({ children, i = 0 }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: i * 0.05, ease: 'easeOut' }}>
+      {children}
+    </motion.div>
+  );
+}
 
 export default function Dashboard() {
   const { user, perfil } = useAuth();
@@ -132,7 +148,7 @@ export default function Dashboard() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <i className="ti ti-loader animate-spin text-2xl text-g-400" />
+      <Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/>
     </div>
   );
 
@@ -144,12 +160,14 @@ export default function Dashboard() {
           pastillas de bancos debajo del total eran decorativas; ahora
           cada una es su propia tarjeta deslizable con sus movimientos
           recientes al entrar. */}
-      <CapitalCarousel
-        saldo={saldo}
-        ocultarSaldo={ocultarSaldo}
-        setOcultarSaldo={setOcultarSaldo}
-        onEditarCapital={() => setModalCapital(true)}
-      />
+      <Reveal i={0}>
+        <CapitalCarousel
+          saldo={saldo}
+          ocultarSaldo={ocultarSaldo}
+          setOcultarSaldo={setOcultarSaldo}
+          onEditarCapital={() => setModalCapital(true)}
+        />
+      </Reveal>
 
       {/* Pagos pendientes — fijos que caen hoy + únicos sin pagar (hoy o
           vencidos). Se muestra todo el día porque el filtro es por fecha,
@@ -158,11 +176,12 @@ export default function Dashboard() {
           un solo bloque de alerta — así se distingue de un vistazo cuál
           urge más. Los únicos se confirman aquí mismo con un toque. */}
       {pagosPendientes.length > 0 && (
+        <Reveal i={1}>
         <div className="card p-4">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                <i className="ti ti-bell-ringing text-amber-600 text-sm"/>
+                <Icon name="bell-ringing" className="w-3.5 h-3.5 text-amber-600"/>
               </div>
               <p className="text-sm font-medium text-g-900">
                 {pagosPendientes.length === 1 ? '1 pago pendiente' : `${pagosPendientes.length} pagos pendientes`}
@@ -187,16 +206,19 @@ export default function Dashboard() {
                       title="Marcar como pagado"
                       className="w-7 h-7 rounded-full border-2 border-g-200 hover:border-g-800 hover:bg-g-800
                                  flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40 group">
-                      <i className={`ti ti-check text-[13px] text-g-300 group-hover:text-white ${marcandoPagoId === p.id ? 'animate-pulse' : ''}`}/>
+                      <Icon name="check" className={`w-3.5 h-3.5 text-g-300 group-hover:text-white ${marcandoPagoId === p.id ? 'animate-pulse' : ''}`}/>
                     </button>
                   ) : (
-                    <i className="ti ti-repeat text-g-300 text-sm flex-shrink-0" title="Se registra automáticamente"/>
+                    <span title="Se registra automáticamente" className="flex-shrink-0">
+                      <Icon name="repeat" className="w-3.5 h-3.5 text-g-300"/>
+                    </span>
                   )}
                 </div>
               );
             })}
           </div>
         </div>
+        </Reveal>
       )}
 
       {/* Recordatorio de cierre semanal — antes solo aparecía el día
@@ -207,10 +229,11 @@ export default function Dashboard() {
           sugerido de cierre o si ya se pasó. La franja de días marca en
           dorado cuál es el día designado. */}
       {!semanaYaCerrada && (
+        <Reveal i={2}>
         <Link to="/cierre" className="relative overflow-hidden rounded-2xl bg-g-800 p-4 flex items-center gap-4 active:scale-[0.99] transition-transform">
           <div className="card-premium-glow -top-10 -right-10 w-32 h-32 bg-gold opacity-[0.12]"/>
           <div className="relative w-10 h-10 rounded-xl bg-gold/15 flex items-center justify-center flex-shrink-0">
-            <i className="ti ti-calendar-check text-gold text-lg"/>
+            <Icon name="calendar-check" className="w-5 h-5 text-gold"/>
           </div>
           <div className="relative flex-1 min-w-0">
             <p className="text-sm font-medium text-white">
@@ -226,8 +249,9 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-          <i className="ti ti-chevron-right text-white/30 flex-shrink-0 relative"/>
+          <Icon name="chevron-right" className="w-4 h-4 text-white/30 flex-shrink-0 relative"/>
         </Link>
+        </Reveal>
       )}
 
       {/* Tarjetas de crédito — un vistazo rápido sin tener que entrar a
@@ -249,7 +273,7 @@ export default function Dashboard() {
             return (
               <Link key={t.id} to="/deudas" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${colorBarra}1F` }}>
-                  <i className="ti ti-credit-card text-base" style={{ color: colorBarra }}/>
+                  <Icon name="credit-card" className="w-4 h-4" style={{ color: colorBarra }}/>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -274,6 +298,7 @@ export default function Dashboard() {
 
       {/* Salud financiera — gauge circular: es contenido motivacional, no
           "chrome" de navegación, así que se permite ser expresivo. */}
+      <Reveal i={3}>
       <div className="bg-g-800 rounded-2xl p-4 md:p-5 flex items-center gap-4 md:gap-6">
         <div className="relative flex-shrink-0 w-20 h-20 md:w-24 md:h-24">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -305,6 +330,7 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      </Reveal>
 
       {/* KPIs - 2 columnas en móvil, 4 en desktop */}
       <p className="section-label -mb-1">Este mes</p>
@@ -359,7 +385,7 @@ export default function Dashboard() {
                   <Link key={p.id} to="/presupuestos" className="block group">
                     <div className="flex items-center justify-between text-[11px] mb-1 gap-2">
                       <span className="flex items-center gap-1.5 text-g-600 font-medium truncate min-w-0">
-                        <i className={`ti ${CATEGORIAS_ICONOS[p.categoria] || 'ti-tag'} text-[10px] flex-shrink-0`}
+                        <Icon name={CATEGORIAS_ICONOS[p.categoria] || 'ti-tag'} className="w-2.5 h-2.5 flex-shrink-0"
                           style={{ color: CATEGORIAS_COLORES[p.categoria] || '#2452FF' }}/>
                         <span className="truncate">{p.categoria}</span>
                       </span>
@@ -385,13 +411,13 @@ export default function Dashboard() {
       ) : (
         <Link to="/presupuestos" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
           <div className="w-9 h-9 rounded-xl bg-g-50 flex items-center justify-center flex-shrink-0">
-            <i className="ti ti-wallet text-g-500 text-base"/>
+            <Icon name="wallet" className="w-4 h-4 text-g-500"/>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-g-900">Crea tu primer presupuesto</p>
             <p className="text-[11px] text-g-400">Define límites por categoría y míralos en vivo aquí</p>
           </div>
-          <i className="ti ti-chevron-right text-g-300 flex-shrink-0"/>
+          <Icon name="chevron-right" className="w-4 h-4 text-g-300 flex-shrink-0"/>
         </Link>
       )}
 
@@ -401,7 +427,7 @@ export default function Dashboard() {
           brusco de layout mientras llega. */}
       <Suspense fallback={
         <div className="card p-4 h-[158px] flex items-center justify-center">
-          <i className="ti ti-loader animate-spin text-lg text-g-300"/>
+          <Icon name="loader" className="w-5 h-5 animate-spin text-g-300"/>
         </div>
       }>
         <DashboardCharts
@@ -422,7 +448,7 @@ export default function Dashboard() {
               <div key={i} className="card p-3 flex-shrink-0 min-w-[110px]">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-2"
                   style={{ background: (CATEGORIAS_COLORES[c.categoria] || '#2452FF') + '25', color: CATEGORIAS_COLORES[c.categoria] || '#2452FF' }}>
-                  <i className={`ti ${CATEGORIAS_ICONOS[c.categoria] || 'ti-tag'} text-sm`}/>
+                  <Icon name={CATEGORIAS_ICONOS[c.categoria] || 'ti-tag'} className="w-3.5 h-3.5"/>
                 </div>
                 <p className="text-xs font-medium text-g-700 truncate">{c.categoria}</p>
                 <p className="text-sm font-medium text-g-900 mt-0.5">{fmtShort(c.total)}</p>
@@ -444,7 +470,7 @@ export default function Dashboard() {
               <div key={m.id} className="flex items-center gap-3 py-2.5">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
                   style={{ background: (CATEGORIAS_COLORES[m.categoria] || '#2452FF') + '20', color: CATEGORIAS_COLORES[m.categoria] || '#2452FF' }}>
-                  <i className={`ti ${CATEGORIAS_ICONOS[m.categoria] || 'ti-tag'}`}/>
+                  <Icon name={CATEGORIAS_ICONOS[m.categoria] || 'ti-tag'} className="w-4 h-4"/>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-g-900 truncate">{m.descripcion || m.categoria}</p>
@@ -458,7 +484,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <i className="ti ti-arrows-exchange text-2xl text-g-300 block mb-2"/>
+            <Icon name="arrows-exchange" className="w-6 h-6 text-g-300 block mb-2"/>
             <p className="text-sm text-g-400">Aún no hay movimientos</p>
             <Link to="/movimientos" className="text-xs text-g-600 underline mt-1 inline-block">Registrar el primero</Link>
           </div>
@@ -477,7 +503,7 @@ export default function Dashboard() {
           ].map(a => (
             <Link key={a.to} to={a.to} className="card p-2.5 flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: a.bg }}>
-                <i className={`ti ${a.icon} text-base`} style={{ color: a.color }}/>
+                <Icon name={a.icon} className="w-4 h-4" style={{ color: a.color }}/>
               </div>
               <span className="text-[11px] font-medium text-g-700 text-center leading-tight">{a.label}</span>
             </Link>

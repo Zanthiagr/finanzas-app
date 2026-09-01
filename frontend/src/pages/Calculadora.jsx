@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import Ring from '../components/Ring';
+import Icon from '../utils/icons';
 
 const fmt = v => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(v);
 const fmtPct = v => `${parseFloat(v).toFixed(2)}%`;
@@ -171,7 +172,7 @@ function CalcLibertad() {
   return (
     <div className="space-y-4">
       <div className="card p-3 bg-g-50 border-g-200">
-        <p className="text-xs text-g-600"><i className="ti ti-info-circle mr-1"/>Tus inversiones deben generar al año lo suficiente para cubrir todos tus gastos.</p>
+        <p className="text-xs text-g-600"><Icon name="info-circle" className="w-4 h-4 mr-1"/>Tus inversiones deben generar al año lo suficiente para cubrir todos tus gastos.</p>
       </div>
       <div>
         <label className="section-label block mb-1">Gastos mensuales (COP)</label>
@@ -240,7 +241,7 @@ export default function Calculadora() {
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
             className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${tab===t.id?'bg-g-800 text-white border-g-800':'bg-white text-g-600 border-g-200/60'}`}>
-            <i className={`ti ${t.icon} text-base`}/><span className="text-xs font-medium">{t.label}</span>
+            <Icon name={t.icon} className="w-4 h-4"/><span className="text-xs font-medium">{t.label}</span>
           </button>
         ))}
       </div>
