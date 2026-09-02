@@ -118,6 +118,7 @@ export default function Dashboard() {
     ingresos: resumen.ingresos, gastos: resumen.gastos,
     deudaTotal: 0, balance: resumen.balance,
   }) : 0;
+  const tasaAhorro = resumen?.ingresos > 0 ? Math.round((resumen.balance / resumen.ingresos) * 100) : 0;
 
   const saludLabel = salud >= 70 ? 'Excelente mes' : salud >= 50 ? 'Vas bien' : salud >= 30 ? 'Atención' : 'Zona de riesgo';
   const saludColor = salud >= 70 ? 'text-blue-100' : salud >= 50 ? 'text-gold' : 'text-red-400';
@@ -169,6 +170,46 @@ export default function Dashboard() {
         />
       </Reveal>
 
+      {/* Resumen del mes — antes había que bajar hasta la grilla de KPIs
+          para ver ingresos/gastos/balance, y la tasa de ahorro estaba
+          escondida como subtexto chiquito dentro de la tarjeta Balance.
+          Ahora es lo primero que se ve tras el capital: de un vistazo,
+          sin scrollear. La meta de ahorro (≥20%) es un umbral común de
+          finanzas personales (regla 50/30/20) — no es un dato del
+          usuario, es una referencia fija para orientar. */}
+      {resumen?.ingresos > 0 && (
+        <Reveal i={1}>
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50">
+                <Icon name="arrow-up-right" className="w-3 h-3 text-emerald-600"/>
+                <span className="text-xs font-medium text-emerald-700">+{fmtShort(resumen.ingresos)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50">
+                <Icon name="arrow-down" className="w-3 h-3 text-red-500"/>
+                <span className="text-xs font-medium text-red-600">−{fmtShort(resumen.gastos)}</span>
+              </div>
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ml-auto ${resumen.balance>=0?'bg-blue-50':'bg-red-50'}`}>
+                <span className={`text-xs font-medium ${resumen.balance>=0?'text-blue-700':'text-red-600'}`}>
+                  Neto: {resumen.balance>=0?'+':''}{fmtShort(resumen.balance)}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-[11px] mb-1.5">
+              <span className="text-g-500">Tasa de ahorro: <span className="font-medium text-g-800">{tasaAhorro}%</span></span>
+              <span className="text-g-400">Meta: ≥ 20%</span>
+            </div>
+            <div className="h-2 bg-g-100 rounded-full overflow-hidden relative">
+              <div className="absolute top-0 bottom-0 w-px bg-g-300" style={{ left: '20%' }}/>
+              <div className="h-full rounded-full transition-all" style={{
+                width: `${Math.max(0, Math.min(tasaAhorro, 100))}%`,
+                background: tasaAhorro >= 20 ? 'linear-gradient(90deg,#16A34A,#4F8F76)' : 'linear-gradient(90deg,#E5484D,#F59E0B)',
+              }}/>
+            </div>
+          </div>
+        </Reveal>
+      )}
+
       {/* Pagos pendientes — fijos que caen hoy + únicos sin pagar (hoy o
           vencidos). Se muestra todo el día porque el filtro es por fecha,
           no por hora del reloj. Cada fila lleva un punto de severidad
@@ -176,7 +217,7 @@ export default function Dashboard() {
           un solo bloque de alerta — así se distingue de un vistazo cuál
           urge más. Los únicos se confirman aquí mismo con un toque. */}
       {pagosPendientes.length > 0 && (
-        <Reveal i={1}>
+        <Reveal i={2}>
         <div className="card p-4">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2.5">
@@ -229,7 +270,7 @@ export default function Dashboard() {
           sugerido de cierre o si ya se pasó. La franja de días marca en
           dorado cuál es el día designado. */}
       {!semanaYaCerrada && (
-        <Reveal i={2}>
+        <Reveal i={3}>
         <Link to="/cierre" className="relative overflow-hidden rounded-2xl bg-g-800 p-4 flex items-center gap-4 active:scale-[0.99] transition-transform">
           <div className="card-premium-glow -top-10 -right-10 w-32 h-32 bg-gold opacity-[0.12]"/>
           <div className="relative w-10 h-10 rounded-xl bg-gold/15 flex items-center justify-center flex-shrink-0">
@@ -298,7 +339,7 @@ export default function Dashboard() {
 
       {/* Salud financiera — gauge circular: es contenido motivacional, no
           "chrome" de navegación, así que se permite ser expresivo. */}
-      <Reveal i={3}>
+      <Reveal i={4}>
       <div className="bg-g-800 rounded-2xl p-4 md:p-5 flex items-center gap-4 md:gap-6">
         <div className="relative flex-shrink-0 w-20 h-20 md:w-24 md:h-24">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -324,8 +365,14 @@ export default function Dashboard() {
           <p className={`text-base md:text-lg font-medium ${saludColor}`}>{saludLabel}</p>
           <p className="text-white/30 text-[11px] mt-1 hidden md:block">Basado en ahorro, control de gastos y deuda</p>
           {nombre && (
-            <p className="text-gold text-xs mt-2 bg-gold/10 px-2.5 py-0.5 rounded-full inline-block">
-              Buen trabajo, {nombre}
+            <p className={`text-xs mt-2 px-2.5 py-0.5 rounded-full inline-block ${
+              salud >= 50 ? 'text-gold bg-gold/10' : 'text-red-300 bg-red-500/10'
+            }`}>
+              {salud >= 70 ? `Buen trabajo, ${nombre}`
+                : salud >= 50 ? `Vas bien, ${nombre} — sigue así`
+                : salud >= 30 ? `${nombre}, hay espacio para mejorar`
+                : resumen?.ingresos ? `${nombre}, este mes necesita atención`
+                : `${nombre}, aún no registras ingresos este mes`}
             </p>
           )}
         </div>
