@@ -12,7 +12,16 @@ import toast from 'react-hot-toast';
  *   });
  */
 export const confirmToast = (message, onConfirm, opts = {}) => {
-  const { confirmLabel = 'Eliminar', cancelLabel = 'Cancelar' } = opts;
+  const { confirmLabel = 'Eliminar', cancelLabel = 'Cancelar', id } = opts;
+
+  // Id estable (derivado del mensaje si no se pasa uno explícito) — si el
+  // mismo evento se dispara dos veces seguidas (pasa en iOS/PWA por el
+  // doble disparo touchend+click sintético en botones dentro de filas con
+  // swipe), react-hot-toast actualiza la notificación existente en vez de
+  // apilar una segunda. Antes cada llamada generaba un id aleatorio nuevo,
+  // así que un doble disparo dejaba dos confirmaciones superpuestas: se
+  // resolvía una y la otra se quedaba "pegada" en pantalla.
+  const toastId = id || `confirm:${message}`;
 
   toast((t) => (
     <div className="flex flex-col gap-3 min-w-[220px]">
@@ -35,5 +44,5 @@ export const confirmToast = (message, onConfirm, opts = {}) => {
         </button>
       </div>
     </div>
-  ), { duration: 8000 });
+  ), { duration: 8000, id: toastId });
 };
