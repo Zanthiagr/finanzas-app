@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, procesarPagosPendientes, marcarPagoUnicoComoPagado } from '../utils/api';
 import { supabase } from '../utils/supabase';
-import { fmt, fmtShort, todayLocalStr, getSemanaDelMes, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
+import { fmt, fmtShort, todayLocalStr, getSemanaDelMes, diaEfectivoPago, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
@@ -96,7 +96,7 @@ export default function Calendario() {
     const habsDia  = habLogs.filter(h => h.fecha === fechaStr);
     const semana   = getSemanaDelMes(dia);
     const cierre   = cierres.find(c => c.semana_num === semana && c.mes_num === mes + 1);
-    const pagosDia = pagos.filter(p => p.activo && (p.tipo === 'unico' ? p.fecha === fechaStr : p.dia_mes === dia));
+    const pagosDia = pagos.filter(p => p.activo && (p.tipo === 'unico' ? p.fecha === fechaStr : diaEfectivoPago(p.dia_mes, mes + 1, año) === dia));
     const ingresos = movsDia.filter(m => m.tipo==='ingreso').reduce((a,m)=>a+parseFloat(m.monto),0);
     const gastos   = movsDia.filter(m => m.tipo==='gasto').reduce((a,m)=>a+parseFloat(m.monto),0);
     return { movsDia, habsDia, cierre, pagosDia, ingresos, gastos, semana, fechaStr };
@@ -468,9 +468,12 @@ export default function Calendario() {
                 <input type="text" inputMode="numeric" className="input" placeholder="Ej: 5"
                   value={formPago.dia_mes} onChange={e=>{
                     const v = parseInt(e.target.value);
-                    setFormPago(f=>({...f,dia_mes:isNaN(v)?'':Math.min(Math.max(v,1),28)}));
+                    setFormPago(f=>({...f,dia_mes:isNaN(v)?'':Math.min(Math.max(v,1),31)}));
                   }} required/>
-                <p className="text-xs text-g-400 mt-1">Se registrará automáticamente como gasto cada mes ese día</p>
+                <p className="text-xs text-g-400 mt-1">
+                  Se registrará automáticamente cada mes ese día. Si eliges 29, 30 o 31, en los meses más
+                  cortos (como febrero) se ajusta solo al último día del mes.
+                </p>
               </div>
             ) : (
               <div>

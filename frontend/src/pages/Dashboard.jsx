@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, getDeudas, marcarPagoUnicoComoPagado } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL } from '../utils/helpers';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, diaEfectivoPago, DIA_CIERRE_SEMANAL } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
@@ -59,11 +59,13 @@ export default function Dashboard() {
   const cargarPagos = () => {
     getPagosProgramados().then(pagos => {
       const diaHoy = now.getDate();
+      const mesHoy = now.getMonth() + 1;
+      const anioHoy = now.getFullYear();
       const pendientes = (pagos || [])
         .filter(p => {
           if (!p.activo) return false;
           if (p.tipo === 'unico') return !p.pagado && p.fecha && p.fecha <= hoyStr;
-          return p.dia_mes === diaHoy; // fijo (o sin "tipo" = fijo, compatibilidad)
+          return diaEfectivoPago(p.dia_mes, mesHoy, anioHoy) === diaHoy; // fijo (o sin "tipo" = fijo, compatibilidad)
         })
         .sort((a, b) => (a.tipo === 'unico' ? -1 : 1)); // vencidos/únicos primero
       setPagosPendientes(pendientes);

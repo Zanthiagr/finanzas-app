@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { parseLocalDate, todayLocalStr, getSemanaDelMes } from './helpers';
+import { parseLocalDate, todayLocalStr, getSemanaDelMes, diaEfectivoPago } from './helpers';
 
 // Helper para obtener el usuario actual
 const getUserId = async () => {
@@ -800,18 +800,28 @@ export const procesarPagosPendientes = async () => {
   const userId = await getUserId();
   const hoy = new Date();
   const diaHoy = hoy.getDate();
+  const mesHoy = hoy.getMonth() + 1;
+  const anioHoy = hoy.getFullYear();
   const fechaStr = todayLocalStr(hoy);
 
   // Solo los pagos FIJOS se auto-registran. Los ÚNICOS nunca se procesan
   // solos — se quedan como pendientes hasta que el usuario los confirma
   // manualmente con marcarPagoUnicoComoPagado().
-  const { data: pagos } = await supabase
+  //
+  // No filtramos por dia_mes=diaHoy directo en la consulta porque un
+  // pago programado para el día 31 (o 29/30) debe ajustarse al último
+  // día del mes cuando el mes es más corto (ej: en abril, un pago del
+  // "día 31" cae el 30) — igual que hacen bancos y plataformas de cobro
+  // recurrente. Por eso traemos todos los fijos activos y comparamos en
+  // JS contra el día efectivo de ESTE mes específico.
+  const { data: todosFijos } = await supabase
     .from('pagos_programados')
     .select('*')
     .eq('usuario_id', userId)
-    .eq('dia_mes', diaHoy)
     .eq('activo', true)
     .or('tipo.eq.fijo,tipo.is.null');
+
+  const pagos = (todosFijos || []).filter(p => diaEfectivoPago(p.dia_mes, mesHoy, anioHoy) === diaHoy);
 
   if (!pagos?.length) return 0;
 
