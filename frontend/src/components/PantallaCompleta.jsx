@@ -2,11 +2,18 @@ import { useEffect } from 'react';
 import Icon from '../utils/icons';
 
 export default function PantallaCompleta({ title, onClose, children }) {
-  // Bloquear scroll del body mientras el modal está abierto
+  // Bloquear scroll del body mientras el modal está abierto + cerrar con Escape.
+  // Al ser el componente compartido por todos los formularios de la app
+  // (~20+ pantallas), este único cambio habilita Escape en todos a la vez.
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
+    const onKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onClose]);
 
   return (
     <>
