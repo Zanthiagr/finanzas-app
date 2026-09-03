@@ -74,6 +74,16 @@ export const getSemanaDelMes = (dia) => {
   return 4;
 };
 
+// Último día real de un mes (28-31). mes es 1-12 (no 0-11 como Date nativo).
+export const ultimoDiaDelMes = (mes, anio) => new Date(anio, mes, 0).getDate();
+
+// Día en que efectivamente cae un pago programado con día fijo, para UN
+// mes concreto. Si el usuario programó "día 31" pero el mes solo tiene
+// 30 días (o 28/29 en febrero), el pago se ajusta al último día de ESE
+// mes — el mismo comportamiento que usan bancos y plataformas de cobro
+// recurrente (Netflix, arriendo, etc.) en vez de saltarse el mes entero.
+export const diaEfectivoPago = (diaMes, mes, anio) => Math.min(diaMes, ultimoDiaDelMes(mes, anio));
+
 export const getCurrentWeek = () => getSemanaDelMes(new Date().getDate());
 
 // Día de la semana en que se recomienda hacer el cierre semanal.
