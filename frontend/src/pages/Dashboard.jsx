@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, getDeudas, getMetas, crearDeudaMovimiento, actualizarMeta, marcarPagoUnicoComoPagado } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, diaEfectivoPago, DIA_CIERRE_SEMANAL } from '../utils/helpers';
+import { getMovimientos, getResumen, getPagosProgramados, getPagosFijosDelMes, pagarPagoFijo, saltarPagoFijoEsteMes, getSaldoTotal, getPresupuestos, getCierres, getDeudas, getMetas, crearDeudaMovimiento, actualizarMeta, marcarPagoUnicoComoPagado } from '../utils/api';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [saldo, setSaldo]               = useState(null);
   const [movRecientes, setMovRecientes] = useState([]);
   const [pagosPendientes, setPagosPendientes] = useState([]);
+  const [pagosProximos, setPagosProximos]     = useState([]);
   const [presupuestos, setPresupuestos] = useState([]);
   const [gastosReales, setGastosReales] = useState({});
   const [cierres, setCierres]           = useState([]);
@@ -59,23 +60,22 @@ export default function Dashboard() {
   const cargarSaldo = () => getSaldoTotal().then(setSaldo).catch(console.error);
 
   // Pagos pendientes — separado del resto para no bloquear el dashboard si
-  // falla. "Pendiente" = fijo que cae hoy (recordatorio, aunque se
-  // auto-registre al visitar Calendario) O único sin pagar con fecha de
-  // hoy o vencida. Se recalcula por fecha, no por hora, así que se ve
-  // igual sin importar a qué hora del día se abra la app.
+  // falla. Tres categorías, cada una con su propio tratamiento:
+  // - "unico" vencido/pendiente: siempre accionable, como antes.
+  // - "fijo" accionable: es hoy (o ya pasó) su día efectivo y no se ha
+  //   resuelto este mes → pide una decisión (pagar o correr).
+  // - "fijo" próximo: faltan 1-2 días y no se ha resuelto → aviso
+  //   informativo, sin botones de acción (para eso está Calendario, donde
+  //   ya se puede pagar cualquier día si el usuario quiere adelantarlo).
   const cargarPagos = () => {
-    getPagosProgramados().then(pagos => {
-      const diaHoy = now.getDate();
-      const mesHoy = now.getMonth() + 1;
-      const anioHoy = now.getFullYear();
-      const pendientes = (pagos || [])
-        .filter(p => {
-          if (!p.activo) return false;
-          if (p.tipo === 'unico') return !p.pagado && p.fecha && p.fecha <= hoyStr;
-          return diaEfectivoPago(p.dia_mes, mesHoy, anioHoy) === diaHoy; // fijo (o sin "tipo" = fijo, compatibilidad)
-        })
-        .sort((a, b) => (a.tipo === 'unico' ? -1 : 1)); // vencidos/únicos primero
-      setPagosPendientes(pendientes);
+    Promise.all([getPagosProgramados(), getPagosFijosDelMes()]).then(([pagos, fijos]) => {
+      const unicosPendientes = (pagos || [])
+        .filter(p => p.tipo === 'unico' && p.activo && !p.pagado && p.fecha && p.fecha <= hoyStr);
+      const fijosAccionables = (fijos || []).filter(p => p.estado === 'accionable');
+      const fijosProximos    = (fijos || []).filter(p => p.estado === 'proximo');
+
+      setPagosPendientes(unicosPendientes.concat(fijosAccionables));
+      setPagosProximos(fijosProximos);
     }).catch(() => {});
   };
 
@@ -147,19 +147,55 @@ export default function Dashboard() {
   };
 
   const confirmarPagoPendiente = (p) => {
-    confirmToast(`¿Confirmas que ya pagaste "${p.nombre}" (${fmt(p.monto)})?`, async () => {
+    // Los únicos y los fijos comparten esta misma lista (pagosPendientes),
+    // pero se resuelven con funciones distintas — se distingue por tipo.
+    if (p.tipo === 'unico') {
+      confirmToast(`¿Confirmas que ya pagaste "${p.nombre}" (${fmt(p.monto)})?`, async () => {
+        setMarcandoPagoId(p.id);
+        try {
+          await marcarPagoUnicoComoPagado(p);
+          toast.success('Pago confirmado y registrado ✅');
+          cargarPagos();
+          cargarSaldo();
+        } catch (err) {
+          toast.error(err?.message || 'Error confirmando el pago');
+        } finally {
+          setMarcandoPagoId(null);
+        }
+      }, { confirmLabel: 'Ya pagué' });
+    } else {
+      confirmToast(`¿Registrar el pago de "${p.nombre}" (${fmt(p.monto)}) hoy?`, async () => {
+        setMarcandoPagoId(p.id);
+        try {
+          await pagarPagoFijo(p);
+          toast.success('Pago registrado ✅');
+          cargarPagos();
+          cargarSaldo();
+        } catch (err) {
+          toast.error(err?.message || 'Error registrando el pago');
+        } finally {
+          setMarcandoPagoId(null);
+        }
+      }, { confirmLabel: 'Sí, pagar' });
+    }
+  };
+
+  // "Correr" un pago fijo este mes — no crea ningún movimiento ni toca el
+  // día programado, solo marca que este mes en particular se salta. El
+  // próximo mes vuelve a aparecer normal.
+  const correrPagoEsteMes = (p) => {
+    confirmToast(`¿Correr "${p.nombre}" este mes? No se registrará ningún gasto — el próximo mes vuelve a aparecer normal.`, async () => {
       setMarcandoPagoId(p.id);
       try {
-        await marcarPagoUnicoComoPagado(p);
-        toast.success('Pago confirmado y registrado ✅');
+        await saltarPagoFijoEsteMes(p);
+        toast.success('Pago corrido este mes');
         cargarPagos();
-        cargarSaldo();
       } catch (err) {
-        toast.error(err?.message || 'Error confirmando el pago');
+        toast.error(err?.message || 'Error');
       } finally {
         setMarcandoPagoId(null);
       }
-    }, { confirmLabel: 'Ya pagué' });
+    }, { confirmLabel: 'Sí, correr' });
   };
 
   const semanaActual     = getCurrentWeek();
@@ -262,12 +298,12 @@ export default function Dashboard() {
         </Reveal>
       )}
 
-      {/* Pagos pendientes — fijos que caen hoy + únicos sin pagar (hoy o
-          vencidos). Se muestra todo el día porque el filtro es por fecha,
-          no por hora del reloj. Cada fila lleva un punto de severidad
-          (rojo=vencido, ámbar=vence hoy, gris=fijo informativo) en vez de
-          un solo bloque de alerta — así se distingue de un vistazo cuál
-          urge más. Los únicos se confirman aquí mismo con un toque. */}
+      {/* Pagos pendientes — fijos que llegaron a su día (o ya pasó) sin
+          resolver, + únicos sin pagar (hoy o vencidos). Cada fila lleva un
+          punto de severidad (rojo=vencido, ámbar=vence hoy, gris=fijo) en
+          vez de un solo bloque de alerta — así se distingue de un vistazo
+          cuál urge más. Nada se registra solo: todo pide una acción
+          explícita, incluso los fijos — "Registrar" o "Correr este mes". */}
       {pagosPendientes.length > 0 && (
         <Reveal i={2}>
         <div className="card p-4">
@@ -284,9 +320,11 @@ export default function Dashboard() {
           </div>
           <div className="divide-y divide-g-100/70 mt-1">
             {pagosPendientes.map(p => {
-              const vencido = p.tipo === 'unico' && p.fecha < hoyStr;
-              const statusColor = vencido ? '#E5484D' : p.tipo === 'unico' ? '#F59E0B' : '#8A93A6';
-              const statusLabel = p.tipo === 'unico' ? (vencido ? 'Vencido' : 'Vence hoy') : 'Fijo · hoy';
+              const vencido = p.tipo === 'unico' ? p.fecha < hoyStr : p.diasHasta < 0;
+              const statusColor = vencido ? '#E5484D' : '#F59E0B';
+              const statusLabel = p.tipo === 'unico'
+                ? (vencido ? 'Vencido' : 'Vence hoy')
+                : (vencido ? 'Fijo · atrasado' : 'Fijo · hoy');
               return (
                 <div key={p.id} className="flex items-center gap-3 py-2.5">
                   <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusColor }}/>
@@ -302,13 +340,44 @@ export default function Dashboard() {
                       <Icon name="check" className={`w-3.5 h-3.5 text-g-300 group-hover:text-white ${marcandoPagoId === p.id ? 'animate-pulse' : ''}`}/>
                     </button>
                   ) : (
-                    <span title="Se registra automáticamente" className="flex-shrink-0">
-                      <Icon name="repeat" className="w-3.5 h-3.5 text-g-300"/>
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button onClick={() => correrPagoEsteMes(p)} disabled={marcandoPagoId === p.id}
+                        title="Correr este mes — no registra nada, el próximo mes vuelve normal"
+                        className="text-[11px] px-2 py-1.5 rounded-lg text-g-500 hover:bg-g-50 disabled:opacity-40">
+                        Correr
+                      </button>
+                      <button onClick={() => confirmarPagoPendiente(p)} disabled={marcandoPagoId === p.id}
+                        className="text-[11px] font-medium px-2.5 py-1.5 rounded-lg bg-g-800 text-white disabled:opacity-40 active:scale-95 transition-transform">
+                        {marcandoPagoId === p.id ? '...' : 'Registrar'}
+                      </button>
+                    </div>
                   )}
                 </div>
               );
             })}
+          </div>
+        </div>
+        </Reveal>
+      )}
+
+      {/* Pagos próximos — fijos a 1-2 días de su fecha, todavía sin
+          resolver. Solo informativo (sin botones): el usuario ya sabe qué
+          se viene, y si quiere adelantarlo puede hacerlo desde Calendario
+          en cualquier momento. Evita que el primer aviso de un pago sea
+          el mismo día que toca pagarlo. */}
+      {pagosProximos.length > 0 && (
+        <Reveal i={2}>
+        <div className="rounded-2xl bg-blue-50 border border-blue-100 p-3.5 flex items-center gap-3">
+          <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <Icon name="calendar-event" className="w-3.5 h-3.5 text-blue-600"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-blue-900">
+              {pagosProximos.length === 1 ? 'Pago próximo' : 'Pagos próximos'}
+            </p>
+            <p className="text-[11px] text-blue-700/80 truncate">
+              {pagosProximos.map(p => `${p.nombre} (${p.diasHasta === 0 ? 'hoy' : p.diasHasta === 1 ? 'mañana' : `en ${p.diasHasta} días`})`).join(' · ')}
+            </p>
           </div>
         </div>
         </Reveal>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, procesarPagosPendientes, marcarPagoUnicoComoPagado } from '../utils/api';
+import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado, pagarPagoFijo, saltarPagoFijoEsteMes, marcarPagoUnicoComoPagado } from '../utils/api';
 import { supabase } from '../utils/supabase';
 import { fmt, fmtShort, todayLocalStr, getSemanaDelMes, diaEfectivoPago, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
@@ -67,25 +67,6 @@ export default function Calendario() {
   }, [mes, año]);
 
   useEffect(() => { cargar(); }, [cargar]);
-
-  // Procesar pagos automáticos (fijos que caen hoy) — SOLO una vez al
-  // entrar al Calendario, independiente de cargar(). Antes vivía dentro
-  // de cargar(), que se vuelve a llamar cada vez que agregas, confirmas o
-  // borras un pago — si el pago recién agregado caía justo en el día de
-  // hoy, se reprocesaba en el acto y aparecía un SEGUNDO toast apilado
-  // encima del de la acción que el usuario acababa de hacer.
-  useEffect(() => {
-    (async () => {
-      try {
-        const procesados = await procesarPagosPendientes();
-        if (procesados > 0) {
-          toast.success(`${procesados} pago${procesados>1?'s':''} automático${procesados>1?'s':''} registrado${procesados>1?'s':''}`);
-          cargar(); // refresca para mostrar los movimientos que se acaban de crear solos
-        }
-      } catch (e) { console.error(e); }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const primerDia = new Date(año, mes, 1).getDay();
   const diasEnMes = new Date(año, mes + 1, 0).getDate();
@@ -164,6 +145,26 @@ export default function Calendario() {
     }, { confirmLabel: 'Ya pagué' });
   };
 
+  const [pagandoFijoId, setPagandoFijoId] = useState(null);
+
+  // Pagar un pago fijo cualquier día — no hay que esperar a que llegue
+  // la fecha programada. Registra el gasto real hoy y marca este mes
+  // como resuelto para que no lo vuelva a pedir.
+  const pagarFijoAhora = (p) => {
+    confirmToast(`¿Registrar el pago de "${p.nombre}" (${fmt(p.monto)}) hoy?`, async () => {
+      setPagandoFijoId(p.id);
+      try {
+        await pagarPagoFijo(p);
+        toast.success('Pago registrado ✅');
+        cargar();
+      } catch (err) {
+        toast.error(err?.message || 'Error registrando el pago');
+      } finally {
+        setPagandoFijoId(null);
+      }
+    }, { confirmLabel: 'Sí, pagar' });
+  };
+
   const eliminarPago = (id) => {
     confirmToast('¿Eliminar este pago programado?', async () => {
       await eliminarPagoProgramado(id);
@@ -232,31 +233,43 @@ export default function Calendario() {
       })()}
 
       {/* Resumen pagos programados */}
-      {pagos.filter(p=>p.activo).length > 0 && (
+      {pagos.filter(p=>p.activo && p.tipo!=='unico').length > 0 && (
         <div className="card p-4 border-amber-200 bg-amber-50">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-amber-800">Pagos programados este mes</p>
             <span className="text-sm font-medium text-amber-700">{fmt(totalPagosMes)}</span>
           </div>
           <div className="space-y-1.5">
-            {pagos.filter(p=>p.activo).map(p=>(
-              <div key={p.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
+            {pagos.filter(p=>p.activo && p.tipo!=='unico').map(p=>{
+              const key = `${año}-${String(mes+1).padStart(2,'0')}`;
+              const resuelto = p.meses_resueltos?.[key] || null;
+              return (
+              <div key={p.id} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
                     style={{ background: (CATEGORIAS_COLORES[p.categoria]||'#2452FF')+'22', color: CATEGORIAS_COLORES[p.categoria]||'#2452FF' }}>
                     <Icon name={CATEGORIAS_ICONOS[p.categoria]||'ti-tag'} className="w-2.5 h-2.5"/>
                   </div>
                   <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex-shrink-0">Día {p.dia_mes}</span>
                   <span className="text-xs text-amber-800 truncate">{p.nombre}</span>
+                  {resuelto === 'pagado' && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded flex-shrink-0">Pagado</span>}
+                  {resuelto === 'saltado' && <span className="text-[10px] bg-g-200 text-g-500 px-1.5 py-0.5 rounded flex-shrink-0">Corrido</span>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs font-medium text-amber-700">{fmtShort(p.monto)}</span>
+                  {!resuelto && (
+                    <button onClick={()=>pagarFijoAhora(p)} disabled={pagandoFijoId===p.id}
+                      className="text-[11px] bg-g-900 text-white px-2.5 py-1 rounded-lg disabled:opacity-50 active:scale-95 transition-transform">
+                      {pagandoFijoId===p.id ? '...' : 'Pagar'}
+                    </button>
+                  )}
                   <button onClick={()=>eliminarPago(p.id)} className="text-amber-400 hover:text-red-500">
                     <Icon name="x" className="w-3 h-3"/>
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -353,11 +366,16 @@ export default function Calendario() {
             {diaData.pagosDia.length>0 && (
               <div className="mb-4">
                 <p className="section-label mb-2">Pagos programados</p>
-                {diaData.pagosDia.map((p,i)=>(
+                {diaData.pagosDia.map((p,i)=>{
+                  const key = `${año}-${String(mes+1).padStart(2,'0')}`;
+                  const resuelto = p.meses_resueltos?.[key] || null;
+                  return (
                   <div key={i} className="flex justify-between items-center py-2 border-b border-amber-100 last:border-0 gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <Icon name="calendar-event" className="w-3.5 h-3.5 text-amber-500 flex-shrink-0"/>
                       <span className="text-sm text-g-700 truncate">{p.nombre}</span>
+                      {resuelto === 'pagado' && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded flex-shrink-0">Pagado</span>}
+                      {resuelto === 'saltado' && <span className="text-[10px] bg-g-200 text-g-500 px-1.5 py-0.5 rounded flex-shrink-0">Corrido</span>}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-sm font-medium text-amber-700">{fmtShort(p.monto)}</span>
@@ -367,9 +385,16 @@ export default function Calendario() {
                           Ya pagué
                         </button>
                       )}
+                      {p.tipo !== 'unico' && !resuelto && (
+                        <button onClick={() => pagarFijoAhora(p)} disabled={pagandoFijoId === p.id}
+                          className="text-[11px] bg-g-900 text-white px-2.5 py-1 rounded-lg disabled:opacity-50">
+                          {pagandoFijoId === p.id ? '...' : 'Pagar'}
+                        </button>
+                      )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

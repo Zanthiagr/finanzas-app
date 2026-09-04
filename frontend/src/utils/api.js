@@ -796,67 +796,96 @@ export const eliminarPagoProgramado = async (id) => {
   if (error) throw error;
 };
 
-export const procesarPagosPendientes = async () => {
+// Clave de mes usada como llave en meses_resueltos: "YYYY-MM"
+const mesKey = (mes, anio) => `${anio}-${String(mes).padStart(2, '0')}`;
+
+// Estado de los pagos fijos para ESTE mes — reemplaza al viejo
+// procesarPagosPendientes(), que registraba el gasto solo y en silencio
+// apenas llegaba el día exacto. Ahora nada se registra sin que el
+// usuario lo confirme: esta función solo CLASIFICA cada pago fijo activo
+// según qué tan cerca está su día y si ya se resolvió este mes (pagado o
+// corrido), para que la UI decida qué mostrar. No escribe nada en la BD.
+//
+// Estados posibles por pago:
+// - null            → ya resuelto este mes (pagado o corrido), no hay nada que mostrar
+// - 'proximo'        → faltan 1-2 días para el día efectivo, aviso informativo
+// - 'accionable'     → es hoy o ya pasó el día y sigue sin resolver: pedir acción
+// - 'lejano'         → faltan 3+ días, no se muestra en el Dashboard todavía
+//   (pero SÍ se puede pagar manualmente desde Calendario si el usuario quiere adelantarlo)
+export const getPagosFijosDelMes = async () => {
   const userId = await getUserId();
   const hoy = new Date();
   const diaHoy = hoy.getDate();
   const mesHoy = hoy.getMonth() + 1;
   const anioHoy = hoy.getFullYear();
-  const fechaStr = todayLocalStr(hoy);
+  const key = mesKey(mesHoy, anioHoy);
 
-  // Solo los pagos FIJOS se auto-registran. Los ÚNICOS nunca se procesan
-  // solos — se quedan como pendientes hasta que el usuario los confirma
-  // manualmente con marcarPagoUnicoComoPagado().
-  //
-  // No filtramos por dia_mes=diaHoy directo en la consulta porque un
-  // pago programado para el día 31 (o 29/30) debe ajustarse al último
-  // día del mes cuando el mes es más corto (ej: en abril, un pago del
-  // "día 31" cae el 30) — igual que hacen bancos y plataformas de cobro
-  // recurrente. Por eso traemos todos los fijos activos y comparamos en
-  // JS contra el día efectivo de ESTE mes específico.
-  const { data: todosFijos } = await supabase
+  const { data: fijos } = await supabase
     .from('pagos_programados')
     .select('*')
     .eq('usuario_id', userId)
     .eq('activo', true)
     .or('tipo.eq.fijo,tipo.is.null');
 
-  const pagos = (todosFijos || []).filter(p => diaEfectivoPago(p.dia_mes, mesHoy, anioHoy) === diaHoy);
+  return (fijos || []).map(p => {
+    const diaEfectivo = diaEfectivoPago(p.dia_mes, mesHoy, anioHoy);
+    const diasHasta = diaEfectivo - diaHoy;
+    const resuelto = p.meses_resueltos?.[key] || null; // 'pagado' | 'saltado' | null
 
-  if (!pagos?.length) return 0;
-
-  let procesados = 0;
-  for (const pago of pagos) {
-    // Verificar si ya se registró hoy
-    const { data: yaExiste } = await supabase
-      .from('movimientos')
-      .select('id')
-      .eq('usuario_id', userId)
-      .eq('descripcion', `[Auto] ${pago.nombre}`)
-      .eq('fecha', fechaStr)
-      .single();
-
-    if (yaExiste) continue;
-
-    await crearMovimiento({
-      tipo: 'gasto',
-      monto: pago.monto,
-      categoria: pago.categoria,
-      descripcion: `[Auto] ${pago.nombre}`,
-      fecha: fechaStr,
-      medio_pago: pago.medio_pago || 'otro_banco',
-    });
-    // Si este pago programado pertenece a una deuda, el abono se registra
-    // solo en su historial — no hay que ir a Deudas a hacerlo aparte.
-    if (pago.deuda_id) {
-      await crearDeudaMovimiento({
-        deuda_id: pago.deuda_id, tipo: 'abono', monto: pago.monto,
-        fecha: fechaStr, nota: `Pago automático: ${pago.nombre}`,
-      });
+    let estado = null;
+    if (!resuelto) {
+      if (diasHasta <= 0) estado = 'accionable';
+      else if (diasHasta <= 2) estado = 'proximo';
+      else estado = 'lejano';
     }
-    procesados++;
+    return { ...p, diaEfectivo, diasHasta, resuelto, estado };
+  });
+};
+
+// Registra el pago de un pago fijo — cualquier día, no solo el día
+// programado. Crea el movimiento real (y el abono en la deuda vinculada
+// si aplica) y marca este mes como resuelto para que no se vuelva a
+// pedir. `fecha` por defecto es hoy, pero se puede pasar otra si el
+// usuario está registrando un pago que ya hizo hace unos días.
+export const pagarPagoFijo = async (pago, fecha) => {
+  const userId = await getUserId();
+  const fechaPago = fecha || todayLocalStr();
+  const hoy = new Date();
+  const key = mesKey(hoy.getMonth() + 1, hoy.getFullYear());
+
+  await crearMovimiento({
+    tipo: 'gasto',
+    monto: pago.monto,
+    categoria: pago.categoria,
+    descripcion: pago.nombre,
+    fecha: fechaPago,
+    medio_pago: pago.medio_pago || 'otro_banco',
+  });
+
+  if (pago.deuda_id) {
+    await crearDeudaMovimiento({
+      deuda_id: pago.deuda_id, tipo: 'abono', monto: pago.monto,
+      fecha: fechaPago, nota: `Pago: ${pago.nombre}`,
+    });
   }
-  return procesados;
+
+  const nuevosMeses = { ...(pago.meses_resueltos || {}), [key]: 'pagado' };
+  const { error } = await supabase.from('pagos_programados')
+    .update({ meses_resueltos: nuevosMeses }).eq('id', pago.id).eq('usuario_id', userId);
+  if (error) throw error;
+};
+
+// "Correr" un pago fijo este mes: no crea ningún movimiento, no toca el
+// día programado — el próximo mes vuelve a aparecer normal. Es un
+// espacio puntual para ESE mes, no una pausa de la recurrencia.
+export const saltarPagoFijoEsteMes = async (pago) => {
+  const userId = await getUserId();
+  const hoy = new Date();
+  const key = mesKey(hoy.getMonth() + 1, hoy.getFullYear());
+  const nuevosMeses = { ...(pago.meses_resueltos || {}), [key]: 'saltado' };
+  const { error } = await supabase.from('pagos_programados')
+    .update({ meses_resueltos: nuevosMeses }).eq('id', pago.id).eq('usuario_id', userId);
+  if (error) throw error;
 };
 
 // Confirma manualmente un pago único: crea el movimiento real y lo saca
