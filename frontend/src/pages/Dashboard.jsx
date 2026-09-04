@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, getDeudas, marcarPagoUnicoComoPagado } from '../utils/api';
+import { getMovimientos, getResumen, getPagosProgramados, getSaldoTotal, getPresupuestos, getCierres, getDeudas, getMetas, crearDeudaMovimiento, actualizarMeta, marcarPagoUnicoComoPagado } from '../utils/api';
 import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, diaEfectivoPago, DIA_CIERRE_SEMANAL } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
@@ -8,6 +8,7 @@ import CapitalInicialForm from '../components/CapitalInicialForm';
 import CapitalCarousel from '../components/CapitalCarousel';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirm';
+import confetti from 'canvas-confetti';
 
 const DashboardCharts = lazy(() => import('../components/DashboardCharts'));
 import Ring from '../components/Ring';
@@ -40,6 +41,12 @@ export default function Dashboard() {
   const [gastosReales, setGastosReales] = useState({});
   const [cierres, setCierres]           = useState([]);
   const [tarjetas, setTarjetas]         = useState([]);
+  const [deudasActivas, setDeudasActivas] = useState([]);
+  const [metasActivas, setMetasActivas]   = useState([]);
+  const [modalAbono, setModalAbono]       = useState(null); // deuda seleccionada, o null
+  const [modalAporte, setModalAporte]     = useState(null); // meta seleccionada, o null
+  const [montoRapido, setMontoRapido]     = useState('');
+  const [guardandoRapido, setGuardandoRapido] = useState(false);
   const [marcandoPagoId, setMarcandoPagoId] = useState(null);
   const [loading, setLoading]           = useState(true);
   const [modalCapital, setModalCapital] = useState(false);
@@ -80,13 +87,16 @@ export default function Dashboard() {
       getPresupuestos(),
       getCierres(anio),
       getDeudas(),
-    ]).then(([r, m, s, pres, cierresData, deudasData]) => {
+      getMetas(),
+    ]).then(([r, m, s, pres, cierresData, deudasData, metasData]) => {
       setResumen(r);
       setMovRecientes(m.slice(0, 5));
       setSaldo(s);
       setPresupuestos(pres || []);
       setCierres(cierresData || []);
       setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
+      setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
+      setMetasActivas((metasData || []).filter(m => !m.completada));
       const gastosMap = {};
       r.porCategoria?.filter(c => c.tipo === 'gasto').forEach(c => {
         gastosMap[c.categoria] = parseFloat(c.total);
@@ -95,6 +105,46 @@ export default function Dashboard() {
     }).catch(console.error).finally(() => setLoading(false));
     cargarPagos();
   }, []);
+
+  const recargarDeudasYMetas = () => {
+    Promise.all([getDeudas(), getMetas()]).then(([deudasData, metasData]) => {
+      setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
+      setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
+      setMetasActivas((metasData || []).filter(m => !m.completada));
+    }).catch(() => {});
+  };
+
+  const confirmarAbonoDeuda = async () => {
+    const monto = parseFloat(String(montoRapido).replace(',','.'));
+    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    setGuardandoRapido(true);
+    try {
+      await crearDeudaMovimiento({ deuda_id: modalAbono.id, tipo: 'abono', monto, fecha: hoyStr });
+      toast.success('Abono registrado');
+      setModalAbono(null); setMontoRapido('');
+      recargarDeudasYMetas();
+    } catch { toast.error('Error registrando el abono'); }
+    finally { setGuardandoRapido(false); }
+  };
+
+  const confirmarAporteMeta = async () => {
+    const abono = parseFloat(String(montoRapido).replace(',','.'));
+    if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
+    const nuevo = Math.min(parseFloat(modalAporte.monto_actual) + abono, parseFloat(modalAporte.monto_objetivo));
+    const seCompleta = nuevo >= modalAporte.monto_objetivo && !modalAporte.completada;
+    setGuardandoRapido(true);
+    try {
+      await actualizarMeta(modalAporte.id, { ...modalAporte, monto_actual: nuevo, completada: nuevo >= modalAporte.monto_objetivo });
+      toast.success(seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado');
+      if (seCompleta) {
+        confetti({ particleCount: 120, spread: 75, startVelocity: 38, gravity: 0.9,
+          colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'], origin: { y: 0.6 } });
+      }
+      setModalAporte(null); setMontoRapido('');
+      recargarDeudasYMetas();
+    } catch { toast.error('Error registrando el aporte'); }
+    finally { setGuardandoRapido(false); }
+  };
 
   const confirmarPagoPendiente = (p) => {
     confirmToast(`¿Confirmas que ya pagaste "${p.nombre}" (${fmt(p.monto)})?`, async () => {
@@ -339,6 +389,94 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Deudas y metas — antes había que ir hasta Patrimonio para abonar
+          o aportar. Acá se puede hacer directo, sin salir del Dashboard.
+          Se muestran máximo 3 de cada una (las más urgentes/cercanas —
+          igual orden que ya trae getDeudas/getMetas) para no saturar la
+          pantalla principal; "Ver todas" lleva al detalle completo. */}
+      {(deudasActivas.length > 0 || metasActivas.length > 0) && (
+        <Reveal i={5}>
+        <div className="space-y-3">
+          {deudasActivas.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <p className="section-label">Deudas</p>
+                {deudasActivas.length > 3 && <Link to="/deudas" className="text-[11px] text-g-500 font-medium">Ver todas</Link>}
+              </div>
+              {deudasActivas.slice(0, 3).map(d => {
+                const total = parseFloat(d.monto_total) || 0;
+                const pagado = parseFloat(d.monto_pagado) || 0;
+                const pendiente = total - pagado;
+                const pct = total > 0 ? Math.min(Math.round((pagado / total) * 100), 100) : 0;
+                const color = pct >= 100 ? '#16A34A' : pct >= 50 ? '#4F8F76' : pct >= 20 ? '#C9A84C' : '#E5484D';
+                return (
+                  <div key={d.id} className="card p-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F` }}>
+                        <Icon name="credit-card" className="w-4 h-4" style={{ color }}/>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <p className="text-sm font-medium text-g-900 truncate">{d.nombre}</p>
+                          <p className="text-sm font-medium text-red-600 flex-shrink-0">{fmtShort(pendiente)}</p>
+                        </div>
+                        <div className="h-1.5 bg-g-100 rounded-full overflow-hidden mb-1">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }}/>
+                        </div>
+                        <p className="text-[10px] text-g-400">{pct}% pagado</p>
+                      </div>
+                      <button onClick={() => { setModalAbono(d); setMontoRapido(''); }}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg bg-g-800 text-white flex-shrink-0 active:scale-95 transition-transform">
+                        Abonar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {metasActivas.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <p className="section-label">Metas</p>
+                {metasActivas.length > 3 && <Link to="/metas" className="text-[11px] text-g-500 font-medium">Ver todas</Link>}
+              </div>
+              {metasActivas.slice(0, 3).map(m => {
+                const objetivo = parseFloat(m.monto_objetivo) || 0;
+                const actual = parseFloat(m.monto_actual) || 0;
+                const pct = objetivo > 0 ? Math.min(Math.round((actual / objetivo) * 100), 100) : 0;
+                const color = pct >= 66 ? '#4F8F76' : pct >= 33 ? '#C9A84C' : '#8A93A6';
+                return (
+                  <div key={m.id} className="card p-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F` }}>
+                        <Icon name={m.icono || 'target'} className="w-4 h-4" style={{ color }}/>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <p className="text-sm font-medium text-g-900 truncate">{m.nombre}</p>
+                          <p className="text-sm font-medium text-g-700 flex-shrink-0">{pct}%</p>
+                        </div>
+                        <div className="h-1.5 bg-g-100 rounded-full overflow-hidden mb-1">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }}/>
+                        </div>
+                        <p className="text-[10px] text-g-400">{fmtShort(actual)} de {fmtShort(objetivo)}</p>
+                      </div>
+                      <button onClick={() => { setModalAporte(m); setMontoRapido(''); }}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg bg-g-800 text-white flex-shrink-0 active:scale-95 transition-transform">
+                        Aportar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        </Reveal>
+      )}
+
       {/* Salud financiera — gauge circular: es contenido motivacional, no
           "chrome" de navegación, así que se permite ser expresivo. */}
       <Reveal i={4}>
@@ -563,6 +701,50 @@ export default function Dashboard() {
       {modalCapital && (
         <PantallaCompleta title="Capital inicial" onClose={() => setModalCapital(false)}>
           <CapitalInicialForm onChange={cargarSaldo} />
+        </PantallaCompleta>
+      )}
+
+      {modalAbono && (
+        <PantallaCompleta title={`Abonar a: ${modalAbono.nombre}`} onClose={() => { setModalAbono(null); setMontoRapido(''); }}>
+          <div className="space-y-4">
+            <div className="card p-4 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-g-400 mb-1">Pendiente por pagar</p>
+              <p className="text-2xl font-medium text-g-900">
+                {fmt(parseFloat(modalAbono.monto_total) - parseFloat(modalAbono.monto_pagado))}
+              </p>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto a abonar</label>
+              <input type="text" inputMode="numeric" className="input" placeholder="Ej: 200000" autoFocus
+                value={montoRapido} onChange={e => setMontoRapido(e.target.value.replace(',', '.'))}/>
+            </div>
+            <button onClick={confirmarAbonoDeuda} disabled={guardandoRapido} className="btn-primary w-full py-4 disabled:opacity-50">
+              {guardandoRapido ? 'Guardando...' : 'Registrar abono'}
+            </button>
+          </div>
+        </PantallaCompleta>
+      )}
+
+      {modalAporte && (
+        <PantallaCompleta title={`Aportar a: ${modalAporte.nombre}`} onClose={() => { setModalAporte(null); setMontoRapido(''); }}>
+          <div className="space-y-4">
+            <div className="card p-4 text-center">
+              <p className="text-2xl font-medium text-g-900">{fmt(modalAporte.monto_actual)}</p>
+              <p className="text-xs text-g-400 mt-1">de {fmt(modalAporte.monto_objetivo)}</p>
+              <div className="h-2 bg-g-100 rounded-full overflow-hidden mt-3">
+                <div className="h-full rounded-full bg-emerald-500 transition-all"
+                  style={{ width: `${Math.min((modalAporte.monto_actual / modalAporte.monto_objetivo) * 100, 100)}%` }}/>
+              </div>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto a aportar</label>
+              <input type="text" inputMode="numeric" className="input" placeholder="Ej: 100000" autoFocus
+                value={montoRapido} onChange={e => setMontoRapido(e.target.value.replace(',', '.'))}/>
+            </div>
+            <button onClick={confirmarAporteMeta} disabled={guardandoRapido} className="btn-primary w-full py-4 disabled:opacity-50">
+              {guardandoRapido ? 'Guardando...' : 'Registrar aporte 🎯'}
+            </button>
+          </div>
         </PantallaCompleta>
       )}
 
