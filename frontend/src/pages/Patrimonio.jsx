@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { getActivos, crearActivo, actualizarActivo, eliminarActivo,
-         getDeudas, crearDeuda, actualizarDeuda, eliminarDeuda,
+         getDeudas, crearDeuda, actualizarDeuda, eliminarDeuda, abonarDeuda,
          getDeudaMovimientos, crearDeudaMovimiento, actualizarDeudaMovimiento, eliminarDeudaMovimiento,
          getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado,
-         getMetas, crearMeta, actualizarMeta, eliminarMeta,
+         getMetas, crearMeta, eliminarMeta, aportarMeta,
+         getPrestamos, crearPrestamo, actualizarPrestamo, eliminarPrestamo,
+         getPrestamoMovimientos, abonarPrestamo,
          registrarRendimientoActivo } from '../utils/api';
 import { fmt, fmtDate, fmtShort, todayLocalStr, parseLocalDate, BANCOS } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
@@ -326,6 +328,24 @@ const MOV_DEUDA_VISUAL = {
   mora:    { label: 'Mora',    icon: 'ti-alert-triangle',  color: '#E5484D', signo: '+' },
 };
 
+// Selector plano de medio de pago (efectivo + bancos), reutilizado en los
+// 4 flujos que ahora sí registran movimiento real: abonar deuda, aportar
+// meta, prestar dinero, y recibir pago de un préstamo. Guarda el valor
+// final directo (ej. 'bancolombia'), compatible tal cual con
+// crearMovimiento — no necesita el paso intermedio de "transferencia".
+const MEDIOS_PAGO_FLAT = [{ value: 'efectivo', label: '💵 Efectivo' }, ...BANCOS];
+function SelectorMedioPago({ value, onChange, label = '¿Con qué medio de pago?' }) {
+  return (
+    <div>
+      <label className="section-label block mb-1">{label}</label>
+      <select className="select" value={value || ''} onChange={e => onChange(e.target.value)}>
+        <option value="" disabled>Elige un medio de pago</option>
+        {MEDIOS_PAGO_FLAT.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
 export function Deudas() {
   const [items, setItems]       = useState([]);
   const [modal, setModal]       = useState(false);
@@ -392,13 +412,22 @@ export function Deudas() {
   const guardarMov = async () => {
     const monto = parseFloat(String(modalMov.monto).replace(',','.'));
     if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    // Solo el abono representa plata real saliendo de una cuenta hoy —
+    // compra/interés/mora son crecimiento de la deuda, no un pago que
+    // hiciste, así que esos no piden medio de pago ni tocan Movimientos.
+    if (!modalMov.id && modalMov.tipo === 'abono' && !modalMov.medio_pago) {
+      return toast.error('Elige el medio de pago con el que abonaste');
+    }
     try {
       if (modalMov.id) {
         await actualizarDeudaMovimiento(modalMov.id, { tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
         toast.success('Movimiento actualizado');
+      } else if (modalMov.tipo === 'abono') {
+        await abonarDeuda(detalle, monto, modalMov.medio_pago, modalMov.fecha);
+        toast.success('Abono registrado — ya se descontó de tu saldo');
       } else {
         await crearDeudaMovimiento({ deuda_id: detalle.id, tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
-        toast.success(modalMov.tipo === 'abono' ? 'Abono registrado' : 'Movimiento registrado');
+        toast.success('Movimiento registrado');
       }
       const id = detalle.id;
       setModalMov(null);
@@ -697,6 +726,9 @@ export function Deudas() {
               <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
                 value={modalMov.monto} onChange={e=>setModalMov(m=>({...m, monto: e.target.value.replace(',','.')}))}/>
             </div>
+            {!modalMov.id && modalMov.tipo === 'abono' && (
+              <SelectorMedioPago value={modalMov.medio_pago} onChange={v => setModalMov(m=>({...m, medio_pago: v}))}/>
+            )}
             <div>
               <label className="section-label block mb-1">Fecha</label>
               <input type="date" className="input" value={modalMov.fecha} onChange={e=>setModalMov(m=>({...m, fecha: e.target.value}))}/>
@@ -791,6 +823,7 @@ export function Metas() {
   const [modal, setModal]         = useState(false);
   const [modalAporte, setModalAporte] = useState(null);
   const [aporteMonto, setAporteMonto] = useState('');
+  const [aporteMedio, setAporteMedio] = useState('');
   const [form, setForm]           = useState({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
   const load = () => getMetas().then(setItems).catch(()=>toast.error('Error cargando metas'));
@@ -812,22 +845,23 @@ export function Metas() {
   const confirmarAporte = async () => {
     const abono = parseFloat(String(aporteMonto).replace(',','.'));
     if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
-    const nuevo = Math.min(parseFloat(modalAporte.monto_actual) + abono, parseFloat(modalAporte.monto_objetivo));
-    const seCompleta = nuevo >= modalAporte.monto_objetivo && !modalAporte.completada;
-    await actualizarMeta(modalAporte.id, {...modalAporte, monto_actual: nuevo, completada: nuevo >= modalAporte.monto_objetivo});
-    toast.success(nuevo >= modalAporte.monto_objetivo ? '¡Meta lograda! 🎉' : 'Aporte registrado');
-    // Confetti solo la primera vez que la meta cruza el 100% — un
-    // pequeño "premio" visual reservado para el momento que de verdad
-    // lo amerita, no un efecto que se repite en cada aporte.
-    if (seCompleta) {
-      confetti({
-        particleCount: 120, spread: 75, startVelocity: 38, gravity: 0.9,
-        colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'],
-        origin: { y: 0.6 },
-      });
-    }
-    setModalAporte(null); setAporteMonto('');
-    load();
+    if (!aporteMedio) return toast.error('Elige el medio de pago con el que aportaste');
+    try {
+      const r = await aportarMeta(modalAporte, abono, aporteMedio);
+      toast.success(r.seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado — ya se descontó de tu saldo');
+      // Confetti solo la primera vez que la meta cruza el 100% — un
+      // pequeño "premio" visual reservado para el momento que de verdad
+      // lo amerita, no un efecto que se repite en cada aporte.
+      if (r.seCompleta) {
+        confetti({
+          particleCount: 120, spread: 75, startVelocity: 38, gravity: 0.9,
+          colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'],
+          origin: { y: 0.6 },
+        });
+      }
+      setModalAporte(null); setAporteMonto(''); setAporteMedio('');
+      load();
+    } catch { toast.error('Error registrando el aporte'); }
   };
 
   const del = id => confirmToast('¿Eliminar esta meta?', async () => { await eliminarMeta(id); toast.success('Eliminada'); load(); });
@@ -866,7 +900,7 @@ export function Metas() {
               </div>
               <div className="flex items-center justify-between">
                 {m.fecha_limite ? <p className="text-[10px] text-g-400">Meta: {fmtDate(m.fecha_limite)}</p> : <span/>}
-                {!m.completada && <button onClick={()=>{ setModalAporte(m); setAporteMonto(''); }} className="text-xs btn-secondary py-1.5 px-3">Aportar</button>}
+                {!m.completada && <button onClick={()=>{ setModalAporte(m); setAporteMonto(''); setAporteMedio(''); }} className="text-xs btn-secondary py-1.5 px-3">Aportar</button>}
               </div>
             </div>
           );
@@ -874,7 +908,7 @@ export function Metas() {
       </div>
 
       {modalAporte && (
-        <PantallaCompleta title={`Aportar a: ${modalAporte.nombre}`} onClose={()=>{setModalAporte(null);setAporteMonto('');}}>
+        <PantallaCompleta title={`Aportar a: ${modalAporte.nombre}`} onClose={()=>{setModalAporte(null);setAporteMonto('');setAporteMedio('');}}>
           <div className="space-y-4">
             <div className="card p-4 bg-g-50">
               <p className="section-label mb-1">Progreso actual</p>
@@ -890,8 +924,9 @@ export function Metas() {
               <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
                 value={aporteMonto} onChange={e=>setAporteMonto(e.target.value.replace(',','.'))}/>
             </div>
+            <SelectorMedioPago value={aporteMedio} onChange={setAporteMedio}/>
             <button onClick={confirmarAporte} className="btn-primary w-full py-4">Registrar aporte 🎯</button>
-            <button onClick={()=>{setModalAporte(null);setAporteMonto('');}} className="btn-secondary w-full py-3.5">Cancelar</button>
+            <button onClick={()=>{setModalAporte(null);setAporteMonto('');setAporteMedio('');}} className="btn-secondary w-full py-3.5">Cancelar</button>
           </div>
         </PantallaCompleta>
       )}
@@ -922,6 +957,243 @@ export function Metas() {
           </div>
         </form>
       </PantallaCompleta>
+      )}
+    </div>
+  );
+}
+
+// ── PRÉSTAMOS: dinero que TÚ le prestas a otros ──────────
+// Espejo de Deudas pero al revés: en vez de ir pagando algo que debes,
+// vas recibiendo pagos de algo que te deben. Más simple que Deudas — no
+// hay "tipo" de movimiento (compra/interés/mora), solo abonos que te
+// hacen. Cada préstamo y cada abono crea su movimiento real en
+// Movimientos con el medio de pago elegido, igual que Deudas y Metas.
+export function Prestamos() {
+  const [items, setItems] = useState([]);
+  const [modal, setModal] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
+  const [form, setForm] = useState({ nombre:'', monto_total:'', fecha: todayLocalStr(), notas:'', medio_pago:'' });
+  const load = () => getPrestamos().then(setItems).catch(()=>toast.error('Error cargando préstamos'));
+  useEffect(()=>{ load(); },[]);
+
+  const [detalle, setDetalle] = useState(null);
+  const [movimientos, setMovimientos] = useState([]);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [modalAbono, setModalAbono] = useState(null); // {monto, medio_pago}
+
+  const abrirNuevo = () => {
+    setEditandoId(null);
+    setForm({ nombre:'', monto_total:'', fecha: todayLocalStr(), notas:'', medio_pago:'' });
+    setModal(true);
+  };
+
+  const submit = async e => {
+    e.preventDefault();
+    if (!editandoId && !form.medio_pago) return toast.error('Elige con qué medio de pago prestaste');
+    try {
+      if (editandoId) {
+        await actualizarPrestamo(editandoId, form);
+        toast.success('Préstamo actualizado');
+      } else {
+        await crearPrestamo(form);
+        toast.success('Préstamo registrado — ya se descontó de tu saldo');
+      }
+      setModal(false);
+      setForm({ nombre:'', monto_total:'', fecha: todayLocalStr(), notas:'', medio_pago:'' });
+      setEditandoId(null);
+      load();
+    } catch { toast.error('Error guardando el préstamo'); }
+  };
+
+  const abrirEditar = (p) => {
+    setEditandoId(p.id);
+    setForm({ nombre: p.nombre, monto_total: String(p.monto_total), fecha: p.fecha, notas: p.notas || '', medio_pago: '' });
+    setModal(true);
+  };
+
+  const del = id => confirmToast('¿Eliminar este préstamo? También se borra todo su historial.', async () => {
+    await eliminarPrestamo(id); toast.success('Eliminado');
+    if (detalle?.id === id) setDetalle(null);
+    load();
+  });
+
+  const abrirDetalle = async (p) => {
+    setDetalle(p); setLoadingDetalle(true);
+    try { setMovimientos(await getPrestamoMovimientos(p.id)); }
+    catch { toast.error('Error cargando el detalle'); }
+    finally { setLoadingDetalle(false); }
+  };
+
+  const confirmarAbono = async () => {
+    const monto = parseFloat(String(modalAbono.monto).replace(',','.'));
+    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    if (!modalAbono.medio_pago) return toast.error('Elige el medio de pago con el que te pagaron');
+    try {
+      const r = await abonarPrestamo(detalle, monto, modalAbono.medio_pago);
+      toast.success(r.seCompleta ? '¡Préstamo pagado por completo! 🎉' : 'Pago registrado — ya se sumó a tu saldo');
+      if (r.seCompleta) {
+        confetti({ particleCount: 100, spread: 70, startVelocity: 35, gravity: 0.95,
+          colors: ['#2452FF', '#C9A84C', '#0B1220'], origin: { y: 0.55 } });
+      }
+      setModalAbono(null);
+      const actualizada = await getPrestamos();
+      setItems(actualizada);
+      const d = actualizada.find(x => x.id === detalle.id);
+      setDetalle(d || null);
+      if (d) setMovimientos(await getPrestamoMovimientos(d.id));
+    } catch { toast.error('Error registrando el pago'); }
+  };
+
+  const totalPrestado = items.filter(p=>p.activo).reduce((a,p)=>a+(parseFloat(p.monto_total)-parseFloat(p.monto_recibido)),0);
+
+  return (
+    <div className="space-y-4 page-enter">
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-lg font-medium text-g-900">Préstamos</h2><p className="text-sm text-g-400">Dinero que le has prestado a otros</p></div>
+        <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> Prestar</button>
+      </div>
+
+      {items.filter(p=>p.activo).length > 0 && (
+        <div className="card p-4 bg-g-800 text-white relative overflow-hidden">
+          <div className="card-premium-glow -top-8 -right-6 w-28 h-28 bg-gold opacity-[0.12]"/>
+          <p className="relative text-[10px] uppercase tracking-widest text-white/50 mb-1">Total por cobrar</p>
+          <p className="relative text-2xl font-medium">{fmt(totalPrestado)}</p>
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <div className="card p-12 text-center">
+          <Icon name="arrows-exchange" className="w-8 h-8 text-g-200 block mx-auto mb-2"/>
+          <p className="text-g-400 text-sm">Aún no has registrado ningún préstamo</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.map(p => {
+            const total = parseFloat(p.monto_total) || 0;
+            const recibido = parseFloat(p.monto_recibido) || 0;
+            const pendiente = total - recibido;
+            const pct = total > 0 ? Math.min(Math.round((recibido/total)*100), 100) : 0;
+            const color = p.activo ? (pct >= 50 ? '#4F8F76' : '#2452FF') : '#16A34A';
+            return (
+              <button key={p.id} onClick={()=>abrirDetalle(p)} className={`card p-4 w-full text-left ${!p.activo?'border-g-300':''}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F` }}>
+                    <Icon name="arrows-exchange" className="w-4 h-4" style={{ color }}/>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <p className="text-sm font-medium text-g-900 truncate">{p.nombre}</p>
+                      {p.activo
+                        ? <p className="text-sm font-medium text-g-700 flex-shrink-0">{fmtShort(pendiente)}</p>
+                        : <span className="badge-ok text-[10px] flex-shrink-0">Pagado 🎉</span>}
+                    </div>
+                    <div className="h-1.5 bg-g-100 rounded-full overflow-hidden mb-1">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }}/>
+                    </div>
+                    <p className="text-[10px] text-g-400">{fmtShort(recibido)} recibido de {fmtShort(total)} · {fmtDate(p.fecha)}</p>
+                  </div>
+                  <Icon name="chevron-right" className="w-4 h-4 text-g-300 flex-shrink-0"/>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Crear/editar préstamo */}
+      {modal && (
+        <PantallaCompleta title={editandoId ? 'Editar préstamo' : 'Nuevo préstamo'} onClose={()=>{setModal(false);setEditandoId(null);}}>
+          <form onSubmit={submit} className="space-y-3 pb-4">
+            <div>
+              <label className="section-label block mb-1">¿A quién le prestaste?</label>
+              <input className="input" placeholder="Ej: Juan Pérez" value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))} required/>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto prestado</label>
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0"
+                value={form.monto_total} onChange={e=>setForm(f=>({...f,monto_total:e.target.value.replace(',','.')}))} required/>
+            </div>
+            {!editandoId && (
+              <SelectorMedioPago value={form.medio_pago} onChange={v=>setForm(f=>({...f,medio_pago:v}))} label="¿Con qué medio de pago prestaste?"/>
+            )}
+            <div>
+              <label className="section-label block mb-1">Fecha</label>
+              <input type="date" className="input" value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))}/>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Notas (opcional)</label>
+              <input className="input" placeholder="Ej: para el arriendo de marzo" value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))}/>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={()=>{setModal(false);setEditandoId(null);}} className="btn-secondary flex-1">Cancelar</button>
+              <button type="submit" className="btn-primary flex-1">{editandoId ? 'Guardar cambios' : 'Registrar préstamo'}</button>
+            </div>
+          </form>
+        </PantallaCompleta>
+      )}
+
+      {/* Detalle de un préstamo */}
+      {detalle && (
+        <PantallaCompleta title={detalle.nombre} onClose={()=>setDetalle(null)}>
+          {loadingDetalle ? (
+            <div className="flex justify-center py-10"><Icon name="loader" className="w-6 h-6 animate-spin text-g-400"/></div>
+          ) : (
+          <div className="space-y-4 pb-4">
+            <div className="card p-4 bg-g-50 text-center">
+              <p className="section-label mb-1">Pendiente por cobrar</p>
+              <p className="text-2xl font-medium text-g-900">
+                {fmt(parseFloat(detalle.monto_total) - parseFloat(detalle.monto_recibido))}
+              </p>
+              <p className="text-xs text-g-400 mt-1">de {fmt(detalle.monto_total)} prestados</p>
+            </div>
+
+            {detalle.activo && (
+              <div className="flex gap-2">
+                <button onClick={()=>setModalAbono({monto:'', medio_pago:''})} className="btn-primary flex-1">Me pagaron 💰</button>
+                <button onClick={()=>abrirEditar(detalle)} className="btn-secondary px-4"><Icon name="pencil" className="w-3.5 h-3.5"/></button>
+              </div>
+            )}
+
+            {detalle.notas && <p className="text-xs text-g-500 bg-g-50 rounded-xl p-3">{detalle.notas}</p>}
+
+            <div>
+              <p className="section-label mb-2">Historial de pagos</p>
+              {movimientos.length === 0 ? (
+                <p className="text-xs text-g-400 text-center py-6">Todavía no te han pagado nada</p>
+              ) : (
+                <div className="space-y-2">
+                  {movimientos.map(m => (
+                    <div key={m.id} className="flex items-center justify-between py-2 border-b border-g-100 last:border-0">
+                      <div className="min-w-0">
+                        <p className="text-sm text-g-800">{fmtDate(m.fecha)}</p>
+                        {m.nota && <p className="text-[11px] text-g-400 truncate">{m.nota}</p>}
+                      </div>
+                      <span className="text-sm font-medium text-pos flex-shrink-0">+{fmtShort(m.monto)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button onClick={()=>del(detalle.id)} className="text-red-500 text-xs w-full text-center py-2">Eliminar este préstamo por completo</button>
+          </div>
+          )}
+        </PantallaCompleta>
+      )}
+
+      {/* Registrar pago recibido */}
+      {modalAbono && (
+        <PantallaCompleta title="Registrar pago recibido" onClose={()=>setModalAbono(null)}>
+          <div className="space-y-4">
+            <div>
+              <label className="section-label block mb-1">Monto que te pagaron</label>
+              <input type="text" inputMode="numeric" className="input text-lg" placeholder="0" autoFocus
+                value={modalAbono.monto} onChange={e=>setModalAbono(m=>({...m,monto:e.target.value.replace(',','.')}))}/>
+            </div>
+            <SelectorMedioPago value={modalAbono.medio_pago} onChange={v=>setModalAbono(m=>({...m,medio_pago:v}))} label="¿A qué cuenta te llegó el pago?"/>
+            <button onClick={confirmarAbono} className="btn-primary w-full py-4">Registrar pago</button>
+          </div>
+        </PantallaCompleta>
       )}
     </div>
   );

@@ -332,6 +332,26 @@ export const crearDeudaMovimiento = async ({ deuda_id, tipo, monto, fecha, nota,
   return data;
 };
 
+// Abonar a una deuda desde el flujo rápido (Dashboard/Patrimonio "Abonar")
+// — a diferencia de llamar crearDeudaMovimiento directo, esto SÍ crea el
+// movimiento real con el medio de pago elegido, para que el saldo de esa
+// cuenta baje de verdad. Antes el abono solo quedaba en el historial de
+// la deuda, sin tocar Movimientos ni el saldo total.
+export const abonarDeuda = async (deuda, monto, medioPago, fecha) => {
+  const fechaAbono = fecha || todayLocalStr();
+  const montoNum = parseFloat(String(monto).replace(',','.'));
+
+  const movimiento = await crearMovimiento({
+    tipo: 'gasto', monto: montoNum, categoria: 'Deudas',
+    descripcion: `Abono: ${deuda.nombre}`, fecha: fechaAbono, medio_pago: medioPago,
+  });
+
+  return crearDeudaMovimiento({
+    deuda_id: deuda.id, tipo: 'abono', monto: montoNum, fecha: fechaAbono,
+    nota: `Medio de pago: ${medioPago}`, movimiento_id: movimiento.id,
+  });
+};
+
 // Editar un movimiento del historial — por si hubo un error al registrar
 // un abono/interés/mora. Recalcula la deuda completa después.
 export const actualizarDeudaMovimiento = async (id, { tipo, monto, fecha, nota, num_cuotas }) => {
@@ -428,6 +448,110 @@ export const actualizarMeta = async (id, meta) => {
 export const eliminarMeta = async (id) => {
   const { error } = await supabase.from('metas').delete().eq('id', id);
   if (error) throw error;
+};
+
+// Aportar dinero real a una meta — a diferencia de actualizarMeta()
+// (que solo edita los datos de la meta desde el formulario de edición),
+// esto es para el flujo de "voy a apartar plata para esto": crea el
+// movimiento real con el medio de pago elegido (para que el saldo de esa
+// cuenta/billetera SÍ baje) y luego actualiza el monto_actual de la meta.
+// Antes esto no pasaba — solo se actualizaba la meta, sin dejar rastro
+// en Movimientos, así que el saldo total nunca se enteraba de que esa
+// plata había salido.
+export const aportarMeta = async (meta, monto, medioPago, fecha) => {
+  const fechaAporte = fecha || todayLocalStr();
+  const montoNum = parseFloat(String(monto).replace(',','.'));
+
+  await crearMovimiento({
+    tipo: 'gasto', monto: montoNum, categoria: 'Ahorro',
+    descripcion: `Aporte: ${meta.nombre}`, fecha: fechaAporte, medio_pago: medioPago,
+  });
+
+  const nuevoActual = Math.min(parseFloat(meta.monto_actual) + montoNum, parseFloat(meta.monto_objetivo));
+  const completada = nuevoActual >= parseFloat(meta.monto_objetivo);
+  const { data, error } = await supabase.from('metas')
+    .update({ monto_actual: nuevoActual, completada }).eq('id', meta.id).select().single();
+  if (error) throw error;
+  return { ...data, seCompleta: completada && !meta.completada };
+};
+
+// ── PRÉSTAMOS (dinero que TÚ prestas a otros — lo inverso de deudas) ──
+export const getPrestamos = async () => {
+  const userId = await getUserId();
+  const { data, error } = await supabase.from('prestamos').select('*')
+    .eq('usuario_id', userId).order('activo', { ascending: false }).order('fecha', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+// Registrar un préstamo nuevo (le prestas plata a alguien) crea de una
+// vez el movimiento real (gasto: la plata sale de tu cuenta) con el
+// medio de pago elegido — no queda solo anotado, se refleja en tu saldo.
+export const crearPrestamo = async ({ nombre, monto_total, fecha, notas, medio_pago }) => {
+  const userId = await getUserId();
+  const montoNum = parseFloat(String(monto_total).replace(',','.'));
+  const fechaPrestamo = fecha || todayLocalStr();
+
+  await crearMovimiento({
+    tipo: 'gasto', monto: montoNum, categoria: 'Préstamos',
+    descripcion: `Préstamo a: ${nombre}`, fecha: fechaPrestamo, medio_pago,
+  });
+
+  const { data, error } = await supabase.from('prestamos').insert({
+    usuario_id: userId, nombre, monto_total: montoNum, monto_recibido: 0,
+    fecha: fechaPrestamo, notas: notas || null, activo: true,
+  }).select().single();
+  if (error) throw error;
+  return data;
+};
+
+export const actualizarPrestamo = async (id, { nombre, monto_total, fecha, notas }) => {
+  const { data, error } = await supabase.from('prestamos').update({
+    nombre, monto_total: parseFloat(String(monto_total).replace(',','.')),
+    fecha, notas: notas || null,
+  }).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+};
+
+export const eliminarPrestamo = async (id) => {
+  const { error } = await supabase.from('prestamos').delete().eq('id', id);
+  if (error) throw error;
+};
+
+export const getPrestamoMovimientos = async (prestamoId) => {
+  const userId = await getUserId();
+  const { data, error } = await supabase.from('prestamo_movimientos').select('*')
+    .eq('usuario_id', userId).eq('prestamo_id', prestamoId).order('fecha', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+// Cuando te pagan (total o parcial) — crea el ingreso real con el medio
+// de pago elegido (la plata SÍ vuelve a esa cuenta) y actualiza cuánto
+// te han devuelto en total.
+export const abonarPrestamo = async (prestamo, monto, medioPago, fecha) => {
+  const userId = await getUserId();
+  const fechaAbono = fecha || todayLocalStr();
+  const montoNum = parseFloat(String(monto).replace(',','.'));
+
+  const movimiento = await crearMovimiento({
+    tipo: 'ingreso', monto: montoNum, categoria: 'Préstamos',
+    descripcion: `Pago recibido: ${prestamo.nombre}`, fecha: fechaAbono, medio_pago: medioPago,
+  });
+
+  const { error: errMov } = await supabase.from('prestamo_movimientos').insert({
+    usuario_id: userId, prestamo_id: prestamo.id, monto: montoNum,
+    fecha: fechaAbono, nota: `Medio de pago: ${medioPago}`, movimiento_id: movimiento.id,
+  });
+  if (errMov) throw errMov;
+
+  const nuevoRecibido = Math.min(parseFloat(prestamo.monto_recibido) + montoNum, parseFloat(prestamo.monto_total));
+  const completado = nuevoRecibido >= parseFloat(prestamo.monto_total);
+  const { data, error } = await supabase.from('prestamos')
+    .update({ monto_recibido: nuevoRecibido, activo: !completado }).eq('id', prestamo.id).select().single();
+  if (error) throw error;
+  return { ...data, seCompleta: completado };
 };
 
 // ── HÁBITOS ──────────────────────────────────────────────
