@@ -16,6 +16,7 @@ const CierreSemanal = lazy(() => import('./pages/CierreSemanal'));
 const Activos    = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Activos })));
 const Deudas     = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Deudas })));
 const Metas      = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Metas })));
+const Prestamos  = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Prestamos })));
 const Presupuestos = lazy(() => import('./pages/Presupuestos'));
 const Mental     = lazy(() => import('./pages/Mental'));
 const Academia   = lazy(() => import('./pages/Academia'));
@@ -96,6 +97,7 @@ function AppRoutes() {
                   <Route path="/activos"      element={<Activos/>}/>
                   <Route path="/deudas"       element={<Deudas/>}/>
                   <Route path="/metas"        element={<Metas/>}/>
+                  <Route path="/prestamos"    element={<Prestamos/>}/>
                   <Route path="/mental"       element={<Mental/>}/>
                   <Route path="/academia"     element={<Academia/>}/>
                   <Route path="/coach"        element={COACH_HABILITADO ? <Coach/> : <Navigate to="/" replace/>}/>

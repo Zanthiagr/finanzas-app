@@ -113,6 +113,8 @@ export const CATEGORIAS_ICONOS = {
   'Ropa': 'ti-shirt',
   'Vivienda': 'ti-home',
   'Deudas': 'ti-credit-card',
+  'Ahorro': 'ti-target',
+  'Préstamos': 'ti-arrows-exchange',
 };
 
 // Antes: 10 hues completamente saturados sin relación entre sí (rojo,
@@ -128,6 +130,7 @@ export const CATEGORIAS_COLORES = {
   'Alimentación': '#B8663F', 'Transporte': '#4E7AA8', 'Servicios': '#7C7594',
   'Salud': '#B15C7C', 'Educación': '#A8792E', 'Entretenimiento': '#BC7748',
   'Ropa': '#4F8F76', 'Vivienda': '#5B6472', 'Deudas': '#E5484D',
+  'Ahorro': '#4F8F76', 'Préstamos': '#2452FF',
 };
 
 // Bancos/billeteras digitales disponibles como medio de pago.

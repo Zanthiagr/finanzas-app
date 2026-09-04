@@ -7,8 +7,8 @@ import { confirmToast } from '../utils/confirm';
 import Icon from '../utils/icons';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Otro'];
-const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Otro'];
+const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Ahorro','Préstamos','Otro'];
+const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Préstamos','Otro'];
 const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: todayLocalStr(), medio_pago: 'efectivo', banco: '', num_cuotas: '' };
 
 // Componente fila con swipe para eliminar
