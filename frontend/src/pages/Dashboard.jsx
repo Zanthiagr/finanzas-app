@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { getMovimientos, getResumen, getPagosProgramados, getPagosFijosDelMes, pagarPagoFijo, saltarPagoFijoEsteMes, getSaldoTotal, getPresupuestos, getCierres, getDeudas, getMetas, crearDeudaMovimiento, actualizarMeta, marcarPagoUnicoComoPagado } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL } from '../utils/helpers';
+import { getMovimientos, getResumen, getPagosProgramados, getPagosFijosDelMes, pagarPagoFijo, saltarPagoFijoEsteMes, getSaldoTotal, getPresupuestos, getCierres, getDeudas, getMetas, getPrestamos, abonarDeuda, aportarMeta, abonarPrestamo, marcarPagoUnicoComoPagado } from '../utils/api';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL, BANCOS } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
@@ -16,6 +16,23 @@ import Icon from '../utils/icons';
 import { motion } from 'motion/react';
 
 const DIAS_CORTO = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+
+// Mismo selector plano que en Patrimonio.jsx — se define localmente para
+// no crear una dependencia circular entre páginas por un componente tan
+// chico; si en el futuro se necesita en un tercer lugar, vale la pena
+// moverlo a components/.
+const MEDIOS_PAGO_FLAT = [{ value: 'efectivo', label: '💵 Efectivo' }, ...BANCOS];
+function SelectorMedioPagoRapido({ value, onChange, label = '¿Con qué medio de pago?' }) {
+  return (
+    <div>
+      <label className="section-label block mb-1">{label}</label>
+      <select className="select" value={value || ''} onChange={e => onChange(e.target.value)}>
+        <option value="" disabled>Elige un medio de pago</option>
+        {MEDIOS_PAGO_FLAT.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+      </select>
+    </div>
+  );
+}
 
 // Envoltorio de entrada — pequeño desvanecido + deslizamiento hacia
 // arriba, escalonado por índice de sección. Puramente decorativo: no
@@ -44,9 +61,12 @@ export default function Dashboard() {
   const [tarjetas, setTarjetas]         = useState([]);
   const [deudasActivas, setDeudasActivas] = useState([]);
   const [metasActivas, setMetasActivas]   = useState([]);
+  const [prestamosActivos, setPrestamosActivos] = useState([]);
   const [modalAbono, setModalAbono]       = useState(null); // deuda seleccionada, o null
   const [modalAporte, setModalAporte]     = useState(null); // meta seleccionada, o null
+  const [modalAbonoPrestamo, setModalAbonoPrestamo] = useState(null); // préstamo seleccionado, o null
   const [montoRapido, setMontoRapido]     = useState('');
+  const [medioRapido, setMedioRapido]     = useState('');
   const [guardandoRapido, setGuardandoRapido] = useState(false);
   const [marcandoPagoId, setMarcandoPagoId] = useState(null);
   const [loading, setLoading]           = useState(true);
@@ -88,7 +108,8 @@ export default function Dashboard() {
       getCierres(anio),
       getDeudas(),
       getMetas(),
-    ]).then(([r, m, s, pres, cierresData, deudasData, metasData]) => {
+      getPrestamos(),
+    ]).then(([r, m, s, pres, cierresData, deudasData, metasData, prestamosData]) => {
       setResumen(r);
       setMovRecientes(m.slice(0, 5));
       setSaldo(s);
@@ -97,6 +118,7 @@ export default function Dashboard() {
       setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
       setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
       setMetasActivas((metasData || []).filter(m => !m.completada));
+      setPrestamosActivos((prestamosData || []).filter(p => p.activo));
       const gastosMap = {};
       r.porCategoria?.filter(c => c.tipo === 'gasto').forEach(c => {
         gastosMap[c.categoria] = parseFloat(c.total);
@@ -107,21 +129,23 @@ export default function Dashboard() {
   }, []);
 
   const recargarDeudasYMetas = () => {
-    Promise.all([getDeudas(), getMetas()]).then(([deudasData, metasData]) => {
+    Promise.all([getDeudas(), getMetas(), getPrestamos()]).then(([deudasData, metasData, prestamosData]) => {
       setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
       setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
       setMetasActivas((metasData || []).filter(m => !m.completada));
+      setPrestamosActivos((prestamosData || []).filter(p => p.activo));
     }).catch(() => {});
   };
 
   const confirmarAbonoDeuda = async () => {
     const monto = parseFloat(String(montoRapido).replace(',','.'));
     if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    if (!medioRapido) return toast.error('Elige el medio de pago con el que abonaste');
     setGuardandoRapido(true);
     try {
-      await crearDeudaMovimiento({ deuda_id: modalAbono.id, tipo: 'abono', monto, fecha: hoyStr });
-      toast.success('Abono registrado');
-      setModalAbono(null); setMontoRapido('');
+      await abonarDeuda(modalAbono, monto, medioRapido, hoyStr);
+      toast.success('Abono registrado — ya se descontó de tu saldo');
+      setModalAbono(null); setMontoRapido(''); setMedioRapido('');
       recargarDeudasYMetas();
     } catch { toast.error('Error registrando el abono'); }
     finally { setGuardandoRapido(false); }
@@ -130,19 +154,36 @@ export default function Dashboard() {
   const confirmarAporteMeta = async () => {
     const abono = parseFloat(String(montoRapido).replace(',','.'));
     if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
-    const nuevo = Math.min(parseFloat(modalAporte.monto_actual) + abono, parseFloat(modalAporte.monto_objetivo));
-    const seCompleta = nuevo >= modalAporte.monto_objetivo && !modalAporte.completada;
+    if (!medioRapido) return toast.error('Elige el medio de pago con el que aportaste');
     setGuardandoRapido(true);
     try {
-      await actualizarMeta(modalAporte.id, { ...modalAporte, monto_actual: nuevo, completada: nuevo >= modalAporte.monto_objetivo });
-      toast.success(seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado');
-      if (seCompleta) {
+      const r = await aportarMeta(modalAporte, abono, medioRapido, hoyStr);
+      toast.success(r.seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado — ya se descontó de tu saldo');
+      if (r.seCompleta) {
         confetti({ particleCount: 120, spread: 75, startVelocity: 38, gravity: 0.9,
           colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'], origin: { y: 0.6 } });
       }
-      setModalAporte(null); setMontoRapido('');
+      setModalAporte(null); setMontoRapido(''); setMedioRapido('');
       recargarDeudasYMetas();
     } catch { toast.error('Error registrando el aporte'); }
+    finally { setGuardandoRapido(false); }
+  };
+
+  const confirmarAbonoPrestamo = async () => {
+    const monto = parseFloat(String(montoRapido).replace(',','.'));
+    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    if (!medioRapido) return toast.error('Elige a qué cuenta llegó el pago');
+    setGuardandoRapido(true);
+    try {
+      const r = await abonarPrestamo(modalAbonoPrestamo, monto, medioRapido, hoyStr);
+      toast.success(r.seCompleta ? '¡Préstamo pagado por completo! 🎉' : 'Pago registrado — ya se sumó a tu saldo');
+      if (r.seCompleta) {
+        confetti({ particleCount: 100, spread: 70, startVelocity: 35, gravity: 0.95,
+          colors: ['#2452FF', '#C9A84C', '#0B1220'], origin: { y: 0.55 } });
+      }
+      setModalAbonoPrestamo(null); setMontoRapido(''); setMedioRapido('');
+      recargarDeudasYMetas();
+    } catch { toast.error('Error registrando el pago'); }
     finally { setGuardandoRapido(false); }
   };
 
@@ -494,7 +535,7 @@ export default function Dashboard() {
                         </div>
                         <p className="text-[10px] text-g-400">{pct}% pagado</p>
                       </div>
-                      <button onClick={() => { setModalAbono(d); setMontoRapido(''); }}
+                      <button onClick={() => { setModalAbono(d); setMontoRapido(''); setMedioRapido(''); }}
                         className="text-xs font-medium px-3 py-1.5 rounded-lg bg-g-800 text-white flex-shrink-0 active:scale-95 transition-transform">
                         Abonar
                       </button>
@@ -532,7 +573,7 @@ export default function Dashboard() {
                         </div>
                         <p className="text-[10px] text-g-400">{fmtShort(actual)} de {fmtShort(objetivo)}</p>
                       </div>
-                      <button onClick={() => { setModalAporte(m); setMontoRapido(''); }}
+                      <button onClick={() => { setModalAporte(m); setMontoRapido(''); setMedioRapido(''); }}
                         className="text-xs font-medium px-3 py-1.5 rounded-lg bg-g-800 text-white flex-shrink-0 active:scale-95 transition-transform">
                         Aportar
                       </button>
@@ -546,9 +587,60 @@ export default function Dashboard() {
         </Reveal>
       )}
 
+      {/* Préstamos — capital propio que está fuera de tus cuentas porque
+          se lo prestaste a alguien. Es su propia sección (no mezclada con
+          Deudas/Metas) porque conceptualmente es plata que SIGUE siendo
+          tuya, solo que no está líquida ahora mismo — vale la pena verla
+          de un vistazo, separada de lo que debes o de tus metas de ahorro. */}
+      {prestamosActivos.length > 0 && (
+        <Reveal i={5}>
+        <div className="space-y-2">
+          <div className="rounded-2xl bg-g-800 p-4 flex items-center justify-between relative overflow-hidden">
+            <div className="card-premium-glow -top-8 -right-6 w-28 h-28 bg-blue-400 opacity-[0.10]"/>
+            <div className="relative">
+              <p className="text-[10px] uppercase tracking-widest text-white/50 mb-1">Fuera de tus cuentas (préstamos)</p>
+              <p className="text-xl font-medium text-white">
+                {fmt(prestamosActivos.reduce((a,p)=>a+(parseFloat(p.monto_total)-parseFloat(p.monto_recibido)),0))}
+              </p>
+            </div>
+            <Link to="/prestamos" className="relative text-[11px] text-white/60 flex-shrink-0">Ver todos →</Link>
+          </div>
+          {prestamosActivos.slice(0, 3).map(p => {
+            const total = parseFloat(p.monto_total) || 0;
+            const recibido = parseFloat(p.monto_recibido) || 0;
+            const pendiente = total - recibido;
+            const pct = total > 0 ? Math.min(Math.round((recibido/total)*100), 100) : 0;
+            return (
+              <div key={p.id} className="card p-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50">
+                    <Icon name="arrows-exchange" className="w-4 h-4 text-blue-600"/>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <p className="text-sm font-medium text-g-900 truncate">{p.nombre}</p>
+                      <p className="text-sm font-medium text-blue-700 flex-shrink-0">{fmtShort(pendiente)}</p>
+                    </div>
+                    <div className="h-1.5 bg-g-100 rounded-full overflow-hidden mb-1">
+                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }}/>
+                    </div>
+                    <p className="text-[10px] text-g-400">{pct}% cobrado</p>
+                  </div>
+                  <button onClick={() => { setModalAbonoPrestamo(p); setMontoRapido(''); setMedioRapido(''); }}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-g-800 text-white flex-shrink-0 active:scale-95 transition-transform">
+                    Me pagaron
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        </Reveal>
+      )}
+
       {/* Salud financiera — gauge circular: es contenido motivacional, no
           "chrome" de navegación, así que se permite ser expresivo. */}
-      <Reveal i={4}>
+      <Reveal i={6}>
       <div className="bg-g-800 rounded-2xl p-4 md:p-5 flex items-center gap-4 md:gap-6">
         <div className="relative flex-shrink-0 w-20 h-20 md:w-24 md:h-24">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -774,7 +866,7 @@ export default function Dashboard() {
       )}
 
       {modalAbono && (
-        <PantallaCompleta title={`Abonar a: ${modalAbono.nombre}`} onClose={() => { setModalAbono(null); setMontoRapido(''); }}>
+        <PantallaCompleta title={`Abonar a: ${modalAbono.nombre}`} onClose={() => { setModalAbono(null); setMontoRapido(''); setMedioRapido(''); }}>
           <div className="space-y-4">
             <div className="card p-4 text-center">
               <p className="text-[10px] uppercase tracking-widest text-g-400 mb-1">Pendiente por pagar</p>
@@ -787,6 +879,7 @@ export default function Dashboard() {
               <input type="text" inputMode="numeric" className="input" placeholder="Ej: 200000" autoFocus
                 value={montoRapido} onChange={e => setMontoRapido(e.target.value.replace(',', '.'))}/>
             </div>
+            <SelectorMedioPagoRapido value={medioRapido} onChange={setMedioRapido}/>
             <button onClick={confirmarAbonoDeuda} disabled={guardandoRapido} className="btn-primary w-full py-4 disabled:opacity-50">
               {guardandoRapido ? 'Guardando...' : 'Registrar abono'}
             </button>
@@ -795,7 +888,7 @@ export default function Dashboard() {
       )}
 
       {modalAporte && (
-        <PantallaCompleta title={`Aportar a: ${modalAporte.nombre}`} onClose={() => { setModalAporte(null); setMontoRapido(''); }}>
+        <PantallaCompleta title={`Aportar a: ${modalAporte.nombre}`} onClose={() => { setModalAporte(null); setMontoRapido(''); setMedioRapido(''); }}>
           <div className="space-y-4">
             <div className="card p-4 text-center">
               <p className="text-2xl font-medium text-g-900">{fmt(modalAporte.monto_actual)}</p>
@@ -810,8 +903,31 @@ export default function Dashboard() {
               <input type="text" inputMode="numeric" className="input" placeholder="Ej: 100000" autoFocus
                 value={montoRapido} onChange={e => setMontoRapido(e.target.value.replace(',', '.'))}/>
             </div>
+            <SelectorMedioPagoRapido value={medioRapido} onChange={setMedioRapido}/>
             <button onClick={confirmarAporteMeta} disabled={guardandoRapido} className="btn-primary w-full py-4 disabled:opacity-50">
               {guardandoRapido ? 'Guardando...' : 'Registrar aporte 🎯'}
+            </button>
+          </div>
+        </PantallaCompleta>
+      )}
+
+      {modalAbonoPrestamo && (
+        <PantallaCompleta title={`Pago recibido: ${modalAbonoPrestamo.nombre}`} onClose={() => { setModalAbonoPrestamo(null); setMontoRapido(''); setMedioRapido(''); }}>
+          <div className="space-y-4">
+            <div className="card p-4 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-g-400 mb-1">Pendiente por cobrar</p>
+              <p className="text-2xl font-medium text-g-900">
+                {fmt(parseFloat(modalAbonoPrestamo.monto_total) - parseFloat(modalAbonoPrestamo.monto_recibido))}
+              </p>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto que te pagaron</label>
+              <input type="text" inputMode="numeric" className="input" placeholder="Ej: 200000" autoFocus
+                value={montoRapido} onChange={e => setMontoRapido(e.target.value.replace(',', '.'))}/>
+            </div>
+            <SelectorMedioPagoRapido value={medioRapido} onChange={setMedioRapido} label="¿A qué cuenta llegó el pago?"/>
+            <button onClick={confirmarAbonoPrestamo} disabled={guardandoRapido} className="btn-primary w-full py-4 disabled:opacity-50">
+              {guardandoRapido ? 'Guardando...' : 'Registrar pago'}
             </button>
           </div>
         </PantallaCompleta>

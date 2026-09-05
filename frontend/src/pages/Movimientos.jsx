@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta } from '../utils/api';
+import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta, getPrestamos, crearPrestamo, abonarPrestamo } from '../utils/api';
 import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import toast from 'react-hot-toast';
@@ -34,8 +34,8 @@ function MovRow({ m, onEdit, onDelete }) {
   };
 
   return (
-    <div className="relative overflow-hidden">
-      <div className="absolute right-0 top-0 bottom-0 w-20 bg-red-500 flex items-center justify-center rounded-r-xl">
+    <div className="relative overflow-hidden group">
+      <div className="absolute right-0 top-0 bottom-0 w-20 bg-red-500 flex items-center justify-center rounded-r-xl md:hidden">
         <button onClick={() => onDelete(m.id)} className="text-white flex flex-col items-center gap-0.5">
           <Icon name="trash" className="w-5 h-5"/>
           <span className="text-[10px]">Eliminar</span>
@@ -62,7 +62,19 @@ function MovRow({ m, onEdit, onDelete }) {
         <span className={`text-sm font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-pos':'text-g-900'}`}>
           {m.tipo==='ingreso'?'+':'-'}{fmtShort(m.monto)}
         </span>
-        <Icon name="chevron-right" className="w-3 h-3 text-g-300 hidden md:block"/>
+        {/* Borrar en desktop — el swipe táctil de arriba no existe con
+            mouse, así que sin esto no había NINGUNA forma de eliminar un
+            movimiento desde el PC. Aparece al pasar el mouse por la fila,
+            junto al chevron que ya existía. stopPropagation para que no
+            dispare también el onClick de editar de la fila. */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(m.id); }}
+          className="hidden md:flex w-6 h-6 rounded-lg items-center justify-center text-g-300 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
+          title="Eliminar movimiento"
+        >
+          <Icon name="trash" className="w-3.5 h-3.5"/>
+        </button>
+        <Icon name="chevron-right" className="w-3 h-3 text-g-300 hidden md:block flex-shrink-0"/>
       </div>
     </div>
   );
@@ -72,9 +84,16 @@ function MovRow({ m, onEdit, onDelete }) {
 // Se renderiza como una página normal, sin position:fixed ni overflow
 // especiales. Esto evita por completo los bugs de scroll táctil de iOS
 // que afectan a los modales superpuestos.
-function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta }) {
+function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta, prestamosActivos, prestamoDestinoId, setPrestamoDestinoId, nombrePrestamo, setNombrePrestamo }) {
   const medioActual = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
   const esConTarjeta = form.tipo === 'gasto' && mediosPagoTarjeta?.has(medioActual);
+  // La categoría "Préstamos" no es solo una etiqueta más — al elegirla en
+  // un movimiento NUEVO (no al editar uno existente), se conecta con el
+  // sistema real de préstamos: un gasto crea un préstamo nuevo dado, un
+  // ingreso se vincula a uno existente como pago recibido. Así ese
+  // movimiento aparece automáticamente en la ventana de Préstamos, en vez
+  // de quedar suelto con la categoría pero desconectado de todo.
+  const esPrestamoNuevo = !editing && form.categoria === 'Préstamos';
   return (
     <PantallaCompleta title={editing ? 'Editar movimiento' : 'Nuevo movimiento'} onClose={onCancel}>
       <form onSubmit={onSubmit} className="space-y-4">
@@ -98,6 +117,26 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
             {(form.tipo==='ingreso'?CATS_INGRESO:CATS_GASTO).map(c=><option key={c}>{c}</option>)}
           </select>
         </div>
+        {esPrestamoNuevo && form.tipo === 'gasto' && (
+          <div className="card p-3 bg-blue-50 border-blue-100">
+            <label className="section-label block mb-1">¿A quién le prestas?</label>
+            <input className="input" placeholder="Ej: Juan Pérez" value={nombrePrestamo} onChange={e=>setNombrePrestamo(e.target.value)} required/>
+            <p className="text-[11px] text-blue-700/70 mt-1.5">Esto crea un préstamo nuevo — lo vas a ver en la sección Préstamos con su progreso.</p>
+          </div>
+        )}
+        {esPrestamoNuevo && form.tipo === 'ingreso' && (
+          <div className="card p-3 bg-blue-50 border-blue-100">
+            <label className="section-label block mb-1">¿De cuál préstamo te pagaron?</label>
+            {prestamosActivos.length === 0 ? (
+              <p className="text-xs text-blue-700/80">No tienes préstamos activos todavía. Primero registra uno como gasto con esta misma categoría.</p>
+            ) : (
+              <select className="select" value={prestamoDestinoId} onChange={e=>setPrestamoDestinoId(e.target.value)} required>
+                <option value="" disabled>Elige el préstamo</option>
+                {prestamosActivos.map(p => <option key={p.id} value={p.id}>{p.nombre} (falta {fmtShort(parseFloat(p.monto_total)-parseFloat(p.monto_recibido))})</option>)}
+              </select>
+            )}
+          </div>
+        )}
         <div>
           <label className="section-label block mb-1">Descripción (opcional)</label>
           <input className="input" placeholder="Ej: mercado del sábado" value={form.descripcion} onChange={set('descripcion')}/>
@@ -163,8 +202,17 @@ export default function Movimientos() {
   const [mes, setMes]   = useState(hoy.getMonth() + 1);
   const [anio, setAnio] = useState(hoy.getFullYear());
   const [mediosPagoTarjeta, setMediosPagoTarjeta] = useState(new Set());
+  const [prestamosActivos, setPrestamosActivos] = useState([]);
+  const [prestamoDestinoId, setPrestamoDestinoId] = useState('');
+  const [nombrePrestamo, setNombrePrestamo] = useState('');
 
   useEffect(() => { getMediosPagoTarjeta().then(setMediosPagoTarjeta).catch(()=>{}); }, []);
+
+  useEffect(() => {
+    if (!editing && form.categoria === 'Préstamos' && form.tipo === 'ingreso') {
+      getPrestamos().then(all => setPrestamosActivos(all.filter(p => p.activo))).catch(() => {});
+    }
+  }, [form.categoria, form.tipo, editing]);
 
   const esMesActual = mes === hoy.getMonth() + 1 && anio === hoy.getFullYear();
 
@@ -202,6 +250,8 @@ export default function Movimientos() {
 
   const openNew = () => {
     setEditing(null);
+    setNombrePrestamo('');
+    setPrestamoDestinoId('');
     // Si estamos viendo un mes distinto al actual, la fecha por defecto
     // cae en ese mes (día 1) en vez de "hoy" para no registrar en el mes equivocado
     const fechaDefault = esMesActual
@@ -225,9 +275,23 @@ export default function Movimientos() {
   const submit = async e => {
     e.preventDefault();
     if (!form.monto || parseFloat(form.monto)<=0) return toast.error('El monto debe ser mayor a 0');
+    const medioFinal = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
+    const esPrestamoNuevo = !editing && form.categoria === 'Préstamos';
+
     try {
-      editing ? await actualizarMovimiento(editing, form) : await crearMovimiento(form);
-      toast.success(editing?'Actualizado':'Registrado');
+      if (esPrestamoNuevo && form.tipo === 'gasto') {
+        if (!nombrePrestamo.trim()) return toast.error('Escribe a quién le prestas');
+        await crearPrestamo({ nombre: nombrePrestamo.trim(), monto_total: form.monto, fecha: form.fecha, medio_pago: medioFinal });
+        toast.success('Préstamo registrado — ya aparece en Préstamos');
+      } else if (esPrestamoNuevo && form.tipo === 'ingreso') {
+        if (!prestamoDestinoId) return toast.error('Elige a cuál préstamo corresponde este pago');
+        const prestamo = prestamosActivos.find(p => p.id === prestamoDestinoId);
+        await abonarPrestamo(prestamo, form.monto, medioFinal, form.fecha);
+        toast.success('Pago registrado en el préstamo');
+      } else {
+        editing ? await actualizarMovimiento(editing, form) : await crearMovimiento(form);
+        toast.success(editing?'Actualizado':'Registrado');
+      }
       setModal(false);
       load();
     } catch { toast.error('Error guardando'); }
@@ -419,6 +483,11 @@ export default function Movimientos() {
           onCancel={() => setModal(false)}
           onSubmit={submit}
           mediosPagoTarjeta={mediosPagoTarjeta}
+          prestamosActivos={prestamosActivos}
+          prestamoDestinoId={prestamoDestinoId}
+          setPrestamoDestinoId={setPrestamoDestinoId}
+          nombrePrestamo={nombrePrestamo}
+          setNombrePrestamo={setNombrePrestamo}
         />
       )}
     </div>
