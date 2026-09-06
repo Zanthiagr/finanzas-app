@@ -1110,3 +1110,24 @@ export const exportarDatosCompletos = async () => {
   resultado.perfil = perfil;
   return resultado;
 };
+
+// ── PUSH (recordatorio nocturno) ────────────────────────────────────────
+// Guarda o actualiza la suscripción push de este dispositivo/navegador.
+// `endpoint` es único por dispositivo — si ya existe (el usuario vuelve a
+// activar el recordatorio en el mismo navegador), simplemente se
+// actualiza en vez de duplicar la fila.
+export const guardarSuscripcionPush = async ({ endpoint, p256dh, authKey }) => {
+  const userId = await getUserId();
+  const { error } = await supabase.from('push_subscriptions').upsert({
+    usuario_id: userId,
+    endpoint,
+    p256dh,
+    auth_key: authKey,
+  }, { onConflict: 'endpoint' });
+  if (error) throw error;
+};
+
+export const eliminarSuscripcionPush = async (endpoint) => {
+  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+  if (error) throw error;
+};

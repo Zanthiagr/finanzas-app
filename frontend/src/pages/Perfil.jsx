@@ -4,6 +4,7 @@ import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { eliminarCuentaCompleta, exportarDatosCompletos } from '../utils/api';
 import { notifySuccess, notifyError } from '../utils/notify';
+import { activarRecordatorioNocturno, desactivarRecordatorioNocturno, pushSoportado } from '../utils/push';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
 
@@ -21,6 +22,7 @@ export default function Perfil() {
   const [confirmTexto, setConfirmTexto] = useState('');
   const [eliminando, setEliminando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [cambiandoRecordatorio, setCambiandoRecordatorio] = useState(false);
   const nombre = (perfil?.nombre || user?.user_metadata?.full_name || '').split(' ')[0];
 
   useEffect(() => {
@@ -33,6 +35,33 @@ export default function Perfil() {
       });
     }
   }, [perfil, user]);
+
+  // Recordatorio nocturno (push) — aparte del formulario de "Guardar
+  // cambios": pedir el permiso del navegador tiene que pasar en el mismo
+  // instante del clic, y si el usuario lo rechaza o el dispositivo no
+  // soporta push, necesitamos revertir el interruptor de inmediato en
+  // vez de esperar a que la persona presione Guardar más abajo.
+  const toggleRecordatorioNocturno = async () => {
+    const activando = !form.notif_diario;
+    setCambiandoRecordatorio(true);
+    try {
+      if (activando) await activarRecordatorioNocturno();
+      else await desactivarRecordatorioNocturno();
+
+      const { error } = await supabase
+        .from('perfiles')
+        .update({ notif_diario: activando })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      setForm((f) => ({ ...f, notif_diario: activando }));
+      notifySuccess(activando ? 'Recordatorio nocturno activado' : 'Recordatorio nocturno desactivado');
+    } catch (err) {
+      notifyError(err.message || 'No se pudo cambiar el recordatorio');
+    } finally {
+      setCambiandoRecordatorio(false);
+    }
+  };
 
   const guardar = async (e) => {
     e.preventDefault();
@@ -126,17 +155,17 @@ export default function Perfil() {
             <label className="section-label block mb-1">Email para notificaciones</label>
             <input type="email" className="input" placeholder="tu@email.com"
               value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}/>
-            <p className="text-xs text-g-400 mt-1">Aquí recibirás los recordatorios semanales y diarios</p>
+            <p className="text-xs text-g-400 mt-1">Aquí recibirás el recordatorio de cierre semanal</p>
           </div>
         </div>
 
         {/* Notificaciones */}
         <div className="card p-5 space-y-4">
-          <p className="text-sm font-medium text-g-900 mb-1">Notificaciones por email</p>
+          <p className="text-sm font-medium text-g-900 mb-1">Notificaciones</p>
 
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
-              <p className="text-sm text-g-900 font-medium">Cierre semanal</p>
+              <p className="text-sm text-g-900 font-medium">Cierre semanal <span className="text-g-400 font-normal">· email</span></p>
               <p className="text-xs text-g-400 mt-0.5">Domingo a las 7pm — te recuerda cerrar la semana si no lo has hecho</p>
             </div>
             <button type="button"
@@ -148,12 +177,17 @@ export default function Perfil() {
 
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
-              <p className="text-sm text-g-900 font-medium">Recordatorio diario</p>
-              <p className="text-xs text-g-400 mt-0.5">Cada mañana a las 8am — solo si no has registrado nada ese día</p>
+              <p className="text-sm text-g-900 font-medium">Recordatorio nocturno <span className="text-g-400 font-normal">· notificación</span></p>
+              <p className="text-xs text-g-400 mt-0.5">Cada noche a las 8pm — solo si no has registrado nada ese día</p>
+              {!pushSoportado() && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  Tu navegador no soporta esto. En iPhone: agrega Fintual a tu pantalla de inicio primero (Compartir → Agregar a inicio).
+                </p>
+              )}
             </div>
-            <button type="button"
-              onClick={() => setForm(f => ({...f, notif_diario: !f.notif_diario}))}
-              className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative ${form.notif_diario ? 'bg-g-600' : 'bg-g-200'}`}>
+            <button type="button" disabled={cambiandoRecordatorio}
+              onClick={toggleRecordatorioNocturno}
+              className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative disabled:opacity-50 ${form.notif_diario ? 'bg-g-600' : 'bg-g-200'}`}>
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.notif_diario ? 'left-6' : 'left-0.5'}`}/>
             </button>
           </div>
