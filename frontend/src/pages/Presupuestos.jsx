@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getPresupuestos, guardarPresupuesto, eliminarPresupuesto, getResumen } from '../utils/api';
 import { fmt, fmtShort, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import { confirmToast } from '../utils/confirm';
 import Icon from '../utils/icons';
 
@@ -32,7 +32,7 @@ export default function Presupuestos() {
         gastosMap[c.categoria] = parseFloat(c.total);
       });
       setGastosReales(gastosMap);
-    } catch { toast.error('Error cargando presupuestos'); }
+    } catch { notifyError('Error cargando presupuestos'); }
     finally { setLoading(false); }
   };
 
@@ -40,21 +40,21 @@ export default function Presupuestos() {
 
   const submit = async e => {
     e.preventDefault();
-    if (!form.categoria) return toast.error('Selecciona una categoría');
-    if (!form.monto_limite || parseFloat(form.monto_limite) <= 0) return toast.error('Ingresa un monto válido');
+    if (!form.categoria) return notifyError('Selecciona una categoría');
+    if (!form.monto_limite || parseFloat(form.monto_limite) <= 0) return notifyError('Ingresa un monto válido');
     try {
       await guardarPresupuesto(form);
-      toast.success('Presupuesto guardado');
+      notifySuccess('Presupuesto guardado');
       setModal(false);
       setForm({ categoria: '', monto_limite: '' });
       load();
-    } catch (err) { toast.error(err?.message || 'Error guardando el presupuesto'); }
+    } catch (err) { notifyError(err?.message || 'Error guardando el presupuesto'); }
   };
 
   const eliminar = (id) => {
     confirmToast('¿Eliminar este presupuesto?', async () => {
       await eliminarPresupuesto(id);
-      toast.success('Eliminado');
+      notifySuccess('Eliminado');
       load();
     });
   };

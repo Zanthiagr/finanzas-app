@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getHabitos, toggleHabito, getDiario, crearEntradaDiario } from '../utils/api';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import Icon from '../utils/icons';
 import confetti from 'canvas-confetti';
 
@@ -56,11 +56,11 @@ export default function Mental() {
         }
         return actualizados;
       });
-      if (r.completado) toast.success(`+${h.puntos} XP 🎉`);
+      if (r.completado) notifySuccess(`+${h.puntos} XP 🎉`);
     } catch (err) {
       // Revertir si falló
       setHabitos(prev => prev.map(x => x.id===h.id ? {...x, completado_hoy: h.completado_hoy} : x));
-      toast.error('Error actualizando hábito');
+      notifyError('Error actualizando hábito');
     }
   };
 
@@ -68,10 +68,10 @@ export default function Mental() {
     if (!diario.trim()) return;
     try {
       await crearEntradaDiario({ pregunta: PREGUNTAS[pregIdx], respuesta: diario });
-      toast.success('Reflexión guardada ✨');
+      notifySuccess('Reflexión guardada ✨');
       setDiario('');
       getDiario().then(setEntradas);
-    } catch { toast.error('Error guardando'); }
+    } catch { notifyError('Error guardando'); }
   };
 
   const done  = habitos.filter(h=>h.completado_hoy).length;

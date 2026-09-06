@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import Icon from '../utils/icons';
 
 export default function AuthPage() {
@@ -13,7 +13,7 @@ export default function AuthPage() {
       await loginConGoogle();
       // Google redirige a Supabase y de vuelta — no hay más que hacer aquí.
     } catch {
-      toast.error('Error al conectar con Google');
+      notifyError('Error al conectar con Google');
       setLoading(false);
     }
   };

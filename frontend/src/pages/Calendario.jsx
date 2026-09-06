@@ -3,7 +3,7 @@ import { getMovimientos, getCierres, getPagosProgramados, crearPagoProgramado, e
 import { supabase } from '../utils/supabase';
 import { fmt, fmtShort, todayLocalStr, getSemanaDelMes, diaEfectivoPago, CATEGORIAS_ICONOS, CATEGORIAS_COLORES } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import { confirmToast } from '../utils/confirm';
 import Icon from '../utils/icons';
 
@@ -104,9 +104,9 @@ export default function Calendario() {
   const guardarPago = async e => {
     e.preventDefault();
     if (guardandoPago) return;
-    if (!formPago.nombre || !formPago.monto) return toast.error('Completa todos los campos');
-    if (formPago.tipo === 'fijo' && !formPago.dia_mes) return toast.error('Indica el día del mes');
-    if (formPago.tipo === 'unico' && !formPago.fecha) return toast.error('Indica la fecha del pago');
+    if (!formPago.nombre || !formPago.monto) return notifyError('Completa todos los campos');
+    if (formPago.tipo === 'fijo' && !formPago.dia_mes) return notifyError('Indica el día del mes');
+    if (formPago.tipo === 'unico' && !formPago.fecha) return notifyError('Indica la fecha del pago');
 
     setGuardandoPago(true);
     try {
@@ -115,15 +115,15 @@ export default function Calendario() {
         ? { ...base, tipo: 'unico', fecha: formPago.fecha }
         : { ...base, dia_mes: formPago.dia_mes }; // sin campo "tipo": compatible aunque no se haya corrido la migración
       await crearPagoProgramado(payload);
-      toast.success(formPago.tipo === 'unico' ? 'Pago único programado ✅' : 'Pago fijo programado ✅');
+      notifySuccess(formPago.tipo === 'unico' ? 'Pago único programado ✅' : 'Pago fijo programado ✅');
       setModalPago(false);
       setFormPago({ tipo:'fijo', nombre:'', monto:'', categoria:'Servicios', dia_mes:1, fecha: hoyStr, medio_pago:'bancolombia' });
       cargar();
     } catch (err) {
       if (formPago.tipo === 'unico' && /column/i.test(err?.message || '')) {
-        toast.error('Falta correr la migración de pagos únicos en Supabase (migracion_pagos_unicos.sql)', { duration: 5000 });
+        notifyError('Falta correr la migración de pagos únicos en Supabase (migracion_pagos_unicos.sql)', { duration: 5000 });
       } else {
-        toast.error(err?.message || 'Error guardando pago');
+        notifyError(err?.message || 'Error guardando pago');
       }
     } finally {
       setGuardandoPago(false);
@@ -135,10 +135,10 @@ export default function Calendario() {
       setPagandoId(p.id);
       try {
         await marcarPagoUnicoComoPagado(p);
-        toast.success('Pago confirmado y registrado ✅');
+        notifySuccess('Pago confirmado y registrado ✅');
         cargar();
       } catch (err) {
-        toast.error(err?.message || 'Error confirmando el pago');
+        notifyError(err?.message || 'Error confirmando el pago');
       } finally {
         setPagandoId(null);
       }
@@ -155,10 +155,10 @@ export default function Calendario() {
       setPagandoFijoId(p.id);
       try {
         await pagarPagoFijo(p);
-        toast.success('Pago registrado ✅');
+        notifySuccess('Pago registrado ✅');
         cargar();
       } catch (err) {
-        toast.error(err?.message || 'Error registrando el pago');
+        notifyError(err?.message || 'Error registrando el pago');
       } finally {
         setPagandoFijoId(null);
       }
@@ -168,7 +168,7 @@ export default function Calendario() {
   const eliminarPago = (id) => {
     confirmToast('¿Eliminar este pago programado?', async () => {
       await eliminarPagoProgramado(id);
-      toast.success('Eliminado');
+      notifySuccess('Eliminado');
       cargar();
     });
   };

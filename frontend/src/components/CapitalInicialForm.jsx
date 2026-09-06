@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getSaldosIniciales, guardarSaldoInicial, eliminarSaldoInicial } from '../utils/api';
 import { MEDIOS_PAGO, labelMedioPago, fmt } from '../utils/helpers';
 import { confirmToast } from '../utils/confirm';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import Icon from '../utils/icons';
 
 /**
@@ -32,16 +32,16 @@ export default function CapitalInicialForm({ dark = false, onChange }) {
   useEffect(() => { cargar(); }, []);
 
   const agregar = async () => {
-    if (monto === '' || parseFloat(monto) < 0) return toast.error('Ingresa un monto válido');
+    if (monto === '' || parseFloat(monto) < 0) return notifyError('Ingresa un monto válido');
     setGuardando(true);
     try {
       await guardarSaldoInicial(medio, monto);
-      toast.success('Capital registrado');
+      notifySuccess('Capital registrado');
       setMonto('');
       cargar();
       onChange && onChange();
     } catch {
-      toast.error('No se pudo guardar. Puede que falte crear la tabla en Supabase — revisa CONTEXTO_CHAT_NUEVO.md');
+      notifyError('No se pudo guardar. Puede que falte crear la tabla en Supabase — revisa CONTEXTO_CHAT_NUEVO.md');
     } finally {
       setGuardando(false);
     }
@@ -50,7 +50,7 @@ export default function CapitalInicialForm({ dark = false, onChange }) {
   const quitar = (medioPago) => {
     confirmToast('¿Quitar este capital inicial?', async () => {
       await eliminarSaldoInicial(medioPago);
-      toast.success('Eliminado');
+      notifySuccess('Eliminado');
       cargar();
       onChange && onChange();
     });

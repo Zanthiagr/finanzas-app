@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
 
@@ -14,9 +14,9 @@ function CalcCredito() {
 
   const calcular = () => {
     const P = toNum(f.monto), t = toNum(f.tasa)/100, n = parseInt(f.meses);
-    if (!P || isNaN(P)) return toast.error('Ingresa el monto del préstamo');
-    if (!t || isNaN(t)) return toast.error('Ingresa la tasa de interés');
-    if (!n || isNaN(n)) return toast.error('Ingresa el plazo en meses');
+    if (!P || isNaN(P)) return notifyError('Ingresa el monto del préstamo');
+    if (!t || isNaN(t)) return notifyError('Ingresa la tasa de interés');
+    if (!n || isNaN(n)) return notifyError('Ingresa el plazo en meses');
     let r = f.tipotasa==='mes' ? t : f.tipotasa==='anio_mv' ? t/12 : Math.pow(1+t,1/12)-1;
     const cuota = (P*r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1);
     const totalPagado = cuota*n;
@@ -70,9 +70,9 @@ function CalcInversion() {
 
   const calcular = () => {
     const P = toNum(f.capital)||0, A = toNum(f.aporte)||0, t = toNum(f.tasa)/100, n = parseInt(f.meses);
-    if (!P && !A) return toast.error('Ingresa capital inicial o aporte mensual');
-    if (!t || isNaN(t)) return toast.error('Ingresa la tasa de rendimiento');
-    if (!n || isNaN(n)) return toast.error('Ingresa el plazo en meses');
+    if (!P && !A) return notifyError('Ingresa capital inicial o aporte mensual');
+    if (!t || isNaN(t)) return notifyError('Ingresa la tasa de rendimiento');
+    if (!n || isNaN(n)) return notifyError('Ingresa el plazo en meses');
     let r = f.tipotasa==='mes' ? t : f.tipotasa==='anio_mv' ? t/12 : Math.pow(1+t,1/12)-1;
     const montoFinal = f.compuesto
       ? P*Math.pow(1+r,n) + (A>0 ? A*((Math.pow(1+r,n)-1)/r) : 0)
@@ -159,8 +159,8 @@ function CalcLibertad() {
 
   const calcular = () => {
     const G = toNum(f.gastos), r = toNum(f.tasa)/100, P = toNum(f.patrimonio)||0, A = toNum(f.ahorro)||0;
-    if (!G || isNaN(G)) return toast.error('Ingresa tus gastos mensuales');
-    if (!r || isNaN(r)) return toast.error('Ingresa el rendimiento anual esperado');
+    if (!G || isNaN(G)) return notifyError('Ingresa tus gastos mensuales');
+    if (!r || isNaN(r)) return notifyError('Ingresa el rendimiento anual esperado');
     const objetivo = G*12/r, faltante = Math.max(objetivo-P,0);
     let meses = null;
     if (A>0&&faltante>0) { const rM=Math.pow(1+r,1/12)-1; meses=Math.log((faltante*rM/A)+1)/Math.log(1+rM); }
@@ -228,7 +228,7 @@ function CalcRegla503020() {
   const [res, setRes] = useState(null);
   const calcular = () => {
     const ing = toNum(ingreso);
-    if (!ing || isNaN(ing)) return toast.error('Ingresa tu ingreso neto mensual');
+    if (!ing || isNaN(ing)) return notifyError('Ingresa tu ingreso neto mensual');
     setRes({ necesidades: ing*0.5, deseos: ing*0.3, ahorro: ing*0.2 });
   };
   return (
@@ -281,12 +281,12 @@ function CalcAceleradorDeuda() {
 
   const calcular = () => {
     const dTotal = toNum(f.monto), tMes = toNum(f.tasa)/100, cAct = toNum(f.cuota), aExt = toNum(f.abono)||0;
-    if (!dTotal || isNaN(dTotal)) return toast.error('Ingresa el saldo pendiente');
-    if (!tMes || isNaN(tMes)) return toast.error('Ingresa la tasa de interés mensual');
-    if (!cAct || isNaN(cAct)) return toast.error('Ingresa la cuota mínima actual');
+    if (!dTotal || isNaN(dTotal)) return notifyError('Ingresa el saldo pendiente');
+    if (!tMes || isNaN(tMes)) return notifyError('Ingresa la tasa de interés mensual');
+    if (!cAct || isNaN(cAct)) return notifyError('Ingresa la cuota mínima actual');
     const original = simular(dTotal, tMes, cAct);
     const acelerado = simular(dTotal, tMes, cAct + aExt);
-    if (original.meses === 999) return toast.error('Con esa cuota nunca terminas de pagar — la cuota no alcanza a cubrir el interés');
+    if (original.meses === 999) return notifyError('Con esa cuota nunca terminas de pagar — la cuota no alcanza a cubrir el interés');
     setRes({
       mesesOriginal: original.meses,
       mesesAcelerado: acelerado.meses === 999 ? original.meses : acelerado.meses,

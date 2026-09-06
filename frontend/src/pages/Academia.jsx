@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
 import confetti from 'canvas-confetti';
@@ -256,7 +256,7 @@ export default function Academia() {
       setLeccionIdx(leccionIdx + 1);
       setQuizResp({});
     } else {
-      toast.success('¡Módulo completado! 🎓');
+      notifySuccess('¡Módulo completado! 🎓');
       confetti({
         particleCount: 100, spread: 70, startVelocity: 35, gravity: 0.95,
         colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'],
