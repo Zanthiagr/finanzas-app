@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getResumen, getCierres, crearCierre } from '../utils/api';
 import { fmtShort, getCurrentWeek, ESTADOS_ANIMO, getEstadoAnimo } from '../utils/helpers';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import Icon from '../utils/icons';
 import confetti from 'canvas-confetti';
 
@@ -55,7 +55,7 @@ export default function CierreSemanal() {
       ]);
       setCierres(c);
       setResumen(r);
-    } catch { toast.error('Error cargando datos'); }
+    } catch { notifyError('Error cargando datos'); }
     finally { setLoading(false); }
   };
 
@@ -98,7 +98,7 @@ export default function CierreSemanal() {
   };
 
   const cerrarSemana = async () => {
-    if (!reflexion.trim()) return toast.error('Escribe una reflexión antes de cerrar');
+    if (!reflexion.trim()) return notifyError('Escribe una reflexión antes de cerrar');
     if (!semanaSel) return;
     setCerrando(true);
     try {
@@ -128,7 +128,7 @@ export default function CierreSemanal() {
       setReflexion('');
       setEstadoAnimo(null);
       load();
-    } catch { toast.error('Error al cerrar la semana'); }
+    } catch { notifyError('Error al cerrar la semana'); }
     finally { setCerrando(false); }
   };
 

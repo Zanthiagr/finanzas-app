@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { eliminarCuentaCompleta, exportarDatosCompletos } from '../utils/api';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
 
@@ -48,8 +48,8 @@ export default function Perfil() {
         })
         .eq('id', user.id);
       if (error) throw error;
-      toast.success('Perfil actualizado ✓');
-    } catch { toast.error('Error guardando'); }
+      notifySuccess('Perfil actualizado ✓');
+    } catch { notifyError('Error guardando'); }
     finally { setSaving(false); }
   };
 
@@ -66,8 +66,8 @@ export default function Perfil() {
       a.download = `fintual_respaldo_${new Date().toISOString().slice(0,10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Respaldo descargado');
-    } catch { toast.error('Error generando el respaldo'); }
+      notifySuccess('Respaldo descargado');
+    } catch { notifyError('Error generando el respaldo'); }
     finally { setExportando(false); }
   };
 
@@ -76,7 +76,7 @@ export default function Perfil() {
     setEliminando(true);
     try {
       const { cuentaAuthEliminada } = await eliminarCuentaCompleta();
-      toast.success(
+      notifySuccess(
         cuentaAuthEliminada
           ? 'Tu cuenta y todos tus datos fueron eliminados'
           : 'Tus datos fueron eliminados. Sesión cerrada.',
@@ -84,7 +84,7 @@ export default function Perfil() {
       );
       navigate('/login', { replace: true });
     } catch (err) {
-      toast.error(err?.message || 'Error eliminando la cuenta. Intenta de nuevo.');
+      notifyError(err?.message || 'Error eliminando la cuenta. Intenta de nuevo.');
       setEliminando(false);
     }
   };

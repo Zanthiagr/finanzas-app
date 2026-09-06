@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta, getPrestamos, crearPrestamo, abonarPrestamo } from '../utils/api';
 import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import { confirmToast } from '../utils/confirm';
 import Icon from '../utils/icons';
 
@@ -228,7 +228,7 @@ export default function Movimientos() {
     try {
       const data = await getMovimientos({ mes, anio, tipo: filtroTipo||undefined });
       setMovs(data);
-    } catch { toast.error('Error cargando movimientos'); }
+    } catch { notifyError('Error cargando movimientos'); }
     finally { setLoading(false); }
     // Saldo por medio de pago — TOTAL acumulado, no se reinicia por mes.
     // Separado del listado principal así si falla no bloquea la lista.
@@ -274,33 +274,33 @@ export default function Movimientos() {
 
   const submit = async e => {
     e.preventDefault();
-    if (!form.monto || parseFloat(form.monto)<=0) return toast.error('El monto debe ser mayor a 0');
+    if (!form.monto || parseFloat(form.monto)<=0) return notifyError('El monto debe ser mayor a 0');
     const medioFinal = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
     const esPrestamoNuevo = !editing && form.categoria === 'Préstamos';
 
     try {
       if (esPrestamoNuevo && form.tipo === 'gasto') {
-        if (!nombrePrestamo.trim()) return toast.error('Escribe a quién le prestas');
+        if (!nombrePrestamo.trim()) return notifyError('Escribe a quién le prestas');
         await crearPrestamo({ nombre: nombrePrestamo.trim(), monto_total: form.monto, fecha: form.fecha, medio_pago: medioFinal });
-        toast.success('Préstamo registrado — ya aparece en Préstamos');
+        notifySuccess('Préstamo registrado — ya aparece en Préstamos');
       } else if (esPrestamoNuevo && form.tipo === 'ingreso') {
-        if (!prestamoDestinoId) return toast.error('Elige a cuál préstamo corresponde este pago');
+        if (!prestamoDestinoId) return notifyError('Elige a cuál préstamo corresponde este pago');
         const prestamo = prestamosActivos.find(p => p.id === prestamoDestinoId);
         await abonarPrestamo(prestamo, form.monto, medioFinal, form.fecha);
-        toast.success('Pago registrado en el préstamo');
+        notifySuccess('Pago registrado en el préstamo');
       } else {
         editing ? await actualizarMovimiento(editing, form) : await crearMovimiento(form);
-        toast.success(editing?'Actualizado':'Registrado');
+        notifySuccess(editing?'Actualizado':'Registrado');
       }
       setModal(false);
       load();
-    } catch { toast.error('Error guardando'); }
+    } catch { notifyError('Error guardando'); }
   };
 
   const remove = id => {
     confirmToast('¿Eliminar este movimiento?', async () => {
       await eliminarMovimiento(id);
-      toast.success('Eliminado');
+      notifySuccess('Eliminado');
       load();
     });
   };
@@ -322,7 +322,7 @@ export default function Movimientos() {
   const todasCategorias = [...new Set([...CATS_GASTO, ...CATS_INGRESO])];
 
   const exportarCSV = () => {
-    if (movs.length === 0) return toast.error('No hay movimientos este mes para exportar');
+    if (movs.length === 0) return notifyError('No hay movimientos este mes para exportar');
     const headers = 'Fecha,Tipo,Monto,Categoria,Descripcion,Medio de pago\n';
     const rows = movs.map(m =>
       `"${m.fecha}","${m.tipo}","${m.monto}","${m.categoria}","${(m.descripcion||'').replace(/"/g,'""')}","${labelMedioPago(m.medio_pago||'efectivo')}"`
@@ -334,7 +334,7 @@ export default function Movimientos() {
     a.download = `movimientos_${MESES[mes-1].toLowerCase()}_${anio}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('CSV descargado');
+    notifySuccess('CSV descargado');
   };
 
   return (

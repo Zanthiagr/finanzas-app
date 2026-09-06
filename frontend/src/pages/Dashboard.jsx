@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
 import CapitalCarousel from '../components/CapitalCarousel';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import { confirmToast } from '../utils/confirm';
 import confetti from 'canvas-confetti';
 
@@ -139,51 +139,51 @@ export default function Dashboard() {
 
   const confirmarAbonoDeuda = async () => {
     const monto = parseFloat(String(montoRapido).replace(',','.'));
-    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
-    if (!medioRapido) return toast.error('Elige el medio de pago con el que abonaste');
+    if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
+    if (!medioRapido) return notifyError('Elige el medio de pago con el que abonaste');
     setGuardandoRapido(true);
     try {
       await abonarDeuda(modalAbono, monto, medioRapido, hoyStr);
-      toast.success('Abono registrado — ya se descontó de tu saldo');
+      notifySuccess('Abono registrado — ya se descontó de tu saldo');
       setModalAbono(null); setMontoRapido(''); setMedioRapido('');
       recargarDeudasYMetas();
-    } catch { toast.error('Error registrando el abono'); }
+    } catch { notifyError('Error registrando el abono'); }
     finally { setGuardandoRapido(false); }
   };
 
   const confirmarAporteMeta = async () => {
     const abono = parseFloat(String(montoRapido).replace(',','.'));
-    if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
-    if (!medioRapido) return toast.error('Elige el medio de pago con el que aportaste');
+    if (!abono || abono <= 0) return notifyError('Ingresa un monto válido');
+    if (!medioRapido) return notifyError('Elige el medio de pago con el que aportaste');
     setGuardandoRapido(true);
     try {
       const r = await aportarMeta(modalAporte, abono, medioRapido, hoyStr);
-      toast.success(r.seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado — ya se descontó de tu saldo');
+      notifySuccess(r.seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado — ya se descontó de tu saldo');
       if (r.seCompleta) {
         confetti({ particleCount: 120, spread: 75, startVelocity: 38, gravity: 0.9,
           colors: ['#C9A84C', '#E8D9A8', '#2452FF', '#0B1220'], origin: { y: 0.6 } });
       }
       setModalAporte(null); setMontoRapido(''); setMedioRapido('');
       recargarDeudasYMetas();
-    } catch { toast.error('Error registrando el aporte'); }
+    } catch { notifyError('Error registrando el aporte'); }
     finally { setGuardandoRapido(false); }
   };
 
   const confirmarAbonoPrestamo = async () => {
     const monto = parseFloat(String(montoRapido).replace(',','.'));
-    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
-    if (!medioRapido) return toast.error('Elige a qué cuenta llegó el pago');
+    if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
+    if (!medioRapido) return notifyError('Elige a qué cuenta llegó el pago');
     setGuardandoRapido(true);
     try {
       const r = await abonarPrestamo(modalAbonoPrestamo, monto, medioRapido, hoyStr);
-      toast.success(r.seCompleta ? '¡Préstamo pagado por completo! 🎉' : 'Pago registrado — ya se sumó a tu saldo');
+      notifySuccess(r.seCompleta ? '¡Préstamo pagado por completo! 🎉' : 'Pago registrado — ya se sumó a tu saldo');
       if (r.seCompleta) {
         confetti({ particleCount: 100, spread: 70, startVelocity: 35, gravity: 0.95,
           colors: ['#2452FF', '#C9A84C', '#0B1220'], origin: { y: 0.55 } });
       }
       setModalAbonoPrestamo(null); setMontoRapido(''); setMedioRapido('');
       recargarDeudasYMetas();
-    } catch { toast.error('Error registrando el pago'); }
+    } catch { notifyError('Error registrando el pago'); }
     finally { setGuardandoRapido(false); }
   };
 
@@ -195,11 +195,11 @@ export default function Dashboard() {
         setMarcandoPagoId(p.id);
         try {
           await marcarPagoUnicoComoPagado(p);
-          toast.success('Pago confirmado y registrado ✅');
+          notifySuccess('Pago confirmado y registrado ✅');
           cargarPagos();
           cargarSaldo();
         } catch (err) {
-          toast.error(err?.message || 'Error confirmando el pago');
+          notifyError(err?.message || 'Error confirmando el pago');
         } finally {
           setMarcandoPagoId(null);
         }
@@ -209,11 +209,11 @@ export default function Dashboard() {
         setMarcandoPagoId(p.id);
         try {
           await pagarPagoFijo(p);
-          toast.success('Pago registrado ✅');
+          notifySuccess('Pago registrado ✅');
           cargarPagos();
           cargarSaldo();
         } catch (err) {
-          toast.error(err?.message || 'Error registrando el pago');
+          notifyError(err?.message || 'Error registrando el pago');
         } finally {
           setMarcandoPagoId(null);
         }
@@ -229,10 +229,10 @@ export default function Dashboard() {
       setMarcandoPagoId(p.id);
       try {
         await saltarPagoFijoEsteMes(p);
-        toast.success('Pago corrido este mes');
+        notifySuccess('Pago corrido este mes');
         cargarPagos();
       } catch (err) {
-        toast.error(err?.message || 'Error');
+        notifyError(err?.message || 'Error');
       } finally {
         setMarcandoPagoId(null);
       }

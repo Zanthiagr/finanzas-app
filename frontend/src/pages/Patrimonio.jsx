@@ -9,7 +9,7 @@ import { getActivos, crearActivo, actualizarActivo, eliminarActivo,
          registrarRendimientoActivo } from '../utils/api';
 import { fmt, fmtDate, fmtShort, todayLocalStr, parseLocalDate, BANCOS } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
-import toast from 'react-hot-toast';
+import { notifySuccess, notifyError } from '../utils/notify';
 import { confirmToast } from '../utils/confirm';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
@@ -55,7 +55,7 @@ export function Activos() {
     fecha_adquisicion:'', descripcion:'', tasa_rendimiento:'', tipo_rendimiento:'manual'
   });
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
-  const load = () => getActivos().then(setItems).catch(()=>toast.error('Error cargando activos'));
+  const load = () => getActivos().then(setItems).catch(()=>notifyError('Error cargando activos'));
   useEffect(()=>{ load(); },[]);
 
   const rendEst = (a) => {
@@ -79,16 +79,16 @@ export function Activos() {
       };
       if (editandoId) {
         await actualizarActivo(editandoId, payload);
-        toast.success('Activo actualizado');
+        notifySuccess('Activo actualizado');
       } else {
         await crearActivo(payload);
-        toast.success('Activo registrado');
+        notifySuccess('Activo registrado');
       }
       setModal(false);
       setEditandoId(null);
       setForm({nombre:'',tipo:'Inversión',valor_inicial:'',valor_actual:'',fecha_adquisicion:'',descripcion:'',tasa_rendimiento:'',tipo_rendimiento:'manual'});
       load();
-    } catch(err) { toast.error('Error guardando'); console.error(err); }
+    } catch(err) { notifyError('Error guardando'); console.error(err); }
   };
 
   const abrirEditar = (a) => {
@@ -112,18 +112,18 @@ export function Activos() {
   };
 
   const registrarRend = async () => {
-    if (!rendMonto || parseFloat(rendMonto)<=0) return toast.error('Ingresa un monto válido');
+    if (!rendMonto || parseFloat(rendMonto)<=0) return notifyError('Ingresa un monto válido');
     try {
       await registrarRendimientoActivo({ activo_id: modalRend.id, rendimiento_monto: parseFloat(String(rendMonto).replace(',','.')), fecha: rendFecha });
-      toast.success('Rendimiento registrado 📈');
+      notifySuccess('Rendimiento registrado 📈');
       setModalRend(null); setRendMonto('');
       load();
-    } catch { toast.error('Error registrando rendimiento'); }
+    } catch { notifyError('Error registrando rendimiento'); }
   };
 
   const del = id => {
     confirmToast('¿Eliminar este activo?', async () => {
-      await eliminarActivo(id); toast.success('Eliminado'); load();
+      await eliminarActivo(id); notifySuccess('Eliminado'); load();
     });
   };
 
@@ -351,7 +351,7 @@ export function Deudas() {
   const [modal, setModal]       = useState(false);
   const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
-  const load = () => getDeudas().then(setItems).catch(()=>toast.error('Error cargando deudas'));
+  const load = () => getDeudas().then(setItems).catch(()=>notifyError('Error cargando deudas'));
   useEffect(()=>{load();},[]);
 
   // ── Detalle de una deuda: historial, pago programado, etc. ──
@@ -368,17 +368,17 @@ export function Deudas() {
     e.preventDefault();
     try {
       await crearDeuda(form);
-      toast.success('Deuda registrada'); setModal(false);
+      notifySuccess('Deuda registrada'); setModal(false);
       setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
       load();
     } catch (err) {
-      if (err?.code === '23505') toast.error('Ese medio de pago ya está vinculado a otra tarjeta activa');
-      else toast.error('Error guardando');
+      if (err?.code === '23505') notifyError('Ese medio de pago ya está vinculado a otra tarjeta activa');
+      else notifyError('Error guardando');
     }
   };
 
   const del = id => confirmToast('¿Eliminar esta deuda? También se borra todo su historial.', async () => {
-    await eliminarDeuda(id); toast.success('Eliminada');
+    await eliminarDeuda(id); notifySuccess('Eliminada');
     if (detalle?.id === id) setDetalle(null);
     load();
   });
@@ -391,7 +391,7 @@ export function Deudas() {
       const [movs, pagos] = await Promise.all([getDeudaMovimientos(d.id), getPagosProgramados()]);
       setMovimientos(movs);
       setPagoProgramado(pagos.find(p => p.deuda_id === d.id && p.activo) || null);
-    } catch { toast.error('Error cargando el detalle'); }
+    } catch { notifyError('Error cargando el detalle'); }
     finally { setLoadingDetalle(false); }
   };
 
@@ -411,34 +411,34 @@ export function Deudas() {
 
   const guardarMov = async () => {
     const monto = parseFloat(String(modalMov.monto).replace(',','.'));
-    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
     // Solo el abono representa plata real saliendo de una cuenta hoy —
     // compra/interés/mora son crecimiento de la deuda, no un pago que
     // hiciste, así que esos no piden medio de pago ni tocan Movimientos.
     if (!modalMov.id && modalMov.tipo === 'abono' && !modalMov.medio_pago) {
-      return toast.error('Elige el medio de pago con el que abonaste');
+      return notifyError('Elige el medio de pago con el que abonaste');
     }
     try {
       if (modalMov.id) {
         await actualizarDeudaMovimiento(modalMov.id, { tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
-        toast.success('Movimiento actualizado');
+        notifySuccess('Movimiento actualizado');
       } else if (modalMov.tipo === 'abono') {
         await abonarDeuda(detalle, monto, modalMov.medio_pago, modalMov.fecha);
-        toast.success('Abono registrado — ya se descontó de tu saldo');
+        notifySuccess('Abono registrado — ya se descontó de tu saldo');
       } else {
         await crearDeudaMovimiento({ deuda_id: detalle.id, tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
-        toast.success('Movimiento registrado');
+        notifySuccess('Movimiento registrado');
       }
       const id = detalle.id;
       setModalMov(null);
       refrescarDetalle(id);
-    } catch { toast.error('Error guardando el movimiento'); }
+    } catch { notifyError('Error guardando el movimiento'); }
   };
 
   const borrarMov = (m) => confirmToast('¿Eliminar este movimiento del historial?', async () => {
     const id = detalle.id;
     await eliminarDeudaMovimiento(m.id);
-    toast.success('Eliminado');
+    notifySuccess('Eliminado');
     refrescarDetalle(id);
   });
 
@@ -455,37 +455,37 @@ export function Deudas() {
     e.preventDefault();
     try {
       await actualizarDeuda(detalle.id, formEditar);
-      toast.success('Deuda actualizada');
+      notifySuccess('Deuda actualizada');
       const id = detalle.id;
       setFormEditar(null);
       refrescarDetalle(id);
     } catch (err) {
-      if (err?.code === '23505') toast.error('Ese medio de pago ya está vinculado a otra tarjeta activa');
-      else toast.error('Error actualizando');
+      if (err?.code === '23505') notifyError('Ese medio de pago ya está vinculado a otra tarjeta activa');
+      else notifyError('Error actualizando');
     }
   };
 
   const guardarProgramarPago = async e => {
     e.preventDefault();
     const monto = parseFloat(String(formProgramar.monto).replace(',','.'));
-    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
+    if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
     try {
       await crearPagoProgramado({
         nombre: `Cuota: ${detalle.nombre}`, monto, categoria: 'Deudas',
         dia_mes: formProgramar.dia_mes, medio_pago: formProgramar.medio_pago,
         activo: true, deuda_id: detalle.id,
       });
-      toast.success('Pago programado — se abonará solo cada mes 🎉');
+      notifySuccess('Pago programado — se abonará solo cada mes 🎉');
       setModalProgramar(false);
       const pagos = await getPagosProgramados();
       setPagoProgramado(pagos.find(p => p.deuda_id === detalle.id && p.activo) || null);
-    } catch { toast.error('Error programando el pago'); }
+    } catch { notifyError('Error programando el pago'); }
   };
 
   const cancelarProgramacion = () => confirmToast('¿Cancelar el pago automático de esta deuda?', async () => {
     await eliminarPagoProgramado(pagoProgramado.id);
     setPagoProgramado(null);
-    toast.success('Pago automático cancelado');
+    notifySuccess('Pago automático cancelado');
   });
 
   return (
@@ -826,7 +826,7 @@ export function Metas() {
   const [aporteMedio, setAporteMedio] = useState('');
   const [form, setForm]           = useState({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
-  const load = () => getMetas().then(setItems).catch(()=>toast.error('Error cargando metas'));
+  const load = () => getMetas().then(setItems).catch(()=>notifyError('Error cargando metas'));
   useEffect(()=>{load();},[]);
 
   const submit = async e => {
@@ -836,19 +836,19 @@ export function Metas() {
         ...form,
         monto_objetivo: parseFloat(String(form.monto_objetivo).replace(',','.')),
       });
-      toast.success('Meta creada 🎯'); setModal(false);
+      notifySuccess('Meta creada 🎯'); setModal(false);
       setForm({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
       load();
-    } catch { toast.error('Error guardando'); }
+    } catch { notifyError('Error guardando'); }
   };
 
   const confirmarAporte = async () => {
     const abono = parseFloat(String(aporteMonto).replace(',','.'));
-    if (!abono || abono <= 0) return toast.error('Ingresa un monto válido');
-    if (!aporteMedio) return toast.error('Elige el medio de pago con el que aportaste');
+    if (!abono || abono <= 0) return notifyError('Ingresa un monto válido');
+    if (!aporteMedio) return notifyError('Elige el medio de pago con el que aportaste');
     try {
       const r = await aportarMeta(modalAporte, abono, aporteMedio);
-      toast.success(r.seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado — ya se descontó de tu saldo');
+      notifySuccess(r.seCompleta ? '¡Meta lograda! 🎉' : 'Aporte registrado — ya se descontó de tu saldo');
       // Confetti solo la primera vez que la meta cruza el 100% — un
       // pequeño "premio" visual reservado para el momento que de verdad
       // lo amerita, no un efecto que se repite en cada aporte.
@@ -861,10 +861,10 @@ export function Metas() {
       }
       setModalAporte(null); setAporteMonto(''); setAporteMedio('');
       load();
-    } catch { toast.error('Error registrando el aporte'); }
+    } catch { notifyError('Error registrando el aporte'); }
   };
 
-  const del = id => confirmToast('¿Eliminar esta meta?', async () => { await eliminarMeta(id); toast.success('Eliminada'); load(); });
+  const del = id => confirmToast('¿Eliminar esta meta?', async () => { await eliminarMeta(id); notifySuccess('Eliminada'); load(); });
 
   return (
     <div className="space-y-4 page-enter">
@@ -973,7 +973,7 @@ export function Prestamos() {
   const [modal, setModal] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [form, setForm] = useState({ nombre:'', monto_total:'', fecha: todayLocalStr(), notas:'', medio_pago:'' });
-  const load = () => getPrestamos().then(setItems).catch(()=>toast.error('Error cargando préstamos'));
+  const load = () => getPrestamos().then(setItems).catch(()=>notifyError('Error cargando préstamos'));
   useEffect(()=>{ load(); },[]);
 
   const [detalle, setDetalle] = useState(null);
@@ -989,20 +989,20 @@ export function Prestamos() {
 
   const submit = async e => {
     e.preventDefault();
-    if (!editandoId && !form.medio_pago) return toast.error('Elige con qué medio de pago prestaste');
+    if (!editandoId && !form.medio_pago) return notifyError('Elige con qué medio de pago prestaste');
     try {
       if (editandoId) {
         await actualizarPrestamo(editandoId, form);
-        toast.success('Préstamo actualizado');
+        notifySuccess('Préstamo actualizado');
       } else {
         await crearPrestamo(form);
-        toast.success('Préstamo registrado — ya se descontó de tu saldo');
+        notifySuccess('Préstamo registrado — ya se descontó de tu saldo');
       }
       setModal(false);
       setForm({ nombre:'', monto_total:'', fecha: todayLocalStr(), notas:'', medio_pago:'' });
       setEditandoId(null);
       load();
-    } catch { toast.error('Error guardando el préstamo'); }
+    } catch { notifyError('Error guardando el préstamo'); }
   };
 
   const abrirEditar = (p) => {
@@ -1012,7 +1012,7 @@ export function Prestamos() {
   };
 
   const del = id => confirmToast('¿Eliminar este préstamo? También se borra todo su historial.', async () => {
-    await eliminarPrestamo(id); toast.success('Eliminado');
+    await eliminarPrestamo(id); notifySuccess('Eliminado');
     if (detalle?.id === id) setDetalle(null);
     load();
   });
@@ -1020,17 +1020,17 @@ export function Prestamos() {
   const abrirDetalle = async (p) => {
     setDetalle(p); setLoadingDetalle(true);
     try { setMovimientos(await getPrestamoMovimientos(p.id)); }
-    catch { toast.error('Error cargando el detalle'); }
+    catch { notifyError('Error cargando el detalle'); }
     finally { setLoadingDetalle(false); }
   };
 
   const confirmarAbono = async () => {
     const monto = parseFloat(String(modalAbono.monto).replace(',','.'));
-    if (!monto || monto <= 0) return toast.error('Ingresa un monto válido');
-    if (!modalAbono.medio_pago) return toast.error('Elige el medio de pago con el que te pagaron');
+    if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
+    if (!modalAbono.medio_pago) return notifyError('Elige el medio de pago con el que te pagaron');
     try {
       const r = await abonarPrestamo(detalle, monto, modalAbono.medio_pago);
-      toast.success(r.seCompleta ? '¡Préstamo pagado por completo! 🎉' : 'Pago registrado — ya se sumó a tu saldo');
+      notifySuccess(r.seCompleta ? '¡Préstamo pagado por completo! 🎉' : 'Pago registrado — ya se sumó a tu saldo');
       if (r.seCompleta) {
         confetti({ particleCount: 100, spread: 70, startVelocity: 35, gravity: 0.95,
           colors: ['#2452FF', '#C9A84C', '#0B1220'], origin: { y: 0.55 } });
@@ -1041,7 +1041,7 @@ export function Prestamos() {
       const d = actualizada.find(x => x.id === detalle.id);
       setDetalle(d || null);
       if (d) setMovimientos(await getPrestamoMovimientos(d.id));
-    } catch { toast.error('Error registrando el pago'); }
+    } catch { notifyError('Error registrando el pago'); }
   };
 
   const totalPrestado = items.filter(p=>p.activo).reduce((a,p)=>a+(parseFloat(p.monto_total)-parseFloat(p.monto_recibido)),0);
