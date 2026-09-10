@@ -6,7 +6,7 @@ import Ring from '../Ring';
 import {
   LayoutDashboard, ArrowLeftRight, CalendarRange, CalendarDays, Wallet,
   FileDown, Landmark, CreditCard, Target, Brain, GraduationCap, Calculator,
-  Bot, MoreHorizontal, X, LogOut, Plus, ArrowLeft, UserCircle,
+  Bot, MoreHorizontal, X, LogOut, Repeat, Plus, ArrowLeft, UserCircle,
 } from 'lucide-react';
 
 // Apaga el Coach IA en toda la app (menú desktop, menú "Más" móvil y
@@ -311,11 +311,18 @@ export default function Layout({ children }) {
                 ))}
               </div>
 
-              <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
-                <LogOut className="w-4 h-4"/>
-                Cerrar sesión
-              </button>
+              <div className="space-y-2">
+                <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
+                  <Repeat className="w-4 h-4"/>
+                  Cambiar de cuenta
+                </button>
+                <button onClick={() => { logout(); navigate('/login'); setMasOpen(false); }}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-g-50 text-g-600 text-sm">
+                  <LogOut className="w-4 h-4"/>
+                  Cerrar sesión
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
