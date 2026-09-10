@@ -119,7 +119,13 @@ export const AuthProvider = ({ children }) => {
   const loginConGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      // prompt: 'select_account' — sin esto, si el navegador ya tiene una
+      // sesión activa de Google, este login se re-autentica en silencio
+      // con la MISMA cuenta, sin mostrar el selector. Forzar el selector
+      // es lo que hace posible "cambiar de cuenta" de verdad: cerrar
+      // sesión y volver a entrar solo funciona si aquí se le puede pedir
+      // a Google que muestre las opciones en vez de recordar la última.
+      options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } },
     });
   };
 

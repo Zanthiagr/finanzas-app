@@ -63,6 +63,14 @@ export default function Perfil() {
     }
   };
 
+  const cambiarCuenta = async () => {
+    // Cerrar sesión y volver al login — ahí, gracias a prompt: 'select_account'
+    // en loginConGoogle, Google ahora sí muestra el selector de cuentas en
+    // vez de re-autenticar en silencio con la misma que ya estaba activa.
+    await logout();
+    navigate('/login');
+  };
+
   const guardar = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -199,8 +207,12 @@ export default function Perfil() {
         </button>
       </form>
 
-      {/* Cerrar sesión */}
-      <div className="card p-4">
+      {/* Cuenta */}
+      <div className="card p-4 space-y-1">
+        <button onClick={cambiarCuenta} className="w-full flex items-center justify-center gap-2 text-sm text-g-500 hover:text-g-700 py-1">
+          <Icon name="repeat" className="w-3.5 h-3.5"/>
+          Cambiar de cuenta
+        </button>
         <button onClick={() => { logout(); }} className="w-full flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 py-1">
           <Icon name="logout" className="w-3.5 h-3.5"/>
           Cerrar sesión
