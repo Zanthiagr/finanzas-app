@@ -4,6 +4,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout, { COACH_HABILITADO } from './components/layout/Layout';
 import Onboarding from './components/Onboarding';
+import RecordatorioNocturnoOnboarding from './components/RecordatorioNocturnoOnboarding';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import Icon from './utils/icons';
@@ -58,8 +59,9 @@ function PrivateRoute({ children }) {
 }
 
 function AppRoutes() {
-  const { user, esCuentaNueva } = useAuth();
+  const { user, perfil, esCuentaNueva, refrescarPerfil } = useAuth();
   const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
+  const [mostrarRecordatorio, setMostrarRecordatorio] = useState(false);
 
   useEffect(() => {
     // esCuentaNueva solo es true la primera vez que el perfil se crea en la
@@ -68,6 +70,19 @@ function AppRoutes() {
     // EXISTENTE (aunque sea desde un navegador nuevo) nunca ve el onboarding.
     if (user && esCuentaNueva) setMostrarOnboarding(true);
   }, [user, esCuentaNueva]);
+
+  useEffect(() => {
+    // recordatorio_prompt_visto=false cubre DOS poblaciones con el mismo
+    // mecanismo: cuentas nuevas (siempre arrancan en false) Y cuentas que
+    // ya existían antes de esta actualización (la migración las dejó en
+    // false a todas). Cualquiera de las dos ve este aviso la primera vez
+    // que entra después de esto — nunca más, responda lo que responda.
+    // No se muestra mientras el Onboarding esté abierto, para no apilar
+    // dos pantallas completas al mismo tiempo.
+    if (user && perfil && !perfil.recordatorio_prompt_visto && !mostrarOnboarding) {
+      setMostrarRecordatorio(true);
+    }
+  }, [user, perfil, mostrarOnboarding]);
 
   const completarOnboarding = () => {
     setMostrarOnboarding(false);
@@ -80,9 +95,20 @@ function AppRoutes() {
     window.location.reload();
   };
 
+  const cerrarRecordatorio = async () => {
+    setMostrarRecordatorio(false);
+    // Refresca el perfil en el contexto para que recordatorio_prompt_visto
+    // quede en true de inmediato en memoria — así, aunque algo más adelante
+    // dispare de nuevo este efecto, la condición ya no se vuelve a cumplir.
+    await refrescarPerfil();
+  };
+
   return (
     <>
       {mostrarOnboarding && user && <Onboarding onComplete={completarOnboarding}/>}
+      {!mostrarOnboarding && mostrarRecordatorio && user && (
+        <RecordatorioNocturnoOnboarding userId={user.id} onDone={cerrarRecordatorio}/>
+      )}
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace/> : <AuthPage/>}/>
         <Route path="/*" element={
