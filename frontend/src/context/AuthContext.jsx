@@ -38,6 +38,7 @@ export const AuthProvider = ({ children }) => {
         puntos_xp: 0,
         notif_cierre: true,
         notif_diario: false,
+        recordatorio_prompt_visto: false,
       });
       await supabase.from('habitos').insert([
         { usuario_id: userId, nombre: 'Leer 10 min sobre finanzas', momento: 'manana', puntos: 20 },
@@ -128,8 +129,16 @@ export const AuthProvider = ({ children }) => {
     setPerfil(null);
   };
 
+  // Expuesto para que componentes que modifican el perfil por fuera del
+  // flujo normal de "Guardar cambios" (p. ej. el modal de recordatorio
+  // nocturno, que escribe directo a Supabase) puedan refrescar el estado
+  // en memoria sin recargar toda la página.
+  const refrescarPerfil = async () => {
+    if (user) await cargarPerfil(user.id);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, perfil, loading, esCuentaNueva, loginConGoogle, logout }}>
+    <AuthContext.Provider value={{ user, perfil, loading, esCuentaNueva, loginConGoogle, logout, refrescarPerfil }}>
       {children}
     </AuthContext.Provider>
   );
