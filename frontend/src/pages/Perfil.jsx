@@ -4,7 +4,7 @@ import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { eliminarCuentaCompleta, exportarDatosCompletos } from '../utils/api';
 import { notifySuccess, notifyError } from '../utils/notify';
-import { activarRecordatorioNocturno, desactivarRecordatorioNocturno, pushSoportado } from '../utils/push';
+import { activarPushDispositivo, desactivarPushDispositivo, pushSoportado } from '../utils/push';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
 
@@ -13,7 +13,6 @@ export default function Perfil() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     nombre: '',
-    email: '',
     notif_cierre: true,
     notif_diario: false,
   });
@@ -22,44 +21,54 @@ export default function Perfil() {
   const [confirmTexto, setConfirmTexto] = useState('');
   const [eliminando, setEliminando] = useState(false);
   const [exportando, setExportando] = useState(false);
-  const [cambiandoRecordatorio, setCambiandoRecordatorio] = useState(false);
+  const [cambiandoNotif, setCambiandoNotif] = useState(null); // 'notif_diario' | 'notif_cierre' | null
   const nombre = (perfil?.nombre || user?.user_metadata?.full_name || '').split(' ')[0];
 
   useEffect(() => {
     if (perfil || user) {
       setForm({
         nombre: perfil?.nombre || user?.user_metadata?.full_name || '',
-        email: perfil?.email || user?.email || '',
         notif_cierre: perfil?.notif_cierre ?? true,
         notif_diario: perfil?.notif_diario ?? false,
       });
     }
   }, [perfil, user]);
 
-  // Recordatorio nocturno (push) — aparte del formulario de "Guardar
-  // cambios": pedir el permiso del navegador tiene que pasar en el mismo
-  // instante del clic, y si el usuario lo rechaza o el dispositivo no
-  // soporta push, necesitamos revertir el interruptor de inmediato en
-  // vez de esperar a que la persona presione Guardar más abajo.
-  const toggleRecordatorioNocturno = async () => {
-    const activando = !form.notif_diario;
-    setCambiandoRecordatorio(true);
+  // Recordatorios push (nocturno y cierre semanal) — aparte del formulario
+  // de "Guardar cambios": pedir el permiso del navegador tiene que pasar
+  // en el mismo instante del clic, y si el usuario lo rechaza o el
+  // dispositivo no soporta push, necesitamos revertir el interruptor de
+  // inmediato en vez de esperar a que la persona presione Guardar más
+  // abajo. Genérico para los dos toggles porque ambos comparten la MISMA
+  // suscripción push del dispositivo (una app, un dispositivo, una
+  // suscripción — lo que cambia es solo qué columna de perfiles se
+  // marca). Por eso, al desactivar uno, solo desuscribimos el dispositivo
+  // entero si el OTRO recordatorio push también está apagado — si sigue
+  // activo, apagar este no debe silenciar al otro sin que el usuario lo
+  // haya pedido.
+  const toggleNotificacionPush = async (campo) => {
+    const activando = !form[campo];
+    setCambiandoNotif(campo);
     try {
-      if (activando) await activarRecordatorioNocturno();
-      else await desactivarRecordatorioNocturno();
+      if (activando) {
+        await activarPushDispositivo();
+      } else {
+        const otroCampo = campo === 'notif_diario' ? 'notif_cierre' : 'notif_diario';
+        if (!form[otroCampo]) await desactivarPushDispositivo();
+      }
 
       const { error } = await supabase
         .from('perfiles')
-        .update({ notif_diario: activando })
+        .update({ [campo]: activando })
         .eq('id', user.id);
       if (error) throw error;
 
-      setForm((f) => ({ ...f, notif_diario: activando }));
-      notifySuccess(activando ? 'Recordatorio nocturno activado' : 'Recordatorio nocturno desactivado');
+      setForm((f) => ({ ...f, [campo]: activando }));
+      notifySuccess(activando ? 'Recordatorio activado' : 'Recordatorio desactivado');
     } catch (err) {
       notifyError(err.message || 'No se pudo cambiar el recordatorio');
     } finally {
-      setCambiandoRecordatorio(false);
+      setCambiandoNotif(null);
     }
   };
 
@@ -79,7 +88,6 @@ export default function Perfil() {
         .from('perfiles')
         .update({
           nombre: form.nombre,
-          email: form.email,
           notif_cierre: form.notif_cierre,
           notif_diario: form.notif_diario,
         })
@@ -159,12 +167,6 @@ export default function Perfil() {
             <input className="input" placeholder="Tu nombre"
               value={form.nombre} onChange={e => setForm(f => ({...f, nombre: e.target.value}))}/>
           </div>
-          <div>
-            <label className="section-label block mb-1">Email para notificaciones</label>
-            <input type="email" className="input" placeholder="tu@email.com"
-              value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}/>
-            <p className="text-xs text-g-400 mt-1">Aquí recibirás el recordatorio de cierre semanal</p>
-          </div>
         </div>
 
         {/* Notificaciones */}
@@ -173,12 +175,17 @@ export default function Perfil() {
 
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
-              <p className="text-sm text-g-900 font-medium">Cierre semanal <span className="text-g-400 font-normal">· email</span></p>
+              <p className="text-sm text-g-900 font-medium">Cierre semanal <span className="text-g-400 font-normal">· notificación</span></p>
               <p className="text-xs text-g-400 mt-0.5">Domingo a las 7pm — te recuerda cerrar la semana si no lo has hecho</p>
+              {!pushSoportado() && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  Tu navegador no soporta esto. En iPhone: agrega Fintual a tu pantalla de inicio primero (Compartir → Agregar a inicio).
+                </p>
+              )}
             </div>
-            <button type="button"
-              onClick={() => setForm(f => ({...f, notif_cierre: !f.notif_cierre}))}
-              className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative ${form.notif_cierre ? 'bg-g-600' : 'bg-g-200'}`}>
+            <button type="button" disabled={cambiandoNotif === 'notif_cierre'}
+              onClick={() => toggleNotificacionPush('notif_cierre')}
+              className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative disabled:opacity-50 ${form.notif_cierre ? 'bg-g-600' : 'bg-g-200'}`}>
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.notif_cierre ? 'left-6' : 'left-0.5'}`}/>
             </button>
           </div>
@@ -193,8 +200,8 @@ export default function Perfil() {
                 </p>
               )}
             </div>
-            <button type="button" disabled={cambiandoRecordatorio}
-              onClick={toggleRecordatorioNocturno}
+            <button type="button" disabled={cambiandoNotif === 'notif_diario'}
+              onClick={() => toggleNotificacionPush('notif_diario')}
               className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative disabled:opacity-50 ${form.notif_diario ? 'bg-g-600' : 'bg-g-200'}`}>
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.notif_diario ? 'left-6' : 'left-0.5'}`}/>
             </button>
