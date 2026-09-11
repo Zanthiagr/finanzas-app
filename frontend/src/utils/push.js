@@ -26,7 +26,11 @@ export const pushSoportado = () =>
 
 // Pide el permiso del sistema operativo, se suscribe a push (o reutiliza
 // la suscripción existente de este navegador) y la guarda en Supabase.
-export const activarRecordatorioNocturno = async () => {
+// Genérico a propósito: un mismo dispositivo puede recibir varios TIPOS
+// de recordatorio (nocturno, cierre semanal, los que vengan después) a
+// través de esta única suscripción — el filtro de "a quién avisar de
+// qué" vive en cada Edge Function, no aquí.
+export const activarPushDispositivo = async () => {
   if (!pushSoportado()) {
     throw new Error(
       'Este navegador no soporta notificaciones. En iPhone: agrega Fintual a tu pantalla de inicio primero (Compartir → Agregar a inicio).'
@@ -51,9 +55,11 @@ export const activarRecordatorioNocturno = async () => {
   await guardarSuscripcionPush({ endpoint, p256dh: keys.p256dh, authKey: keys.auth });
 };
 
-// Borra la suscripción tanto en Supabase como en el navegador. Si el
-// usuario nunca se suscribió en este dispositivo, no hace nada.
-export const desactivarRecordatorioNocturno = async () => {
+// Borra la suscripción tanto en Supabase como en el navegador — solo debe
+// llamarse cuando NINGÚN tipo de recordatorio push siga activo para esta
+// cuenta (si queda alguno activo, desuscribir el dispositivo entero lo
+// apagaría también a él sin que el usuario lo haya pedido).
+export const desactivarPushDispositivo = async () => {
   if (!pushSoportado()) return;
 
   const registration = await navigator.serviceWorker.ready;

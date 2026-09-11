@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from '../utils/icons';
 import { supabase } from '../utils/supabase';
-import { activarRecordatorioNocturno, pushSoportado } from '../utils/push';
+import { activarPushDispositivo, pushSoportado } from '../utils/push';
 import { notifyError } from '../utils/notify';
 
 // Se muestra UNA sola vez por cuenta, apenas la persona entra a la app —
@@ -30,7 +30,7 @@ export default function RecordatorioNocturnoOnboarding({ userId, onDone }) {
   const activar = async () => {
     setActivando(true);
     try {
-      await activarRecordatorioNocturno();
+      await activarPushDispositivo();
       await supabase
         .from('perfiles')
         .update({ notif_diario: true, recordatorio_prompt_visto: true })
