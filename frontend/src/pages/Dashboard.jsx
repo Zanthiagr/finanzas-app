@@ -116,7 +116,7 @@ export default function Dashboard() {
       setPresupuestos(pres || []);
       setCierres(cierresData || []);
       setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
-      setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
+      setDeudasActivas((deudasData || []).filter(d => d.tipo !== 'Tarjeta de crédito' && d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
       setMetasActivas((metasData || []).filter(m => !m.completada));
       setPrestamosActivos((prestamosData || []).filter(p => p.activo));
       const gastosMap = {};
@@ -131,7 +131,7 @@ export default function Dashboard() {
   const recargarDeudasYMetas = () => {
     Promise.all([getDeudas(), getMetas(), getPrestamos()]).then(([deudasData, metasData, prestamosData]) => {
       setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
-      setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
+      setDeudasActivas((deudasData || []).filter(d => d.tipo !== 'Tarjeta de crédito' && d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
       setMetasActivas((metasData || []).filter(m => !m.completada));
       setPrestamosActivos((prestamosData || []).filter(p => p.activo));
     }).catch(() => {});
@@ -474,7 +474,7 @@ export default function Dashboard() {
             const cupoDisponible = cupo > 0 ? Math.max(cupo - pendiente, 0) : null;
             const colorBarra = pctPagado >= 100 ? '#16A34A' : pctPagado >= 50 ? '#4F8F76' : pctPagado >= 20 ? '#C9A84C' : '#E5484D';
             return (
-              <Link key={t.id} to="/deudas" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
+              <Link key={t.id} to="/tarjetas" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${colorBarra}1F` }}>
                   <Icon name="credit-card" className="w-4 h-4" style={{ color: colorBarra }}/>
                 </div>
@@ -846,7 +846,7 @@ export default function Dashboard() {
           {[
             { to: '/cierre',       icon: 'ti-calendar-stats', label: 'Cierre',       color: '#2452FF', bg: '#E8EDFF' },
             { to: '/presupuestos', icon: 'ti-wallet',         label: 'Presupuestos', color: '#9A7530', bg: '#F5E8C0' },
-            { to: '/deudas',       icon: 'ti-credit-card',    label: 'Deudas',       color: '#E5484D', bg: '#FCEBEB' },
+            { to: '/tarjetas',     icon: 'ti-credit-card',    label: 'Tarjetas',     color: '#E5484D', bg: '#FCEBEB' },
             { to: '/activos',      icon: 'ti-building-bank',  label: 'Activos',      color: '#16A34A', bg: '#E9F9EF' },
           ].map(a => (
             <Link key={a.to} to={a.to} className="card p-2.5 flex flex-col items-center gap-1.5 active:scale-95 transition-transform">

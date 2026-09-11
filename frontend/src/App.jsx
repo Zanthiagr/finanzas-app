@@ -16,6 +16,7 @@ const Movimientos   = lazy(() => import('./pages/Movimientos'));
 const CierreSemanal = lazy(() => import('./pages/CierreSemanal'));
 const Activos    = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Activos })));
 const Deudas     = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Deudas })));
+const Tarjetas   = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Tarjetas })));
 const Metas      = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Metas })));
 const Prestamos  = lazy(() => import('./pages/Patrimonio').then(m => ({ default: m.Prestamos })));
 const Presupuestos = lazy(() => import('./pages/Presupuestos'));
@@ -122,6 +123,7 @@ function AppRoutes() {
                   <Route path="/presupuestos" element={<Presupuestos/>}/>
                   <Route path="/activos"      element={<Activos/>}/>
                   <Route path="/deudas"       element={<Deudas/>}/>
+                  <Route path="/tarjetas"     element={<Tarjetas/>}/>
                   <Route path="/metas"        element={<Metas/>}/>
                   <Route path="/prestamos"    element={<Prestamos/>}/>
                   <Route path="/mental"       element={<Mental/>}/>

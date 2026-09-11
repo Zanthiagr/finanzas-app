@@ -346,13 +346,48 @@ function SelectorMedioPago({ value, onChange, label = '¿Con qué medio de pago?
   );
 }
 
-export function Deudas() {
+// Deudas y Tarjetas comparten exactamente la misma lógica (misma tabla,
+// mismo historial de abonos/cargos/interés/mora, mismos pagos
+// automáticos) — lo único que cambia entre las dos pantallas es QUÉ
+// subconjunto de `deudas` se muestra y algunos textos. Por eso es un solo
+// componente parametrizado por `soloTarjetas`, no dos copias: una tarjeta
+// de crédito sigue siendo, en el fondo, una deuda con cupo — duplicar
+// toda esta lógica (que incluye programar pagos, editar, historial con
+// cuotas, etc.) para "separarla visualmente" sería repetir ~450 líneas
+// de código que habría que mantener dos veces.
+function DeudasBase({ soloTarjetas }) {
+  const titulo = soloTarjetas ? 'Tarjetas' : 'Deudas';
+  const subtitulo = soloTarjetas
+    ? 'Tus tarjetas de crédito y cuánto debes en cada una'
+    : 'Lo que debes y cómo vas pagando';
+  const tituloResumen = soloTarjetas ? 'Total en tarjetas' : 'Deuda total activa';
+  const tituloBoton = soloTarjetas ? 'Agregar tarjeta' : 'Agregar';
+  const tituloModalNueva = soloTarjetas ? 'Nueva tarjeta' : 'Nueva deuda';
+  const tituloModalEditar = soloTarjetas ? 'Editar tarjeta' : 'Editar deuda';
+  const textoVacio = soloTarjetas ? '¡Sin tarjetas registradas!' : '¡Sin deudas registradas! 🎉';
+  const textoUnidad = soloTarjetas ? 'tarjeta' : 'deuda';
+  const textoEliminarDetalle = soloTarjetas ? 'Eliminar esta tarjeta por completo' : 'Eliminar esta deuda por completo';
+  const confirmEliminar = soloTarjetas
+    ? '¿Eliminar esta tarjeta? También se borra todo su historial.'
+    : '¿Eliminar esta deuda? También se borra todo su historial.';
+  // En la pantalla de Tarjetas no tiene sentido elegir el tipo — siempre
+  // es "Tarjeta de crédito", así que el selector se oculta y el formulario
+  // arranca directo en ese tipo. En Deudas, se excluye esa opción del
+  // desplegable para que las tarjetas solo se creen desde su propia
+  // pantalla y no queden duplicadas/perdidas entre las dos vistas.
+  const tipoInicial = soloTarjetas ? 'Tarjeta de crédito' : 'Otro';
+  const tiposDisponibles = soloTarjetas ? [] : TIPOS_DEUDA.filter(t => t !== 'Tarjeta de crédito');
+
   const [items, setItems]       = useState([]);
   const [modal, setModal]       = useState(false);
-  const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
+  const [form, setForm]         = useState({nombre:'',tipo:tipoInicial,monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
-  const load = () => getDeudas().then(setItems).catch(()=>notifyError('Error cargando deudas'));
+  const load = () => getDeudas().then(setItems).catch(()=>notifyError(`Error cargando ${soloTarjetas ? 'tarjetas' : 'deudas'}`));
   useEffect(()=>{load();},[]);
+
+  // Vista filtrada — todo lo demás del componente opera sobre `itemsFiltrados`,
+  // nunca sobre `items` crudo, para que Deudas y Tarjetas nunca se mezclen.
+  const itemsFiltrados = items.filter(d => soloTarjetas ? d.tipo === 'Tarjeta de crédito' : d.tipo !== 'Tarjeta de crédito');
 
   // ── Detalle de una deuda: historial, pago programado, etc. ──
   const [detalle, setDetalle]           = useState(null);   // deuda seleccionada, o null
@@ -368,8 +403,8 @@ export function Deudas() {
     e.preventDefault();
     try {
       await crearDeuda(form);
-      notifySuccess('Deuda registrada'); setModal(false);
-      setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
+      notifySuccess(soloTarjetas ? 'Tarjeta registrada' : 'Deuda registrada'); setModal(false);
+      setForm({nombre:'',tipo:tipoInicial,monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
       load();
     } catch (err) {
       if (err?.code === '23505') notifyError('Ese medio de pago ya está vinculado a otra tarjeta activa');
@@ -377,13 +412,13 @@ export function Deudas() {
     }
   };
 
-  const del = id => confirmToast('¿Eliminar esta deuda? También se borra todo su historial.', async () => {
+  const del = id => confirmToast(confirmEliminar, async () => {
     await eliminarDeuda(id); notifySuccess('Eliminada');
     if (detalle?.id === id) setDetalle(null);
     load();
   });
 
-  const totalDeuda = items.filter(d=>d.activa).reduce((a,d)=>a+(parseFloat(d.monto_total)-parseFloat(d.monto_pagado)),0);
+  const totalDeuda = itemsFiltrados.filter(d=>d.activa).reduce((a,d)=>a+(parseFloat(d.monto_total)-parseFloat(d.monto_pagado)),0);
 
   const abrirDetalle = async (d) => {
     setDetalle(d); setLoadingDetalle(true);
@@ -455,7 +490,7 @@ export function Deudas() {
     e.preventDefault();
     try {
       await actualizarDeuda(detalle.id, formEditar);
-      notifySuccess('Deuda actualizada');
+      notifySuccess(soloTarjetas ? 'Tarjeta actualizada' : 'Deuda actualizada');
       const id = detalle.id;
       setFormEditar(null);
       refrescarDetalle(id);
@@ -491,18 +526,18 @@ export function Deudas() {
   return (
     <div className="space-y-4 page-enter">
       <div className="flex items-center justify-between">
-        <div><h2 className="text-lg font-medium text-g-900">Deudas</h2><p className="text-sm text-g-400">Lo que debes y cómo vas pagando</p></div>
-        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> Agregar</button>
+        <div><h2 className="text-lg font-medium text-g-900">{titulo}</h2><p className="text-sm text-g-400">{subtitulo}</p></div>
+        <button onClick={()=>setModal(true)} className="btn-primary flex items-center gap-2"><Icon name="plus" className="w-3.5 h-3.5"/> {tituloBoton}</button>
       </div>
       <div className="relative overflow-hidden bg-red-700 rounded-2xl p-4 text-white">
         <div className="card-premium-glow -top-10 -right-10 w-36 h-36 bg-white opacity-[0.06]"/>
-        <p className="relative text-[10px] uppercase tracking-widest text-red-200 mb-1">Deuda total activa</p>
+        <p className="relative text-[10px] uppercase tracking-widest text-red-200 mb-1">{tituloResumen}</p>
         <p className="relative text-3xl font-medium">{fmt(totalDeuda)}</p>
-        <p className="relative text-white/40 text-xs mt-1">{items.filter(d=>d.activa).length} deuda{items.filter(d=>d.activa).length!==1?'s':''} activa{items.filter(d=>d.activa).length!==1?'s':''}</p>
+        <p className="relative text-white/40 text-xs mt-1">{itemsFiltrados.filter(d=>d.activa).length} {textoUnidad}{itemsFiltrados.filter(d=>d.activa).length!==1?'s':''} activa{itemsFiltrados.filter(d=>d.activa).length!==1?'s':''}</p>
       </div>
       <div className="space-y-3">
-        {items.length===0 && <div className="card p-12 text-center"><Icon name="credit-card" className="w-4 h-4 text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Sin deudas registradas! 🎉</p></div>}
-        {items.map(d=>{
+        {itemsFiltrados.length===0 && <div className="card p-12 text-center"><Icon name="credit-card" className="w-4 h-4 text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">{textoVacio}</p></div>}
+        {itemsFiltrados.map(d=>{
           const pendiente = parseFloat(d.monto_total)-parseFloat(d.monto_pagado);
           const pct = Math.round((parseFloat(d.monto_pagado)/parseFloat(d.monto_total))*100);
           const colorProgreso = pct >= 100 ? '#16A34A' : pct >= 66 ? '#4F8F76' : pct >= 33 ? '#C9A84C' : '#8A93A6';
@@ -536,12 +571,14 @@ export function Deudas() {
         })}
       </div>
 
-      {/* Nueva deuda */}
+      {/* Nueva deuda / tarjeta */}
       {modal && (
-      <PantallaCompleta title="Nueva deuda" onClose={()=>setModal(false)}>
+      <PantallaCompleta title={tituloModalNueva} onClose={()=>setModal(false)}>
         <form onSubmit={submit} className="space-y-3">
-          <input className="input" placeholder="Nombre de la deuda" value={form.nombre} onChange={set('nombre')} required/>
-          <select className="select" value={form.tipo} onChange={set('tipo')}>{TIPOS_DEUDA.map(t=><option key={t}>{t}</option>)}</select>
+          <input className="input" placeholder={soloTarjetas ? 'Nombre de la tarjeta' : 'Nombre de la deuda'} value={form.nombre} onChange={set('nombre')} required/>
+          {!soloTarjetas && (
+            <select className="select" value={form.tipo} onChange={set('tipo')}>{tiposDisponibles.map(t=><option key={t}>{t}</option>)}</select>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div><label className="section-label block mb-1">Monto total</label><input type="text" inputMode="numeric" className="input" placeholder="0" value={form.monto_total} onChange={set('monto_total')} required/></div>
             <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="text" inputMode="decimal" className="input" placeholder="0" value={form.tasa_interes} onChange={set('tasa_interes')}/></div>
@@ -636,7 +673,7 @@ export function Deudas() {
               <button onClick={()=>abrirNuevoMov('cargo')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="credit-card" className="w-3.5 h-3.5"/> Registrar compra</button>
               <button onClick={()=>abrirNuevoMov('interes')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="percentage" className="w-3.5 h-3.5"/> Agregar interés</button>
               <button onClick={()=>abrirNuevoMov('mora')} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="alert-triangle" className="w-3.5 h-3.5"/> Agregar mora</button>
-              <button onClick={abrirEditarDeuda} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5 col-span-2"><Icon name="pencil" className="w-3.5 h-3.5"/> Editar deuda</button>
+              <button onClick={abrirEditarDeuda} className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-1.5 col-span-2"><Icon name="pencil" className="w-3.5 h-3.5"/> {tituloModalEditar}</button>
             </div>
 
             {/* Pago programado */}
@@ -699,7 +736,7 @@ export function Deudas() {
               </div>
             </div>
 
-            <button onClick={()=>del(detalle.id)} className="text-red-500 text-xs w-full text-center py-2">Eliminar esta deuda por completo</button>
+            <button onClick={()=>del(detalle.id)} className="text-red-500 text-xs w-full text-center py-2">{textoEliminarDetalle}</button>
           </div>
           )}
         </PantallaCompleta>
@@ -749,14 +786,16 @@ export function Deudas() {
         </PantallaCompleta>
       )}
 
-      {/* Editar datos de la deuda */}
+      {/* Editar datos de la deuda / tarjeta */}
       {formEditar && (
-        <PantallaCompleta title="Editar deuda" onClose={()=>setFormEditar(null)}>
+        <PantallaCompleta title={tituloModalEditar} onClose={()=>setFormEditar(null)}>
           <form onSubmit={guardarEditarDeuda} className="space-y-3 pb-4">
             <input className="input" placeholder="Nombre" value={formEditar.nombre} onChange={e=>setFormEditar(f=>({...f, nombre: e.target.value}))} required/>
-            <select className="select" value={formEditar.tipo} onChange={e=>setFormEditar(f=>({...f, tipo: e.target.value}))}>
-              {TIPOS_DEUDA.map(t=><option key={t}>{t}</option>)}
-            </select>
+            {!soloTarjetas && (
+              <select className="select" value={formEditar.tipo} onChange={e=>setFormEditar(f=>({...f, tipo: e.target.value}))}>
+                {tiposDisponibles.map(t=><option key={t}>{t}</option>)}
+              </select>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="text" inputMode="decimal" className="input" value={formEditar.tasa_interes} onChange={e=>setFormEditar(f=>({...f, tasa_interes: e.target.value.replace(',','.')}))}/></div>
               <div><label className="section-label block mb-1">Interés mensual fijo</label><input type="text" inputMode="numeric" className="input" value={formEditar.interes_mensual_monto} onChange={e=>setFormEditar(f=>({...f, interes_mensual_monto: e.target.value.replace(',','.')}))}/></div>
@@ -816,6 +855,9 @@ export function Deudas() {
     </div>
   );
 }
+
+export function Deudas() { return <DeudasBase soloTarjetas={false}/>; }
+export function Tarjetas() { return <DeudasBase soloTarjetas={true}/>; }
 
 // ─── METAS ────────────────────────────────────────────
 export function Metas() {
