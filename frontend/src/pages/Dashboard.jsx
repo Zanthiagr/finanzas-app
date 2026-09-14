@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { getMovimientos, getResumen, getPagosProgramados, getPagosFijosDelMes, pagarPagoFijo, saltarPagoFijoEsteMes, getSaldoTotal, getPresupuestos, getCierres, getDeudas, getMetas, getPrestamos, abonarDeuda, aportarMeta, abonarPrestamo, marcarPagoUnicoComoPagado } from '../utils/api';
-import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL, BANCOS } from '../utils/helpers';
+import { getMovimientos, getResumen, getPagosProgramados, getPagosFijosDelMes, pagarPagoFijo, saltarPagoFijoEsteMes, getSaldoTotal, getPresupuestos, getCierres, getDeudas, getMetas, getPrestamos, getTarjetas, pagarTarjeta, abonarDeuda, aportarMeta, abonarPrestamo, marcarPagoUnicoComoPagado } from '../utils/api';
+import { fmt, fmtShort, calcSaludFinanciera, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, getCurrentWeek, todayLocalStr, DIA_CIERRE_SEMANAL, BANCOS, proximaFechaDia, diasHasta } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import PantallaCompleta from '../components/PantallaCompleta';
 import CapitalInicialForm from '../components/CapitalInicialForm';
@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [modalAbono, setModalAbono]       = useState(null); // deuda seleccionada, o null
   const [modalAporte, setModalAporte]     = useState(null); // meta seleccionada, o null
   const [modalAbonoPrestamo, setModalAbonoPrestamo] = useState(null); // préstamo seleccionado, o null
+  const [modalPagoTarjeta, setModalPagoTarjeta] = useState(null); // tarjeta seleccionada, o null
   const [montoRapido, setMontoRapido]     = useState('');
   const [medioRapido, setMedioRapido]     = useState('');
   const [guardandoRapido, setGuardandoRapido] = useState(false);
@@ -109,13 +110,14 @@ export default function Dashboard() {
       getDeudas(),
       getMetas(),
       getPrestamos(),
-    ]).then(([r, m, s, pres, cierresData, deudasData, metasData, prestamosData]) => {
+      getTarjetas(),
+    ]).then(([r, m, s, pres, cierresData, deudasData, metasData, prestamosData, tarjetasData]) => {
       setResumen(r);
       setMovRecientes(m.slice(0, 5));
       setSaldo(s);
       setPresupuestos(pres || []);
       setCierres(cierresData || []);
-      setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
+      setTarjetas((tarjetasData || []).filter(t => t.activa));
       setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
       setMetasActivas((metasData || []).filter(m => !m.completada));
       setPrestamosActivos((prestamosData || []).filter(p => p.activo));
@@ -129,8 +131,8 @@ export default function Dashboard() {
   }, []);
 
   const recargarDeudasYMetas = () => {
-    Promise.all([getDeudas(), getMetas(), getPrestamos()]).then(([deudasData, metasData, prestamosData]) => {
-      setTarjetas((deudasData || []).filter(d => d.tipo === 'Tarjeta de crédito' && d.activa));
+    Promise.all([getDeudas(), getMetas(), getPrestamos(), getTarjetas()]).then(([deudasData, metasData, prestamosData, tarjetasData]) => {
+      setTarjetas((tarjetasData || []).filter(t => t.activa));
       setDeudasActivas((deudasData || []).filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)));
       setMetasActivas((metasData || []).filter(m => !m.completada));
       setPrestamosActivos((prestamosData || []).filter(p => p.activo));
@@ -183,6 +185,22 @@ export default function Dashboard() {
       }
       setModalAbonoPrestamo(null); setMontoRapido(''); setMedioRapido('');
       recargarDeudasYMetas();
+    } catch { notifyError('Error registrando el pago'); }
+    finally { setGuardandoRapido(false); }
+  };
+
+  const confirmarPagoTarjeta = async () => {
+    const monto = parseFloat(String(montoRapido).replace(',','.'));
+    if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
+    if (!medioRapido) return notifyError('Elige con qué cuenta pagaste');
+    setGuardandoRapido(true);
+    try {
+      await pagarTarjeta(modalPagoTarjeta, monto, medioRapido, hoyStr);
+      notifySuccess('Pago registrado — ya se descontó de tu saldo 🎉');
+      confetti({ particleCount: 60, spread: 65, origin: { y: 0.7 } });
+      setModalPagoTarjeta(null); setMontoRapido(''); setMedioRapido('');
+      recargarDeudasYMetas();
+      cargarSaldo();
     } catch { notifyError('Error registrando el pago'); }
     finally { setGuardandoRapido(false); }
   };
@@ -458,42 +476,57 @@ export default function Dashboard() {
       )}
 
       {/* Tarjetas de crédito — un vistazo rápido sin tener que entrar a
-          Deudas. Siempre muestra "% pagado" (no depende de tener cupo
-          configurado, que es opcional) — antes, sin cupo, solo se veía
-          el nombre y un número suelto sin ninguna etiqueta que dijera
-          qué era. El cupo, si está configurado, se muestra como info
-          extra debajo, no como la única fuente de la barra de progreso. */}
+          Tarjetas. A diferencia de una deuda, acá NO existe "% pagado"
+          (es una cuenta revolvente: el cupo se usa y se libera una y
+          otra vez) — lo que importa es cuánto cupo queda disponible, y
+          el color de la barra avisa por NIVEL DE USO del cupo (alto uso
+          = alerta), al revés que en Deudas donde alto = bueno. */}
       {tarjetas.length > 0 && (
         <div className="space-y-2">
-          <p className="section-label px-1">Tarjetas de crédito</p>
-          {tarjetas.map(t => {
-            const total = parseFloat(t.monto_total) || 0;
-            const pendiente = total - parseFloat(t.monto_pagado || 0);
-            const pctPagado = total > 0 ? Math.min(Math.round(((total - pendiente) / total) * 100), 100) : 0;
+          <div className="flex items-center justify-between px-1">
+            <p className="section-label">Tarjetas de crédito</p>
+            {tarjetas.length > 3 && <Link to="/tarjetas" className="text-[11px] text-g-500 font-medium">Ver todas</Link>}
+          </div>
+          {tarjetas.slice(0, 3).map(t => {
+            const saldo = parseFloat(t.saldo_actual) || 0;
             const cupo = parseFloat(t.cupo_total) || 0;
-            const cupoDisponible = cupo > 0 ? Math.max(cupo - pendiente, 0) : null;
-            const colorBarra = pctPagado >= 100 ? '#16A34A' : pctPagado >= 50 ? '#4F8F76' : pctPagado >= 20 ? '#C9A84C' : '#E5484D';
+            const pctUso = cupo > 0 ? Math.min(Math.round((saldo / cupo) * 100), 100) : null;
+            const cupoDisponible = cupo > 0 ? Math.max(cupo - saldo, 0) : null;
+            const color = pctUso === null ? '#5B6472' : pctUso >= 90 ? '#E5484D' : pctUso >= 60 ? '#B8663F' : pctUso >= 30 ? '#C9A84C' : '#16A34A';
+            const fPago = t.dia_pago ? proximaFechaDia(t.dia_pago) : null;
+            const dPago = fPago ? diasHasta(fPago) : null;
             return (
-              <Link key={t.id} to="/deudas" className="card p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${colorBarra}1F` }}>
-                  <Icon name="credit-card" className="w-4 h-4" style={{ color: colorBarra }}/>
-                </div>
-                <div className="flex-1 min-w-0">
+              <div key={t.id} className="card p-4 flex items-center gap-3">
+                <Link to="/tarjetas" className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F` }}>
+                  <Icon name="credit-card" className="w-4 h-4" style={{ color }}/>
+                </Link>
+                <Link to="/tarjetas" className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-0.5">
                     <p className="text-sm font-medium text-g-900 truncate">{t.nombre}</p>
-                    <p className="text-sm font-medium text-red-600 flex-shrink-0">{fmtShort(pendiente)}</p>
+                    <p className="text-sm font-medium text-g-900 flex-shrink-0">{fmtShort(saldo)}</p>
                   </div>
-                  <p className="text-[10px] text-g-400 mb-1.5">Pendiente por pagar</p>
-                  <div className="h-1.5 bg-g-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pctPagado}%`, background: colorBarra }}/>
-                  </div>
-                  <p className="text-[10px] text-g-400 mt-1">
-                    {pctPagado}% pagado
-                    {cupo > 0 && ` · ${fmtShort(cupoDisponible)} de cupo disponible`}
-                    {cupo === 0 && t.dia_corte && ` · Corte el día ${t.dia_corte}`}
-                  </p>
-                </div>
-              </Link>
+                  {cupo > 0 ? (
+                    <>
+                      <div className="h-1.5 bg-g-100 rounded-full overflow-hidden mb-1">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pctUso}%`, background: color }}/>
+                      </div>
+                      <p className="text-[10px]" style={{ color }}>
+                        {pctUso}% del cupo usado · {fmtShort(cupoDisponible)} disponible
+                        {dPago !== null && dPago >= 0 && dPago <= 5 && ` · Pago en ${dPago === 0 ? 'hoy' : `${dPago}d`}`}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-g-400 mt-1">
+                      Saldo pendiente
+                      {dPago !== null && dPago >= 0 && dPago <= 5 && ` · Pago en ${dPago === 0 ? 'hoy' : `${dPago} día${dPago !== 1 ? 's' : ''}`}`}
+                    </p>
+                  )}
+                </Link>
+                <button onClick={() => { setModalPagoTarjeta(t); setMontoRapido(''); setMedioRapido(''); }}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-g-800 text-white flex-shrink-0 active:scale-95 transition-transform">
+                  Pagar
+                </button>
+              </div>
             );
           })}
         </div>
@@ -523,7 +556,7 @@ export default function Dashboard() {
                   <div key={d.id} className="card p-3.5">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F` }}>
-                        <Icon name="credit-card" className="w-4 h-4" style={{ color }}/>
+                        <Icon name="hand-coins" className="w-4 h-4" style={{ color }}/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -846,7 +879,7 @@ export default function Dashboard() {
           {[
             { to: '/cierre',       icon: 'ti-calendar-stats', label: 'Cierre',       color: '#2452FF', bg: '#E8EDFF' },
             { to: '/presupuestos', icon: 'ti-wallet',         label: 'Presupuestos', color: '#9A7530', bg: '#F5E8C0' },
-            { to: '/deudas',       icon: 'ti-credit-card',    label: 'Deudas',       color: '#E5484D', bg: '#FCEBEB' },
+            { to: '/tarjetas',     icon: 'ti-credit-card',    label: 'Tarjetas',     color: '#B8663F', bg: '#F5E9E1' },
             { to: '/activos',      icon: 'ti-building-bank',  label: 'Activos',      color: '#16A34A', bg: '#E9F9EF' },
           ].map(a => (
             <Link key={a.to} to={a.to} className="card p-2.5 flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
@@ -927,6 +960,26 @@ export default function Dashboard() {
             </div>
             <SelectorMedioPagoRapido value={medioRapido} onChange={setMedioRapido} label="¿A qué cuenta llegó el pago?"/>
             <button onClick={confirmarAbonoPrestamo} disabled={guardandoRapido} className="btn-primary w-full py-4 disabled:opacity-50">
+              {guardandoRapido ? 'Guardando...' : 'Registrar pago'}
+            </button>
+          </div>
+        </PantallaCompleta>
+      )}
+
+      {modalPagoTarjeta && (
+        <PantallaCompleta title={`Pagar: ${modalPagoTarjeta.nombre}`} onClose={() => { setModalPagoTarjeta(null); setMontoRapido(''); setMedioRapido(''); }}>
+          <div className="space-y-4">
+            <div className="card p-4 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-g-400 mb-1">Saldo actual</p>
+              <p className="text-2xl font-medium text-g-900">{fmt(modalPagoTarjeta.saldo_actual)}</p>
+            </div>
+            <div>
+              <label className="section-label block mb-1">Monto a pagar</label>
+              <input type="text" inputMode="numeric" className="input" placeholder="Ej: 200000" autoFocus
+                value={montoRapido} onChange={e => setMontoRapido(e.target.value.replace(',', '.'))}/>
+            </div>
+            <SelectorMedioPagoRapido value={medioRapido} onChange={setMedioRapido} label="¿Con qué cuenta pagaste?"/>
+            <button onClick={confirmarPagoTarjeta} disabled={guardandoRapido} className="btn-primary w-full py-4 disabled:opacity-50">
               {guardandoRapido ? 'Guardando...' : 'Registrar pago'}
             </button>
           </div>

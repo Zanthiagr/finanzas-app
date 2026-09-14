@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import Ring from '../Ring';
 import {
   LayoutDashboard, ArrowLeftRight, CalendarRange, CalendarDays, Wallet,
-  FileDown, Landmark, CreditCard, Target, Brain, GraduationCap, Calculator,
+  FileDown, Landmark, CreditCard, HandCoins, Target, Brain, GraduationCap, Calculator,
   Bot, MoreHorizontal, X, LogOut, Repeat, Plus, ArrowLeft, UserCircle,
 } from 'lucide-react';
 
@@ -39,7 +39,8 @@ const NAV_DESKTOP = [
   { to: '/presupuestos', icon: Wallet,          label: 'Presupuestos',   group: 'principal' },
   { to: '/reporte',      icon: FileDown,        label: 'Reporte PDF',    group: 'principal' },
   { to: '/activos',      icon: Landmark,        label: 'Activos',        group: 'patrimonio' },
-  { to: '/deudas',       icon: CreditCard,      label: 'Deudas',         group: 'patrimonio' },
+  { to: '/tarjetas',     icon: CreditCard,      label: 'Tarjetas de crédito', group: 'patrimonio' },
+  { to: '/deudas',       icon: HandCoins,       label: 'Deudas',         group: 'patrimonio' },
   { to: '/metas',        icon: Target,          label: 'Metas',          group: 'patrimonio' },
   { to: '/prestamos',    icon: ArrowLeftRight,  label: 'Préstamos',      group: 'patrimonio' },
   { to: '/mental',       icon: Brain,           label: 'Mentalidad',     group: 'crecimiento' },
@@ -70,7 +71,8 @@ const NAV_MOBILE_MAS_GRUPOS = [
     label: 'Patrimonio',
     items: [
       { to: '/activos',      icon: Landmark,   label: 'Activos',      color: '#4E7AA8' },
-      { to: '/deudas',       icon: CreditCard, label: 'Deudas',       color: '#E5484D' },
+      { to: '/tarjetas',     icon: CreditCard, label: 'Tarjetas',     color: '#B8663F' },
+      { to: '/deudas',       icon: HandCoins,  label: 'Deudas',       color: '#E5484D' },
       { to: '/metas',        icon: Target,     label: 'Metas',        color: '#4F8F76' },
       { to: '/prestamos',    icon: ArrowLeftRight, label: 'Préstamos', color: '#2452FF' },
       { to: '/presupuestos', icon: Wallet,     label: 'Presupuestos', color: '#C9A84C' },
@@ -112,6 +114,7 @@ const PAGE_TITLES = {
   '/presupuestos':  'Presupuestos',
   '/reporte':       'Reporte PDF',
   '/activos':       'Activos',
+  '/tarjetas':      'Tarjetas de crédito',
   '/deudas':        'Deudas',
   '/metas':         'Metas',
   '/prestamos':     'Préstamos',

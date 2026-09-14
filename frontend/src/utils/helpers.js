@@ -84,6 +84,31 @@ export const ultimoDiaDelMes = (mes, anio) => new Date(anio, mes, 0).getDate();
 // recurrente (Netflix, arriendo, etc.) en vez de saltarse el mes entero.
 export const diaEfectivoPago = (diaMes, mes, anio) => Math.min(diaMes, ultimoDiaDelMes(mes, anio));
 
+// Próxima fecha (Date, hora local) en que cae un día fijo del mes —
+// usado por el ciclo de tarjetas de crédito (día de corte, día de pago).
+// Si ese día ya pasó este mes, salta directo al mismo día del mes
+// siguiente (ajustado con diaEfectivoPago si el mes es corto).
+export const proximaFechaDia = (diaMes, desde = new Date()) => {
+  if (!diaMes) return null;
+  const hoy = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
+  let mes = hoy.getMonth() + 1, anio = hoy.getFullYear();
+  let fecha = new Date(anio, mes - 1, diaEfectivoPago(diaMes, mes, anio));
+  if (fecha < hoy) {
+    mes += 1;
+    if (mes > 12) { mes = 1; anio += 1; }
+    fecha = new Date(anio, mes - 1, diaEfectivoPago(diaMes, mes, anio));
+  }
+  return fecha;
+};
+
+// Días de calendario (puede ser negativo si ya pasó) entre hoy y una fecha.
+export const diasHasta = (fecha, desde = new Date()) => {
+  if (!fecha) return null;
+  const hoy = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
+  const f = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  return Math.round((f - hoy) / 86400000);
+};
+
 export const getCurrentWeek = () => getSemanaDelMes(new Date().getDate());
 
 // Día de la semana en que se recomienda hacer el cierre semanal.

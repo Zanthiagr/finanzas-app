@@ -15,7 +15,7 @@ import {
   Loader2, LogOut, Moon, NotebookPen, Pencil, Percent, Plane, Plus, Quote,
   Receipt, RefreshCw, Repeat, Bot, Scale, GraduationCap, Send, Shield,
   Shirt, ShoppingCart, Sparkles, Tag, Target, Trash2, TrendingDown,
-  TrendingUp, UserCircle, Wallet, Wifi, X, Search,
+  TrendingUp, UserCircle, Wallet, Wifi, X, Search, HandCoins, Gauge,
 } from 'lucide-react';
 
 export const ICONOS = {
@@ -56,6 +56,8 @@ export const ICONOS = {
   'chevron-up': ChevronUp,
   'coin': Coins,
   'credit-card': CreditCard,
+  'hand-coins': HandCoins,
+  'gauge': Gauge,
   'device-laptop': Laptop,
   'device-tv': Tv,
   'dots': MoreHorizontal,
