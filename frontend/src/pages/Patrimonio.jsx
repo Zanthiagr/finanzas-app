@@ -16,7 +16,10 @@ import Icon from '../utils/icons';
 import confetti from 'canvas-confetti';
 
 const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','CDT','Vehículo','Inmueble','Negocio','Préstamo otorgado','Otro'];
-const TIPOS_DEUDA  = ['Tarjeta de crédito','Crédito bancario','Préstamo personal','Hipoteca','Gota a gota','Otro'];
+// 'Tarjeta de crédito' ya no vive acá — tiene su propia sección
+// (pages/Tarjetas.jsx) porque es una cuenta real, no una deuda genérica
+// que se "termina de pagar" (ver esa página para el detalle del porqué).
+const TIPOS_DEUDA  = ['Crédito bancario','Préstamo personal','Hipoteca','Gota a gota','Otro'];
 const ICONOS_META  = ['ti-target','ti-plane','ti-home','ti-device-laptop','ti-car','ti-heart','ti-shield','ti-coin'];
 const TIPOS_REND   = [
   { value:'manual',         label:'Manual',               desc:'Actualizo el valor yo mismo' },
@@ -349,7 +352,7 @@ function SelectorMedioPago({ value, onChange, label = '¿Con qué medio de pago?
 export function Deudas() {
   const [items, setItems]       = useState([]);
   const [modal, setModal]       = useState(false);
-  const [form, setForm]         = useState({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
+  const [form, setForm]         = useState({nombre:'',tipo:'Crédito bancario',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:''});
   const set = k => e => setForm(f=>({...f,[k]:String(e.target.value).replace(',','.')}));
   const load = () => getDeudas().then(setItems).catch(()=>notifyError('Error cargando deudas'));
   useEffect(()=>{load();},[]);
@@ -369,11 +372,10 @@ export function Deudas() {
     try {
       await crearDeuda(form);
       notifySuccess('Deuda registrada'); setModal(false);
-      setForm({nombre:'',tipo:'Tarjeta de crédito',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:'',medio_pago_vinculado:'',cupo_total:'',dia_corte:'',pago_minimo_pct:''});
+      setForm({nombre:'',tipo:'Crédito bancario',monto_total:'',tasa_interes:'',fecha_limite:'',interes_mensual_monto:''});
       load();
-    } catch (err) {
-      if (err?.code === '23505') notifyError('Ese medio de pago ya está vinculado a otra tarjeta activa');
-      else notifyError('Error guardando');
+    } catch {
+      notifyError('Error guardando');
     }
   };
 
@@ -446,9 +448,6 @@ export function Deudas() {
     nombre: detalle.nombre, tipo: detalle.tipo,
     tasa_interes: detalle.tasa_interes ?? '', fecha_limite: detalle.fecha_limite ?? '',
     interes_mensual_monto: detalle.interes_mensual_monto ?? '',
-    medio_pago_vinculado: detalle.medio_pago_vinculado ?? '',
-    cupo_total: detalle.cupo_total ?? '', dia_corte: detalle.dia_corte ?? '',
-    pago_minimo_pct: detalle.pago_minimo_pct ?? '',
   });
 
   const guardarEditarDeuda = async e => {
@@ -459,9 +458,8 @@ export function Deudas() {
       const id = detalle.id;
       setFormEditar(null);
       refrescarDetalle(id);
-    } catch (err) {
-      if (err?.code === '23505') notifyError('Ese medio de pago ya está vinculado a otra tarjeta activa');
-      else notifyError('Error actualizando');
+    } catch {
+      notifyError('Error actualizando');
     }
   };
 
@@ -501,7 +499,7 @@ export function Deudas() {
         <p className="relative text-white/40 text-xs mt-1">{items.filter(d=>d.activa).length} deuda{items.filter(d=>d.activa).length!==1?'s':''} activa{items.filter(d=>d.activa).length!==1?'s':''}</p>
       </div>
       <div className="space-y-3">
-        {items.length===0 && <div className="card p-12 text-center"><Icon name="credit-card" className="w-4 h-4 text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Sin deudas registradas! 🎉</p></div>}
+        {items.length===0 && <div className="card p-12 text-center"><Icon name="hand-coins" className="w-4 h-4 text-4xl text-g-200 block mb-2"/><p className="text-g-400 text-sm">¡Sin deudas registradas! 🎉</p></div>}
         {items.map(d=>{
           const pendiente = parseFloat(d.monto_total)-parseFloat(d.monto_pagado);
           const pct = Math.round((parseFloat(d.monto_pagado)/parseFloat(d.monto_total))*100);
@@ -551,23 +549,6 @@ export function Deudas() {
             <input type="text" inputMode="numeric" className="input" placeholder="Ej: 45.000 — si te cobran un interés fijo aparte cada mes" value={form.interes_mensual_monto} onChange={set('interes_mensual_monto')}/>
           </div>
           <input type="date" className="input" value={form.fecha_limite} onChange={set('fecha_limite')}/>
-          {form.tipo === 'Tarjeta de crédito' && (
-            <div className="card p-3 bg-g-50 space-y-3">
-              <p className="text-xs text-g-500 flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
-              <select className="select" value={form.medio_pago_vinculado} onChange={set('medio_pago_vinculado')}>
-                <option value="">Sin vincular (llevar manualmente)</option>
-                {BANCOS.filter(b=>b.value!=='otro_banco').map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
-              </select>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="section-label block mb-1">Cupo total</label><input type="text" inputMode="numeric" className="input" placeholder="Opcional" value={form.cupo_total} onChange={set('cupo_total')}/></div>
-                <div><label className="section-label block mb-1">Día de corte</label><input type="number" min="1" max="31" className="input" placeholder="Opcional" value={form.dia_corte} onChange={set('dia_corte')}/></div>
-              </div>
-              <div>
-                <label className="section-label block mb-1">Pago mínimo (% estimado)</label>
-                <input type="text" inputMode="decimal" className="input" placeholder="Ej: 10 — confirma siempre en tu extracto" value={form.pago_minimo_pct} onChange={set('pago_minimo_pct')}/>
-              </div>
-            </div>
-          )}
           <div className="flex gap-2 pt-2 pb-4">
             <button type="button" onClick={()=>setModal(false)} className="btn-secondary flex-1">Cancelar</button>
             <button type="submit" className="btn-primary flex-1">Guardar</button>
@@ -607,27 +588,7 @@ export function Deudas() {
                 {detalle.tasa_interes>0 && <span><Icon name="percentage" className="w-4 h-4 mr-1"/>{detalle.tasa_interes}% EA</span>}
                 {detalle.interes_mensual_monto>0 && <span><Icon name="calendar-repeat" className="w-4 h-4 mr-1"/>{fmtShort(detalle.interes_mensual_monto)}/mes fijo</span>}
                 {detalle.fecha_limite && <span><Icon name="calendar" className="w-4 h-4 mr-1"/>Vence {fmtDate(detalle.fecha_limite)}</span>}
-                {detalle.medio_pago_vinculado && <span><Icon name="link" className="w-4 h-4 mr-1"/>{BANCOS.find(b=>b.value===detalle.medio_pago_vinculado)?.label || detalle.medio_pago_vinculado}</span>}
-                {detalle.dia_corte && <span><Icon name="calendar-stats" className="w-4 h-4 mr-1"/>Corte el {detalle.dia_corte}</span>}
               </div>
-              {(detalle.cupo_total>0 || detalle.pago_minimo_pct>0) && (
-                <div className="grid grid-cols-2 gap-3 pt-3 mt-3 border-t border-g-200/60">
-                  {detalle.cupo_total>0 && (
-                    <div>
-                      <p className="section-label">Cupo disponible</p>
-                      <p className="text-sm font-medium text-g-900">{fmt(Math.max(parseFloat(detalle.cupo_total)-(parseFloat(detalle.monto_total)-parseFloat(detalle.monto_pagado)),0))}</p>
-                      <p className="text-[10px] text-g-400">de {fmt(detalle.cupo_total)}</p>
-                    </div>
-                  )}
-                  {detalle.pago_minimo_pct>0 && (
-                    <div>
-                      <p className="section-label">Pago mínimo (estimado)</p>
-                      <p className="text-sm font-medium text-g-900">{fmt((parseFloat(detalle.monto_total)-parseFloat(detalle.monto_pagado))*parseFloat(detalle.pago_minimo_pct)/100)}</p>
-                      <p className="text-[10px] text-g-400">confirma en tu extracto</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Acciones */}
@@ -762,23 +723,6 @@ export function Deudas() {
               <div><label className="section-label block mb-1">Interés mensual fijo</label><input type="text" inputMode="numeric" className="input" value={formEditar.interes_mensual_monto} onChange={e=>setFormEditar(f=>({...f, interes_mensual_monto: e.target.value.replace(',','.')}))}/></div>
             </div>
             <div><label className="section-label block mb-1">Fecha límite</label><input type="date" className="input" value={formEditar.fecha_limite} onChange={e=>setFormEditar(f=>({...f, fecha_limite: e.target.value}))}/></div>
-            {formEditar.tipo === 'Tarjeta de crédito' && (
-              <div className="card p-3 bg-g-50 space-y-3">
-                <p className="text-xs text-g-500 flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
-                <select className="select" value={formEditar.medio_pago_vinculado} onChange={e=>setFormEditar(f=>({...f, medio_pago_vinculado: e.target.value}))}>
-                  <option value="">Sin vincular (llevar manualmente)</option>
-                  {BANCOS.filter(b=>b.value!=='otro_banco').map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
-                </select>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className="section-label block mb-1">Cupo total</label><input type="text" inputMode="numeric" className="input" placeholder="Opcional" value={formEditar.cupo_total} onChange={e=>setFormEditar(f=>({...f, cupo_total: e.target.value.replace(',','.')}))}/></div>
-                  <div><label className="section-label block mb-1">Día de corte</label><input type="number" min="1" max="31" className="input" placeholder="Opcional" value={formEditar.dia_corte} onChange={e=>setFormEditar(f=>({...f, dia_corte: e.target.value}))}/></div>
-                </div>
-                <div>
-                  <label className="section-label block mb-1">Pago mínimo (% estimado)</label>
-                  <input type="text" inputMode="decimal" className="input" placeholder="Ej: 10" value={formEditar.pago_minimo_pct} onChange={e=>setFormEditar(f=>({...f, pago_minimo_pct: e.target.value.replace(',','.')}))}/>
-                </div>
-              </div>
-            )}
             <p className="text-[11px] text-g-400">El monto total y lo pagado no se editan aquí — se calculan solos desde el historial de abonos/intereses/mora/compras.</p>
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={()=>setFormEditar(null)} className="btn-secondary flex-1">Cancelar</button>
