@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta, getPrestamos, crearPrestamo, abonarPrestamo } from '../utils/api';
+import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta, getPrestamos, crearPrestamo, abonarPrestamo, getDeudas, abonarDeuda } from '../utils/api';
 import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import { notifySuccess, notifyError } from '../utils/notify';
@@ -84,7 +84,7 @@ function MovRow({ m, onEdit, onDelete }) {
 // Se renderiza como una página normal, sin position:fixed ni overflow
 // especiales. Esto evita por completo los bugs de scroll táctil de iOS
 // que afectan a los modales superpuestos.
-function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta, prestamosActivos, prestamoDestinoId, setPrestamoDestinoId, nombrePrestamo, setNombrePrestamo }) {
+function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta, prestamosActivos, prestamoDestinoId, setPrestamoDestinoId, nombrePrestamo, setNombrePrestamo, deudasActivas, deudaDestinoId, setDeudaDestinoId }) {
   const medioActual = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
   const esConTarjeta = form.tipo === 'gasto' && mediosPagoTarjeta?.has(medioActual);
   // La categoría "Préstamos" no es solo una etiqueta más — al elegirla en
@@ -94,6 +94,12 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
   // movimiento aparece automáticamente en la ventana de Préstamos, en vez
   // de quedar suelto con la categoría pero desconectado de todo.
   const esPrestamoNuevo = !editing && form.categoria === 'Préstamos';
+  // Mismo tratamiento para "Deudas": un gasto nuevo en esta categoría es
+  // un abono real a una deuda existente — se pide cuál, y se usa
+  // abonarDeuda() (crea el movimiento Y el abono vinculado), en vez de
+  // quedar como un gasto suelto sin tocar el saldo de ninguna deuda.
+  // Solo aplica a "gasto" porque 'Deudas' no está en CATS_INGRESO.
+  const esDeudaVinculada = !editing && form.categoria === 'Deudas' && form.tipo === 'gasto';
   return (
     <PantallaCompleta title={editing ? 'Editar movimiento' : 'Nuevo movimiento'} onClose={onCancel}>
       <form onSubmit={onSubmit} className="space-y-4">
@@ -135,6 +141,20 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
                 {prestamosActivos.map(p => <option key={p.id} value={p.id}>{p.nombre} (falta {fmtShort(parseFloat(p.monto_total)-parseFloat(p.monto_recibido))})</option>)}
               </select>
             )}
+          </div>
+        )}
+        {esDeudaVinculada && (
+          <div className="card p-3 bg-red-50 border-red-100">
+            <label className="section-label block mb-1">¿A cuál deuda corresponde este pago?</label>
+            {deudasActivas.length === 0 ? (
+              <p className="text-xs text-red-700/80">No tienes deudas activas todavía. Primero créala en la sección Deudas.</p>
+            ) : (
+              <select className="select" value={deudaDestinoId} onChange={e=>setDeudaDestinoId(e.target.value)} required>
+                <option value="" disabled>Elige la deuda</option>
+                {deudasActivas.map(d => <option key={d.id} value={d.id}>{d.nombre} (falta {fmtShort(parseFloat(d.monto_total)-parseFloat(d.monto_pagado))})</option>)}
+              </select>
+            )}
+            <p className="text-[11px] text-red-700/70 mt-1.5">Esto se registra como abono — el saldo de la deuda baja de verdad.</p>
           </div>
         )}
         <div>
@@ -205,12 +225,20 @@ export default function Movimientos() {
   const [prestamosActivos, setPrestamosActivos] = useState([]);
   const [prestamoDestinoId, setPrestamoDestinoId] = useState('');
   const [nombrePrestamo, setNombrePrestamo] = useState('');
+  const [deudasActivas, setDeudasActivas] = useState([]);
+  const [deudaDestinoId, setDeudaDestinoId] = useState('');
 
   useEffect(() => { getMediosPagoTarjeta().then(setMediosPagoTarjeta).catch(()=>{}); }, []);
 
   useEffect(() => {
     if (!editing && form.categoria === 'Préstamos' && form.tipo === 'ingreso') {
       getPrestamos().then(all => setPrestamosActivos(all.filter(p => p.activo))).catch(() => {});
+    }
+  }, [form.categoria, form.tipo, editing]);
+
+  useEffect(() => {
+    if (!editing && form.categoria === 'Deudas' && form.tipo === 'gasto') {
+      getDeudas().then(all => setDeudasActivas(all.filter(d => d.activa && parseFloat(d.monto_total) > parseFloat(d.monto_pagado)))).catch(() => {});
     }
   }, [form.categoria, form.tipo, editing]);
 
@@ -252,6 +280,7 @@ export default function Movimientos() {
     setEditing(null);
     setNombrePrestamo('');
     setPrestamoDestinoId('');
+    setDeudaDestinoId('');
     // Si estamos viendo un mes distinto al actual, la fecha por defecto
     // cae en ese mes (día 1) en vez de "hoy" para no registrar en el mes equivocado
     const fechaDefault = esMesActual
@@ -277,6 +306,7 @@ export default function Movimientos() {
     if (!form.monto || parseFloat(form.monto)<=0) return notifyError('El monto debe ser mayor a 0');
     const medioFinal = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
     const esPrestamoNuevo = !editing && form.categoria === 'Préstamos';
+    const esDeudaVinculada = !editing && form.categoria === 'Deudas' && form.tipo === 'gasto';
 
     try {
       if (esPrestamoNuevo && form.tipo === 'gasto') {
@@ -288,6 +318,11 @@ export default function Movimientos() {
         const prestamo = prestamosActivos.find(p => p.id === prestamoDestinoId);
         await abonarPrestamo(prestamo, form.monto, medioFinal, form.fecha);
         notifySuccess('Pago registrado en el préstamo');
+      } else if (esDeudaVinculada) {
+        if (!deudaDestinoId) return notifyError('Elige a cuál deuda corresponde este pago');
+        const deuda = deudasActivas.find(d => d.id === deudaDestinoId);
+        await abonarDeuda(deuda, form.monto, medioFinal, form.fecha);
+        notifySuccess('Abono registrado en la deuda');
       } else {
         editing ? await actualizarMovimiento(editing, form) : await crearMovimiento(form);
         notifySuccess(editing?'Actualizado':'Registrado');
@@ -488,6 +523,9 @@ export default function Movimientos() {
           setPrestamoDestinoId={setPrestamoDestinoId}
           nombrePrestamo={nombrePrestamo}
           setNombrePrestamo={setNombrePrestamo}
+          deudasActivas={deudasActivas}
+          deudaDestinoId={deudaDestinoId}
+          setDeudaDestinoId={setDeudaDestinoId}
         />
       )}
     </div>

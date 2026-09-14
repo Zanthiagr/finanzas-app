@@ -134,16 +134,31 @@ export const actualizarMovimiento = async (id, mov) => {
     anio_num:    fecha.getFullYear(),
   };
 
+  // Antes de tocar nada, revisa si este movimiento ya tenía un abono
+  // vinculado a una deuda (creado desde "Abonar" en Dashboard/Patrimonio,
+  // o desde este mismo formulario con la categoría "Deudas") — para
+  // poder recrearlo con los datos nuevos después de actualizar, en vez de
+  // solo borrarlo y dejar la deuda desincronizada del monto/fecha real.
+  const { data: deudaVinculada } = await supabase
+    .from('deuda_movimientos').select('deuda_id, tipo, nota').eq('movimiento_id', id).maybeSingle();
+
   const { data, error } = await supabase
     .from('movimientos').update(payload).eq('id', id).select().single();
   if (error) throw error;
 
   // Si este movimiento ya tenía un cargo vinculado en alguna tarjeta, se
-  // borra (recalcula esa deuda) y se vuelve a evaluar desde cero con los
+  // borra (recalcula esa deuda/tarjeta) y se vuelve a evaluar desde cero con los
   // datos nuevos — más simple y confiable que intentar "actualizar en el
   // sitio", porque el medio de pago pudo cambiar de tarjeta a efectivo o
   // viceversa, o pudo cambiar el monto.
   await borrarCargoVinculado(id);
+
+  if (deudaVinculada) {
+    await crearDeudaMovimiento({
+      deuda_id: deudaVinculada.deuda_id, tipo: deudaVinculada.tipo, monto: payload.monto,
+      fecha: payload.fecha, nota: deudaVinculada.nota, movimiento_id: id,
+    });
+  }
   await sincronizarCargoTarjeta(userId, medioPago, payload.tipo, payload.monto, payload.fecha, id, mov.descripcion || mov.categoria, mov.num_cuotas);
 
   return data;
