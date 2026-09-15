@@ -261,9 +261,22 @@ export default function Dashboard() {
   const semanaYaCerrada  = cierres.some(c => c.semana_num === semanaActual && c.mes_num === mes);
   const esDiaDeCierre    = now.getDay() === DIA_CIERRE_SEMANAL;
 
+  // deudaTotal para la fórmula = deuda de CONSUMO (tarjetas + deudas que
+  // no son hipoteca), no toda la deuda existente. La fórmula penaliza
+  // fuerte cuando deudaTotal se acerca a ~3x el ingreso mensual — eso
+  // tiene sentido para una tarjeta o un gota a gota (señal real de
+  // estrés financiero), pero NO para una hipoteca, que suele ser varias
+  // veces el ingreso mensual sin que eso signifique mala salud
+  // financiera. Antes este número estaba fijo en 0 (nunca se conectó),
+  // así que el puntaje nunca reflejó ninguna deuda ni tarjeta — ahora sí.
+  const deudaConsumo = deudasActivas
+    .filter(d => d.tipo !== 'Hipoteca')
+    .reduce((a, d) => a + Math.max(parseFloat(d.monto_total) - parseFloat(d.monto_pagado), 0), 0)
+    + tarjetas.reduce((a, t) => a + Math.max(parseFloat(t.saldo_actual) || 0, 0), 0);
+
   const salud = resumen ? calcSaludFinanciera({
     ingresos: resumen.ingresos, gastos: resumen.gastos,
-    deudaTotal: 0, balance: resumen.balance,
+    deudaTotal: deudaConsumo, balance: resumen.balance,
   }) : 0;
   const tasaAhorro = resumen?.ingresos > 0 ? Math.round((resumen.balance / resumen.ingresos) * 100) : 0;
 
