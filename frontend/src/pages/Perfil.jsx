@@ -15,13 +15,15 @@ export default function Perfil() {
     nombre: '',
     notif_cierre: true,
     notif_diario: false,
+    notif_tarjetas: true,
+    notif_presupuesto: false,
   });
   const [saving, setSaving] = useState(false);
   const [modalEliminar, setModalEliminar] = useState(false);
   const [confirmTexto, setConfirmTexto] = useState('');
   const [eliminando, setEliminando] = useState(false);
   const [exportando, setExportando] = useState(false);
-  const [cambiandoNotif, setCambiandoNotif] = useState(null); // 'notif_diario' | 'notif_cierre' | null
+  const [cambiandoNotif, setCambiandoNotif] = useState(null); // uno de NOTIF_CAMPOS, o null
   const nombre = (perfil?.nombre || user?.user_metadata?.full_name || '').split(' ')[0];
 
   useEffect(() => {
@@ -30,22 +32,21 @@ export default function Perfil() {
         nombre: perfil?.nombre || user?.user_metadata?.full_name || '',
         notif_cierre: perfil?.notif_cierre ?? true,
         notif_diario: perfil?.notif_diario ?? false,
+        notif_tarjetas: perfil?.notif_tarjetas ?? true,
+        notif_presupuesto: perfil?.notif_presupuesto ?? false,
       });
     }
   }, [perfil, user]);
 
-  // Recordatorios push (nocturno y cierre semanal) — aparte del formulario
-  // de "Guardar cambios": pedir el permiso del navegador tiene que pasar
-  // en el mismo instante del clic, y si el usuario lo rechaza o el
-  // dispositivo no soporta push, necesitamos revertir el interruptor de
-  // inmediato en vez de esperar a que la persona presione Guardar más
-  // abajo. Genérico para los dos toggles porque ambos comparten la MISMA
+  // Todos los recordatorios push disponibles — comparten la MISMA
   // suscripción push del dispositivo (una app, un dispositivo, una
   // suscripción — lo que cambia es solo qué columna de perfiles se
-  // marca). Por eso, al desactivar uno, solo desuscribimos el dispositivo
-  // entero si el OTRO recordatorio push también está apagado — si sigue
-  // activo, apagar este no debe silenciar al otro sin que el usuario lo
-  // haya pedido.
+  // marca). Por eso, al desactivar uno, solo desuscribimos el
+  // dispositivo entero si TODOS los demás también están apagados — si
+  // sigue algún otro activo, apagar este no debe silenciar a los demás
+  // sin que el usuario lo haya pedido.
+  const NOTIF_CAMPOS = ['notif_cierre', 'notif_diario', 'notif_tarjetas', 'notif_presupuesto'];
+
   const toggleNotificacionPush = async (campo) => {
     const activando = !form[campo];
     setCambiandoNotif(campo);
@@ -53,8 +54,8 @@ export default function Perfil() {
       if (activando) {
         await activarPushDispositivo();
       } else {
-        const otroCampo = campo === 'notif_diario' ? 'notif_cierre' : 'notif_diario';
-        if (!form[otroCampo]) await desactivarPushDispositivo();
+        const quedanOtrosActivos = NOTIF_CAMPOS.some(c => c !== campo && form[c]);
+        if (!quedanOtrosActivos) await desactivarPushDispositivo();
       }
 
       const { error } = await supabase
@@ -90,6 +91,8 @@ export default function Perfil() {
           nombre: form.nombre,
           notif_cierre: form.notif_cierre,
           notif_diario: form.notif_diario,
+          notif_tarjetas: form.notif_tarjetas,
+          notif_presupuesto: form.notif_presupuesto,
         })
         .eq('id', user.id);
       if (error) throw error;
@@ -204,6 +207,40 @@ export default function Perfil() {
               onClick={() => toggleNotificacionPush('notif_diario')}
               className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative disabled:opacity-50 ${form.notif_diario ? 'bg-g-600' : 'bg-g-200'}`}>
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.notif_diario ? 'left-6' : 'left-0.5'}`}/>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-g-900 font-medium">Tarjetas de crédito <span className="text-g-400 font-normal">· notificación</span></p>
+              <p className="text-xs text-g-400 mt-0.5">2 días antes de que venza el pago de una tarjeta, con el mínimo estimado</p>
+              {!pushSoportado() && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  Tu navegador no soporta esto. En iPhone: agrega Fintual a tu pantalla de inicio primero (Compartir → Agregar a inicio).
+                </p>
+              )}
+            </div>
+            <button type="button" disabled={cambiandoNotif === 'notif_tarjetas'}
+              onClick={() => toggleNotificacionPush('notif_tarjetas')}
+              className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative disabled:opacity-50 ${form.notif_tarjetas ? 'bg-g-600' : 'bg-g-200'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.notif_tarjetas ? 'left-6' : 'left-0.5'}`}/>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-g-900 font-medium">Presupuestos <span className="text-g-400 font-normal">· notificación</span></p>
+              <p className="text-xs text-g-400 mt-0.5">Cuando estés cerca del límite (80%+) o lo superes en alguna categoría</p>
+              {!pushSoportado() && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  Tu navegador no soporta esto. En iPhone: agrega Fintual a tu pantalla de inicio primero (Compartir → Agregar a inicio).
+                </p>
+              )}
+            </div>
+            <button type="button" disabled={cambiandoNotif === 'notif_presupuesto'}
+              onClick={() => toggleNotificacionPush('notif_presupuesto')}
+              className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative disabled:opacity-50 ${form.notif_presupuesto ? 'bg-g-600' : 'bg-g-200'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.notif_presupuesto ? 'left-6' : 'left-0.5'}`}/>
             </button>
           </div>
         </div>
