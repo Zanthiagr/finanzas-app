@@ -1,18 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
-import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta, getPrestamos, crearPrestamo, abonarPrestamo, getDeudas, abonarDeuda } from '../utils/api';
-import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago } from '../utils/helpers';
+import { getMovimientos, crearMovimiento, actualizarMovimiento, eliminarMovimiento, getSaldoTotal, getMediosPagoTarjeta, getPrestamos, crearPrestamo, abonarPrestamo, getDeudas, abonarDeuda, getTarjetas } from '../utils/api';
+import { fmtDate, fmtShort, todayLocalStr, CATEGORIAS_ICONOS, CATEGORIAS_COLORES, BANCOS, labelMedioPago, esMedioTarjeta, PREFIJO_MEDIO_TARJETA, CATEGORIA_PAGO_TARJETA } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import { notifySuccess, notifyError } from '../utils/notify';
 import { confirmToast } from '../utils/confirm';
 import Icon from '../utils/icons';
+import confetti from 'canvas-confetti';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CATS_GASTO   = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Deudas','Ahorro','Préstamos','Otro'];
 const CATS_INGRESO = ['Salario','Freelance','Negocio','Rendimiento','Préstamos','Otro'];
-const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: todayLocalStr(), medio_pago: 'efectivo', banco: '', num_cuotas: '' };
+const initForm = { tipo:'gasto', monto:'', categoria:'Alimentación', descripcion:'', fecha: todayLocalStr(), medio_pago: 'efectivo', banco: '', tarjeta_id: '', num_cuotas: '' };
 
 // Componente fila con swipe para eliminar
-function MovRow({ m, onEdit, onDelete }) {
+function MovRow({ m, onEdit, onDelete, nombresTarjeta }) {
   const [swipeX, setSwipeX] = useState(0);
   const startX = useRef(null);
   const startSwipe = useRef(0);
@@ -56,7 +57,7 @@ function MovRow({ m, onEdit, onDelete }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-g-900 truncate">{m.descripcion||m.categoria}</p>
           <p className="text-[11px] text-g-400 truncate">
-            {m.categoria} · {fmtDate(m.fecha)} · {labelMedioPago(m.medio_pago || 'efectivo')}
+            {m.categoria} · {fmtDate(m.fecha)} · {esMedioTarjeta(m.medio_pago) ? `💳 ${nombresTarjeta?.[m.medio_pago.slice(PREFIJO_MEDIO_TARJETA.length)] || 'Tarjeta de crédito'}` : labelMedioPago(m.medio_pago || 'efectivo')}
           </p>
         </div>
         <span className={`text-sm font-medium flex-shrink-0 ${m.tipo==='ingreso'?'text-pos':'text-g-900'}`}>
@@ -84,7 +85,7 @@ function MovRow({ m, onEdit, onDelete }) {
 // Se renderiza como una página normal, sin position:fixed ni overflow
 // especiales. Esto evita por completo los bugs de scroll táctil de iOS
 // que afectan a los modales superpuestos.
-function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta, prestamosActivos, prestamoDestinoId, setPrestamoDestinoId, nombrePrestamo, setNombrePrestamo, deudasActivas, deudaDestinoId, setDeudaDestinoId }) {
+function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta, prestamosActivos, prestamoDestinoId, setPrestamoDestinoId, nombrePrestamo, setNombrePrestamo, deudasActivas, deudaDestinoId, setDeudaDestinoId, tarjetasActivas }) {
   const medioActual = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
   const esConTarjeta = form.tipo === 'gasto' && mediosPagoTarjeta?.has(medioActual);
   // La categoría "Préstamos" no es solo una etiqueta más — al elegirla en
@@ -100,6 +101,11 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
   // quedar como un gasto suelto sin tocar el saldo de ninguna deuda.
   // Solo aplica a "gasto" porque 'Deudas' no está en CATS_INGRESO.
   const esDeudaVinculada = !editing && form.categoria === 'Deudas' && form.tipo === 'gasto';
+  // Pagar con tarjeta de crédito: tercera opción, solo si el usuario tiene
+  // al menos una tarjeta activa. La compra cuenta en su categoría y en el
+  // presupuesto, suma al saldo de ESA tarjeta, y NO baja el capital.
+  const hayTarjetas = (tarjetasActivas || []).length > 0;
+  const conTarjeta = form.medio_pago === 'tarjeta';
   return (
     <PantallaCompleta title={editing ? 'Editar movimiento' : 'Nuevo movimiento'} onClose={onCancel}>
       <form onSubmit={onSubmit} className="space-y-4">
@@ -163,15 +169,24 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
         </div>
         <div>
           <label className="section-label block mb-2">Medio de pago</label>
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            {[{value:'efectivo',label:'💵 Efectivo'},{value:'transferencia',label:'🏦 Transferencia'}].map(m => (
+          <div className={`grid ${hayTarjetas ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-3`}>
+            {[{value:'efectivo',label:'💵 Efectivo'},{value:'transferencia',label:'🏦 Transferencia'},...(hayTarjetas ? [{value:'tarjeta',label:'💳 Tarjeta'}] : [])].map(m => (
               <button key={m.value} type="button"
-                onClick={() => setForm(f => ({...f, medio_pago: m.value, banco: m.value==='efectivo'?'':f.banco}))}
+                onClick={() => setForm(f => ({...f, medio_pago: m.value, banco: m.value==='transferencia'?f.banco:'', tarjeta_id: m.value==='tarjeta' ? (f.tarjeta_id || (tarjetasActivas.length===1 ? tarjetasActivas[0].id : '')) : ''}))}
                 className={`py-2.5 px-2 rounded-xl text-xs font-medium border transition-all text-center ${form.medio_pago===m.value?'bg-g-50 border-g-400 text-g-700':'bg-white border-g-200/60 text-g-500'}`}>
                 {m.label}
               </button>
             ))}
           </div>
+          {conTarjeta && (
+            <div>
+              <select className="select" value={form.tarjeta_id || ''} onChange={e => setForm(f => ({...f, tarjeta_id: e.target.value}))} required>
+                <option value="" disabled>¿Con cuál tarjeta?</option>
+                {tarjetasActivas.map(t => <option key={t.id} value={t.id}>{t.nombre}{t.ultimos_digitos ? ` ···· ${t.ultimos_digitos}` : ''}</option>)}
+              </select>
+              <p className="text-[11px] text-g-400 mt-1.5">Cuenta en tu presupuesto de esta categoría, pero no baja tu dinero disponible: lo descuentas cuando pagues la tarjeta.</p>
+            </div>
+          )}
           {form.medio_pago==='transferencia' && (
             <div className="grid grid-cols-2 gap-2">
               {BANCOS.map(b => (
@@ -184,7 +199,7 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
             </div>
           )}
         </div>
-        {esConTarjeta && (
+        {(esConTarjeta || (conTarjeta && form.tipo === 'gasto')) && (
           <div className="card p-3 bg-g-50">
             <label className="section-label block mb-1 flex items-center gap-1.5"><Icon name="credit-card" className="w-3.5 h-3.5"/> ¿A cuántas cuotas? <span className="text-g-300">(opcional)</span></label>
             <input type="number" min="1" max="60" className="input" placeholder="1 = de contado"
@@ -227,7 +242,11 @@ export default function Movimientos() {
   const [nombrePrestamo, setNombrePrestamo] = useState('');
   const [deudasActivas, setDeudasActivas] = useState([]);
   const [deudaDestinoId, setDeudaDestinoId] = useState('');
+  const [tarjetas, setTarjetas] = useState([]);
+  const tarjetasActivas = tarjetas.filter(t => t.activa);
+  const nombresTarjeta = Object.fromEntries(tarjetas.map(t => [t.id, t.nombre]));
 
+  useEffect(() => { getTarjetas().then(setTarjetas).catch(()=>{}); }, []);
   useEffect(() => { getMediosPagoTarjeta().then(setMediosPagoTarjeta).catch(()=>{}); }, []);
 
   useEffect(() => {
@@ -291,11 +310,13 @@ export default function Movimientos() {
   };
   const openEdit = m => {
     setEditing(m.id);
+    const conTarjeta = esMedioTarjeta(m.medio_pago);
     const esEfectivo = (m.medio_pago || 'efectivo') === 'efectivo';
     setForm({
       tipo: m.tipo, monto: m.monto, categoria: m.categoria, descripcion: m.descripcion || '', fecha: m.fecha,
-      medio_pago: esEfectivo ? 'efectivo' : 'transferencia',
-      banco: esEfectivo ? '' : m.medio_pago,
+      medio_pago: conTarjeta ? 'tarjeta' : esEfectivo ? 'efectivo' : 'transferencia',
+      banco: conTarjeta || esEfectivo ? '' : m.medio_pago,
+      tarjeta_id: conTarjeta ? m.medio_pago.slice(PREFIJO_MEDIO_TARJETA.length) : '',
       num_cuotas: '',
     });
     setModal(true);
@@ -304,7 +325,9 @@ export default function Movimientos() {
   const submit = async e => {
     e.preventDefault();
     if (!form.monto || parseFloat(form.monto)<=0) return notifyError('El monto debe ser mayor a 0');
-    const medioFinal = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
+    if (form.medio_pago === 'tarjeta' && !form.tarjeta_id) return notifyError('Elige con cuál tarjeta pagaste');
+    const medioFinal = form.medio_pago === 'tarjeta' ? `${PREFIJO_MEDIO_TARJETA}${form.tarjeta_id}`
+      : form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
     const esPrestamoNuevo = !editing && form.categoria === 'Préstamos';
     const esDeudaVinculada = !editing && form.categoria === 'Deudas' && form.tipo === 'gasto';
 
@@ -316,8 +339,15 @@ export default function Movimientos() {
       } else if (esPrestamoNuevo && form.tipo === 'ingreso') {
         if (!prestamoDestinoId) return notifyError('Elige a cuál préstamo corresponde este pago');
         const prestamo = prestamosActivos.find(p => p.id === prestamoDestinoId);
-        await abonarPrestamo(prestamo, form.monto, medioFinal, form.fecha);
-        notifySuccess('Pago registrado en el préstamo');
+        const r = await abonarPrestamo(prestamo, form.monto, medioFinal, form.fecha);
+        if (r.seCompleta) {
+          notifySuccess(`¡${prestamo.nombre} te pagó por completo! 🎉 El préstamo pasó a Pagados`);
+          confetti({ particleCount: 100, spread: 70, startVelocity: 35, gravity: 0.95,
+            colors: ['#2452FF', '#C9A84C', '#0B1220'], origin: { y: 0.55 } });
+        } else {
+          const falta = parseFloat(r.monto_total) - parseFloat(r.monto_recibido);
+          notifySuccess(`Pago registrado — a ${prestamo.nombre} le quedan ${fmtShort(falta)}`);
+        }
       } else if (esDeudaVinculada) {
         if (!deudaDestinoId) return notifyError('Elige a cuál deuda corresponde este pago');
         const deuda = deudasActivas.find(d => d.id === deudaDestinoId);
@@ -341,7 +371,7 @@ export default function Movimientos() {
   };
 
   const totalIngresos = movs.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+parseFloat(m.monto),0);
-  const totalGastos   = movs.filter(m=>m.tipo==='gasto').reduce((a,m)=>a+parseFloat(m.monto),0);
+  const totalGastos   = movs.filter(m=>m.tipo==='gasto' && m.categoria !== CATEGORIA_PAGO_TARJETA).reduce((a,m)=>a+parseFloat(m.monto),0);
 
   // Búsqueda + categoría se filtran en el cliente sobre lo ya cargado del
   // mes (el tipo sí va al servidor en `load()`, porque cambia la consulta).
@@ -496,7 +526,7 @@ export default function Movimientos() {
               : <button onClick={()=>{setBusqueda('');setFiltroCategoria('');}} className="text-xs text-g-600 underline mt-2 block mx-auto">Limpiar filtros</button>}
           </div>
         ) : movsFiltrados.map(m => (
-          <MovRow key={m.id} m={m} onEdit={openEdit} onDelete={remove}/>
+          <MovRow key={m.id} m={m} onEdit={openEdit} onDelete={remove} nombresTarjeta={nombresTarjeta}/>
         ))}
       </div>
 
@@ -526,6 +556,7 @@ export default function Movimientos() {
           deudasActivas={deudasActivas}
           deudaDestinoId={deudaDestinoId}
           setDeudaDestinoId={setDeudaDestinoId}
+          tarjetasActivas={tarjetasActivas}
         />
       )}
     </div>
