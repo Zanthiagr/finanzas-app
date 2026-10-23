@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { parseLocalDate, todayLocalStr, getSemanaDelMes, diaEfectivoPago } from './helpers';
+import { parseLocalDate, todayLocalStr, getSemanaDelMes, diaEfectivoPago, CATEGORIA_PAGO_TARJETA, PREFIJO_MEDIO_TARJETA, esMedioTarjeta } from './helpers';
 
 // Helper para obtener el usuario actual
 const getUserId = async () => {
@@ -40,6 +40,17 @@ export const getMovimientosPorMedio = async (medioPago, limite = 8) => {
   return data;
 };
 
+// Traduce lo que elige el formulario al valor real que se guarda en
+// movimientos.medio_pago:
+//   - 'tarjeta' + tarjeta_id  → 'tarjeta:<id>' (compra con ESA tarjeta)
+//   - 'transferencia' + banco → la clave del banco (nequi, bancolombia, ...)
+//   - cualquier otro valor    → tal cual (ya viene resuelto, ej. 'efectivo',
+//     'bancolombia' o 'tarjeta:<id>' desde Dashboard/Tarjetas)
+const resolverMedioPago = (mov) =>
+  mov.medio_pago === 'tarjeta' && mov.tarjeta_id ? `${PREFIJO_MEDIO_TARJETA}${mov.tarjeta_id}`
+  : mov.medio_pago === 'transferencia' && mov.banco ? mov.banco
+  : mov.medio_pago || 'efectivo';
+
 export const crearMovimiento = async (mov) => {
   const userId = await getUserId();
   const fecha = mov.fecha ? parseLocalDate(mov.fecha) : new Date();
@@ -47,9 +58,7 @@ export const crearMovimiento = async (mov) => {
 
   // Construir payload limpio — guardamos banco dentro de medio_pago
   // para no depender de columna extra en Supabase
-  const medioPago = mov.medio_pago === 'transferencia' && mov.banco
-    ? mov.banco  // guardamos directamente el banco (nequi, bancolombia, etc)
-    : mov.medio_pago || 'efectivo';
+  const medioPago = resolverMedioPago(mov);
 
   const payload = {
     tipo:        mov.tipo,
@@ -82,6 +91,10 @@ export const crearMovimiento = async (mov) => {
 // Se llama en cada movimiento nuevo/editado — una sola consulta indexada,
 // no es costoso.
 const buscarTarjetaVinculada = async (userId, medioPago) => {
+  // Compra hecha eligiendo una tarjeta concreta: el id viaja en el propio
+  // medio de pago ('tarjeta:<id>'), no hace falta buscar nada.
+  if (esMedioTarjeta(medioPago)) return medioPago.slice(PREFIJO_MEDIO_TARJETA.length);
+  // Método anterior: un medio de pago (ej. un banco) vinculado a la tarjeta.
   const { data } = await supabase
     .from('tarjetas_credito').select('id')
     .eq('usuario_id', userId).eq('medio_pago_vinculado', medioPago).eq('activa', true)
@@ -116,9 +129,7 @@ export const getMediosPagoTarjeta = async () => {
 
 export const actualizarMovimiento = async (id, mov) => {
   const userId = await getUserId();
-  const medioPago = mov.medio_pago === 'transferencia' && mov.banco
-    ? mov.banco
-    : mov.medio_pago || 'efectivo';
+  const medioPago = resolverMedioPago(mov);
 
   const fecha = parseLocalDate(mov.fecha);
 
@@ -189,7 +200,7 @@ export const getResumen = async ({ mes, anio } = {}) => {
   const mesActual  = mes  || new Date().getMonth() + 1;
   const anioActual = anio || new Date().getFullYear();
 
-  const { data, error } = await supabase
+  const { data: dataBruta, error } = await supabase
     .from('movimientos')
     .select('tipo, monto, categoria, semana_num')
     .eq('usuario_id', userId)
@@ -197,6 +208,11 @@ export const getResumen = async ({ mes, anio } = {}) => {
     .eq('anio_num', anioActual);
 
   if (error) throw error;
+
+  // Pagar el extracto de una tarjeta no es un gasto nuevo — el gasto real
+  // ya se contó (por categoría) el día de cada compra. Se deja fuera de
+  // gastos, presupuestos y reportes; sí baja el capital (getSaldoTotal).
+  const data = dataBruta.filter(m => m.categoria !== CATEGORIA_PAGO_TARJETA);
 
   const ingresos = data.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + parseFloat(m.monto), 0);
   const gastos   = data.filter(m => m.tipo === 'gasto').reduce((a, m) => a + parseFloat(m.monto), 0);
@@ -533,7 +549,7 @@ export const pagarTarjeta = async (tarjeta, monto, medioPago, fecha) => {
   const montoNum = parseFloat(String(monto).replace(',','.'));
 
   const movimiento = await crearMovimiento({
-    tipo: 'gasto', monto: montoNum, categoria: 'Deudas',
+    tipo: 'gasto', monto: montoNum, categoria: CATEGORIA_PAGO_TARJETA,
     descripcion: `Pago: ${tarjeta.nombre}`, fecha: fechaPago, medio_pago: medioPago,
   });
 
@@ -983,7 +999,7 @@ export const getSaldoTotal = async () => {
 
   data.forEach(mov => {
     const medio = mov.medio_pago || 'efectivo';
-    if (mediosTarjeta.has(medio)) return; // plata prestada, no cuenta como capital
+    if (esMedioTarjeta(medio) || mediosTarjeta.has(medio)) return; // plata prestada, no cuenta como capital
     const monto = parseFloat(mov.monto);
     acumular(medio, monto, mov.tipo === 'ingreso');
     if (mov.tipo === 'ingreso') ingresosTotal += monto; else gastosTotal += monto;
@@ -1150,7 +1166,7 @@ export const pagarPagoFijo = async (pago, fecha) => {
   await crearMovimiento({
     tipo: 'gasto',
     monto: pago.monto,
-    categoria: pago.categoria,
+    categoria: pago.tarjeta_id ? CATEGORIA_PAGO_TARJETA : pago.categoria,
     descripcion: pago.nombre,
     fecha: fechaPago,
     medio_pago: pago.medio_pago || 'otro_banco',
@@ -1196,7 +1212,7 @@ export const marcarPagoUnicoComoPagado = async (pago, fechaPago) => {
   await crearMovimiento({
     tipo: 'gasto',
     monto: pago.monto,
-    categoria: pago.categoria,
+    categoria: pago.tarjeta_id ? CATEGORIA_PAGO_TARJETA : pago.categoria,
     descripcion: pago.nombre,
     fecha,
     medio_pago: pago.medio_pago || 'otro_banco',

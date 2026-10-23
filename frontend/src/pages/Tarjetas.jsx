@@ -3,8 +3,9 @@ import {
   getTarjetas, crearTarjeta, actualizarTarjeta, eliminarTarjeta, cerrarTarjeta, reactivarTarjeta,
   getTarjetaMovimientos, crearTarjetaMovimiento, actualizarTarjetaMovimiento, eliminarTarjetaMovimiento,
   pagarTarjeta, getPagosProgramados, crearPagoProgramado, eliminarPagoProgramado,
+  crearMovimiento, eliminarMovimiento,
 } from '../utils/api';
-import { fmt, fmtDate, fmtShort, todayLocalStr, parseLocalDate, BANCOS, proximaFechaDia, diasHasta } from '../utils/helpers';
+import { fmt, fmtDate, fmtShort, todayLocalStr, parseLocalDate, BANCOS, proximaFechaDia, diasHasta, CATEGORIA_PAGO_TARJETA } from '../utils/helpers';
 import PantallaCompleta from '../components/PantallaCompleta';
 import { notifySuccess, notifyError } from '../utils/notify';
 import { confirmToast } from '../utils/confirm';
@@ -43,6 +44,11 @@ const MOV_TARJETA_VISUAL = {
 // deuda: acá ALTO es la señal de alerta (uso >90% del cupo), no de logro.
 // Buena práctica financiera de sobra conocida: mantenerse bajo 30%.
 const colorUtilizacion = (pct) => pct === null ? '#5B6472' : pct >= 90 ? '#E5484D' : pct >= 60 ? '#B8663F' : pct >= 30 ? '#C9A84C' : '#16A34A';
+
+// Categorías que tienen sentido para una compra con tarjeta (no incluye
+// Deudas/Préstamos/Ahorro: pagar una deuda con la tarjeta se hace desde
+// Movimientos eligiendo la deuda).
+const CATS_COMPRA = ['Alimentación','Transporte','Servicios','Salud','Educación','Entretenimiento','Ropa','Vivienda','Otro'];
 
 const initFormTarjeta = {
   nombre: '', banco: '', ultimos_digitos: '', medio_pago_vinculado: '',
@@ -110,7 +116,7 @@ export default function Tarjetas() {
   };
 
   const abrirNuevoMov = (tipo) => setModalMov({
-    tipo, monto: '', fecha: todayLocalStr(), nota: '', num_cuotas: '',
+    tipo, monto: '', fecha: todayLocalStr(), nota: '', num_cuotas: '', categoria: 'Alimentación',
   });
   const abrirEditarMov = (m) => setModalMov({ id: m.id, tipo: m.tipo, monto: String(m.monto), fecha: m.fecha, nota: m.nota || '', num_cuotas: m.num_cuotas || '' });
 
@@ -121,6 +127,17 @@ export default function Tarjetas() {
       if (modalMov.id) {
         await actualizarTarjetaMovimiento(modalMov.id, { tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
         notifySuccess('Movimiento actualizado');
+      } else if (modalMov.tipo === 'cargo') {
+        // Una compra es un gasto real: se crea como movimiento (categoría,
+        // aparece en Movimientos, cuenta en el presupuesto del mes) pagado
+        // con ESTA tarjeta — crearMovimiento suma solo el cargo a la tarjeta
+        // y lo deja fuera del dinero disponible.
+        await crearMovimiento({
+          tipo: 'gasto', monto, categoria: modalMov.categoria,
+          descripcion: modalMov.nota || modalMov.categoria, fecha: modalMov.fecha,
+          medio_pago: 'tarjeta', tarjeta_id: detalle.id, num_cuotas: modalMov.num_cuotas,
+        });
+        notifySuccess(`Compra registrada — cuenta en tu presupuesto de ${modalMov.categoria}`);
       } else {
         await crearTarjetaMovimiento({ tarjeta_id: detalle.id, tipo: modalMov.tipo, monto, fecha: modalMov.fecha, nota: modalMov.nota, num_cuotas: modalMov.num_cuotas });
         notifySuccess('Movimiento registrado');
@@ -131,9 +148,12 @@ export default function Tarjetas() {
     } catch { notifyError('Error guardando el movimiento'); }
   };
 
-  const borrarMov = (m) => confirmToast('¿Eliminar este movimiento del historial?', async () => {
+  const borrarMov = (m) => confirmToast(m.movimiento_id ? '¿Eliminar este movimiento? También se quita de Movimientos y de tu presupuesto.' : '¿Eliminar este movimiento del historial?', async () => {
     const id = detalle.id;
-    await eliminarTarjetaMovimiento(m.id);
+    // Si viene de un movimiento real (compra o pago), se borra el movimiento:
+    // eso limpia también el cargo/abono de la tarjeta y recalcula el saldo.
+    if (m.movimiento_id) await eliminarMovimiento(m.movimiento_id);
+    else await eliminarTarjetaMovimiento(m.id);
     notifySuccess('Eliminado');
     refrescarDetalle(id);
   });
@@ -190,7 +210,7 @@ export default function Tarjetas() {
     if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
     try {
       await crearPagoProgramado({
-        nombre: `Pago: ${detalle.nombre}`, monto, categoria: 'Deudas',
+        nombre: `Pago: ${detalle.nombre}`, monto, categoria: CATEGORIA_PAGO_TARJETA,
         dia_mes: formProgramar.dia_mes, medio_pago: formProgramar.medio_pago,
         activo: true, tarjeta_id: detalle.id,
       });
@@ -311,13 +331,6 @@ export default function Tarjetas() {
           <div className="grid grid-cols-2 gap-2">
             <input className="input" placeholder="Banco (opcional)" value={form.banco} onChange={set('banco')}/>
             <input className="input" placeholder="Últimos 4 dígitos" maxLength={4} value={form.ultimos_digitos} onChange={set('ultimos_digitos')}/>
-          </div>
-          <div className="card p-3 bg-g-50 space-y-3">
-            <p className="text-xs text-g-500 flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5"/> Vincula un medio de pago para que los gastos se sumen solos aquí</p>
-            <select className="select" value={form.medio_pago_vinculado} onChange={set('medio_pago_vinculado')}>
-              <option value="">Sin vincular (llevar manualmente)</option>
-              {BANCOS.filter(b => b.value !== 'otro_banco').map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-            </select>
           </div>
           <div>
             <label className="section-label block mb-1">¿Ya tienes saldo pendiente hoy? (opcional)</label>
@@ -479,7 +492,7 @@ export default function Tarjetas() {
                         )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => abrirEditarMov(m)} className="text-g-300 hover:text-g-600 p-1"><Icon name="pencil" className="w-3 h-3"/></button>
+                        {!m.movimiento_id && <button onClick={() => abrirEditarMov(m)} className="text-g-300 hover:text-g-600 p-1"><Icon name="pencil" className="w-3 h-3"/></button>}
                         <button onClick={() => borrarMov(m)} className="text-g-300 hover:text-red-500 p-1"><Icon name="trash" className="w-3 h-3"/></button>
                       </div>
                     </div>
@@ -525,6 +538,15 @@ export default function Tarjetas() {
                 value={modalMov.monto} onChange={e => setModalMov(m => ({ ...m, monto: String(e.target.value).replace(',', '.') }))}/>
             </div>
             <input type="date" className="input" value={modalMov.fecha} onChange={e => setModalMov(m => ({ ...m, fecha: e.target.value }))}/>
+            {modalMov.tipo === 'cargo' && !modalMov.id && (
+              <div>
+                <label className="section-label block mb-1">Categoría</label>
+                <select className="select" value={modalMov.categoria} onChange={e => setModalMov(m => ({ ...m, categoria: e.target.value }))}>
+                  {CATS_COMPRA.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <p className="text-[11px] text-g-400 mt-1">Cuenta en tu presupuesto de esta categoría, pero no baja tu dinero disponible.</p>
+              </div>
+            )}
             {modalMov.tipo === 'cargo' && (
               <div>
                 <label className="section-label block mb-1 flex items-center gap-1.5"><Icon name="credit-card" className="w-3.5 h-3.5"/> ¿A cuántas cuotas? <span className="text-g-300">(opcional)</span></label>
@@ -549,10 +571,15 @@ export default function Tarjetas() {
               <input className="input" placeholder="Banco" value={formEditar.banco} onChange={e => setFormEditar(f => ({ ...f, banco: e.target.value }))}/>
               <input className="input" placeholder="Últimos 4 dígitos" maxLength={4} value={formEditar.ultimos_digitos} onChange={e => setFormEditar(f => ({ ...f, ultimos_digitos: e.target.value }))}/>
             </div>
-            <select className="select" value={formEditar.medio_pago_vinculado} onChange={e => setFormEditar(f => ({ ...f, medio_pago_vinculado: e.target.value }))}>
-              <option value="">Sin vincular (llevar manualmente)</option>
-              {BANCOS.filter(b => b.value !== 'otro_banco').map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-            </select>
+            {formEditar.medio_pago_vinculado && (
+              <div className="card p-3 bg-g-50 space-y-2">
+                <p className="text-[11px] text-g-500">Esta tarjeta está vinculada a un banco (método anterior): todo lo que pagues con ese banco se suma aquí. Ahora puedes registrar compras eligiendo <strong>Tarjeta</strong> como medio de pago — desvincúlala si la usas así.</p>
+                <select className="select" value={formEditar.medio_pago_vinculado} onChange={e => setFormEditar(f => ({ ...f, medio_pago_vinculado: e.target.value }))}>
+                  <option value="">Sin vincular</option>
+                  {BANCOS.filter(b => b.value !== 'otro_banco').map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div><label className="section-label block mb-1">Cupo total</label><input type="text" inputMode="numeric" className="input" value={formEditar.cupo_total} onChange={e => setFormEditar(f => ({ ...f, cupo_total: String(e.target.value).replace(',', '.') }))}/></div>
               <div><label className="section-label block mb-1">Tasa EA (%)</label><input type="text" inputMode="decimal" className="input" value={formEditar.tasa_interes} onChange={e => setFormEditar(f => ({ ...f, tasa_interes: String(e.target.value).replace(',', '.') }))}/></div>

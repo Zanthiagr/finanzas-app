@@ -988,6 +988,38 @@ export function Prestamos() {
     } catch { notifyError('Error registrando el pago'); }
   };
 
+  const [verPagados, setVerPagados] = useState(false);
+
+  const renderPrestamo = (p) => {
+    const total = parseFloat(p.monto_total) || 0;
+    const recibido = parseFloat(p.monto_recibido) || 0;
+    const pendiente = total - recibido;
+    const pct = total > 0 ? Math.min(Math.round((recibido/total)*100), 100) : 0;
+    const color = p.activo ? (pct >= 50 ? '#4F8F76' : '#2452FF') : '#16A34A';
+    return (
+      <button key={p.id} onClick={()=>abrirDetalle(p)} className={`card p-4 w-full text-left ${!p.activo?'border-g-300':''}`}>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F` }}>
+            <Icon name="arrows-exchange" className="w-4 h-4" style={{ color }}/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <p className="text-sm font-medium text-g-900 truncate">{p.nombre}</p>
+              {p.activo
+                ? <p className="text-sm font-medium text-g-700 flex-shrink-0">{fmtShort(pendiente)}</p>
+                : <span className="badge-ok text-[10px] flex-shrink-0">Pagado 🎉</span>}
+            </div>
+            <div className="h-1.5 bg-g-100 rounded-full overflow-hidden mb-1">
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }}/>
+            </div>
+            <p className="text-[10px] text-g-400">{fmtShort(recibido)} recibido de {fmtShort(total)} · {fmtDate(p.fecha)}</p>
+          </div>
+          <Icon name="chevron-right" className="w-4 h-4 text-g-300 flex-shrink-0"/>
+        </div>
+      </button>
+    );
+  };
+
   const totalPrestado = items.filter(p=>p.activo).reduce((a,p)=>a+(parseFloat(p.monto_total)-parseFloat(p.monto_recibido)),0);
 
   return (
@@ -1011,37 +1043,35 @@ export function Prestamos() {
           <p className="text-g-400 text-sm">Aún no has registrado ningún préstamo</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {items.map(p => {
-            const total = parseFloat(p.monto_total) || 0;
-            const recibido = parseFloat(p.monto_recibido) || 0;
-            const pendiente = total - recibido;
-            const pct = total > 0 ? Math.min(Math.round((recibido/total)*100), 100) : 0;
-            const color = p.activo ? (pct >= 50 ? '#4F8F76' : '#2452FF') : '#16A34A';
-            return (
-              <button key={p.id} onClick={()=>abrirDetalle(p)} className={`card p-4 w-full text-left ${!p.activo?'border-g-300':''}`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F` }}>
-                    <Icon name="arrows-exchange" className="w-4 h-4" style={{ color }}/>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-0.5">
-                      <p className="text-sm font-medium text-g-900 truncate">{p.nombre}</p>
-                      {p.activo
-                        ? <p className="text-sm font-medium text-g-700 flex-shrink-0">{fmtShort(pendiente)}</p>
-                        : <span className="badge-ok text-[10px] flex-shrink-0">Pagado 🎉</span>}
-                    </div>
-                    <div className="h-1.5 bg-g-100 rounded-full overflow-hidden mb-1">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }}/>
-                    </div>
-                    <p className="text-[10px] text-g-400">{fmtShort(recibido)} recibido de {fmtShort(total)} · {fmtDate(p.fecha)}</p>
-                  </div>
-                  <Icon name="chevron-right" className="w-4 h-4 text-g-300 flex-shrink-0"/>
-                </div>
+        <>
+          {/* Los préstamos ya cobrados por completo salen de la lista
+              principal (quedan en "Pagados", plegado) — la lista de arriba
+              es solo lo que todavía te deben. */}
+          {items.filter(p=>p.activo).length === 0 ? (
+            <div className="card p-8 text-center">
+              <p className="text-g-500 text-sm">Nadie te debe nada por ahora 🎉</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {items.filter(p=>p.activo).map(p => renderPrestamo(p))}
+            </div>
+          )}
+
+          {items.filter(p=>!p.activo).length > 0 && (
+            <div>
+              <button onClick={()=>setVerPagados(v=>!v)}
+                className="w-full flex items-center justify-between px-1 py-2 text-xs font-medium text-g-500">
+                <span>Pagados ({items.filter(p=>!p.activo).length})</span>
+                <Icon name={verPagados ? 'chevron-up' : 'chevron-down'} className="w-3.5 h-3.5"/>
               </button>
-            );
-          })}
-        </div>
+              {verPagados && (
+                <div className="space-y-2 mt-1">
+                  {items.filter(p=>!p.activo).map(p => renderPrestamo(p))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Crear/editar préstamo */}

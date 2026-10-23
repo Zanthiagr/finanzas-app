@@ -138,6 +138,7 @@ export const CATEGORIAS_ICONOS = {
   'Ropa': 'ti-shirt',
   'Vivienda': 'ti-home',
   'Deudas': 'ti-credit-card',
+  'Pago de tarjeta': 'ti-credit-card',
   'Ahorro': 'ti-target',
   'Préstamos': 'ti-arrows-exchange',
 };
@@ -154,7 +155,7 @@ export const CATEGORIAS_COLORES = {
   'Salario': '#16A34A', 'Freelance': '#16A34A', 'Negocio': '#16A34A',
   'Alimentación': '#B8663F', 'Transporte': '#4E7AA8', 'Servicios': '#7C7594',
   'Salud': '#B15C7C', 'Educación': '#A8792E', 'Entretenimiento': '#BC7748',
-  'Ropa': '#4F8F76', 'Vivienda': '#5B6472', 'Deudas': '#E5484D',
+  'Ropa': '#4F8F76', 'Vivienda': '#5B6472', 'Deudas': '#E5484D', 'Pago de tarjeta': '#B8663F',
   'Ahorro': '#4F8F76', 'Préstamos': '#2452FF',
 };
 
@@ -181,5 +182,20 @@ export const BANCOS = [
 // mostrar etiquetas legibles a partir de la clave guardada en Supabase.
 export const MEDIOS_PAGO = [{ value: 'efectivo', label: '💵 Efectivo' }, ...BANCOS];
 
+// Categoría reservada para el PAGO de una tarjeta de crédito (pagar el
+// extracto desde tu banco). No es un gasto nuevo: el gasto real ya se
+// contó por categoría el día de la compra (Alimentación, etc.). Pagar la
+// tarjeta solo baja tu capital disponible y la deuda de la tarjeta, por
+// eso getResumen() la deja fuera de gastos/presupuestos/reportes — si no,
+// cada compra con tarjeta se contaría dos veces en el mes.
+export const CATEGORIA_PAGO_TARJETA = 'Pago de tarjeta';
+
+// Un movimiento pagado con tarjeta de crédito guarda su medio de pago
+// como 'tarjeta:<id de la tarjeta>' — identifica CUÁL tarjeta, sin mezclarla
+// con la cuenta del mismo banco (la cuenta de ahorros y la tarjeta de
+// Bancolombia son cosas distintas).
+export const PREFIJO_MEDIO_TARJETA = 'tarjeta:';
+export const esMedioTarjeta = (clave) => typeof clave === 'string' && clave.startsWith(PREFIJO_MEDIO_TARJETA);
+
 export const labelMedioPago = (clave) =>
-  MEDIOS_PAGO.find(m => m.value === clave)?.label || clave;
+  esMedioTarjeta(clave) ? '💳 Tarjeta de crédito' : (MEDIOS_PAGO.find(m => m.value === clave)?.label || clave);
