@@ -85,7 +85,7 @@ function MovRow({ m, onEdit, onDelete, nombresTarjeta }) {
 // Se renderiza como una página normal, sin position:fixed ni overflow
 // especiales. Esto evita por completo los bugs de scroll táctil de iOS
 // que afectan a los modales superpuestos.
-function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta, prestamosActivos, prestamoDestinoId, setPrestamoDestinoId, nombrePrestamo, setNombrePrestamo, deudasActivas, deudaDestinoId, setDeudaDestinoId, tarjetasActivas }) {
+function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit, mediosPagoTarjeta, prestamosActivos, prestamoDestinoId, setPrestamoDestinoId, nombrePrestamo, setNombrePrestamo, deudasActivas, deudaDestinoId, setDeudaDestinoId, tarjetasActivas, guardando }) {
   const medioActual = form.medio_pago === 'transferencia' ? form.banco : form.medio_pago;
   const esConTarjeta = form.tipo === 'gasto' && mediosPagoTarjeta?.has(medioActual);
   // La categoría "Préstamos" no es solo una etiqueta más — al elegirla en
@@ -211,8 +211,8 @@ function FormularioMovimiento({ editing, form, setForm, set, onCancel, onSubmit,
           <label className="section-label block mb-1">Fecha</label>
           <input type="date" className="input" value={form.fecha} onChange={set('fecha')}/>
         </div>
-        <button type="submit" className="btn-primary w-full py-4 text-base">
-          {editing ? 'Guardar cambios' : 'Registrar movimiento'}
+        <button type="submit" disabled={guardando} className="btn-primary w-full py-4 text-base disabled:opacity-60">
+          {guardando ? 'Guardando...' : editing ? 'Guardar cambios' : 'Registrar movimiento'}
         </button>
         <button type="button" onClick={onCancel} className="btn-secondary w-full py-3.5">
           Cancelar
@@ -226,6 +226,7 @@ export default function Movimientos() {
   const hoy = new Date();
   const [movs, setMovs]         = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [guardando, setGuardando] = useState(false);
   const [modal, setModal]       = useState(false);
   const [form, setForm]         = useState(initForm);
   const [editing, setEditing]   = useState(null);
@@ -270,13 +271,16 @@ export default function Movimientos() {
     setMes(m); setAnio(a);
   };
 
-  const load = async () => {
-    setLoading(true);
+  // `silencioso`: refresca los datos sin tapar la lista con el spinner —
+  // se usa después de guardar/borrar, cuando ya hay una lista en pantalla
+  // que se actualiza sola en cuanto llegan los datos nuevos.
+  const load = async ({ silencioso = false } = {}) => {
+    if (!silencioso) setLoading(true);
     try {
       const data = await getMovimientos({ mes, anio, tipo: filtroTipo||undefined });
       setMovs(data);
     } catch { notifyError('Error cargando movimientos'); }
-    finally { setLoading(false); }
+    finally { if (!silencioso) setLoading(false); }
     // Saldo por medio de pago — TOTAL acumulado, no se reinicia por mes.
     // Separado del listado principal así si falla no bloquea la lista.
     getSaldoTotal()
@@ -324,6 +328,7 @@ export default function Movimientos() {
 
   const submit = async e => {
     e.preventDefault();
+    if (guardando) return; // ya hay un guardado en curso: ignora el segundo toque
     if (!form.monto || parseFloat(form.monto)<=0) return notifyError('El monto debe ser mayor a 0');
     if (form.medio_pago === 'tarjeta' && !form.tarjeta_id) return notifyError('Elige con cuál tarjeta pagaste');
     const medioFinal = form.medio_pago === 'tarjeta' ? `${PREFIJO_MEDIO_TARJETA}${form.tarjeta_id}`
@@ -331,6 +336,7 @@ export default function Movimientos() {
     const esPrestamoNuevo = !editing && form.categoria === 'Préstamos';
     const esDeudaVinculada = !editing && form.categoria === 'Deudas' && form.tipo === 'gasto';
 
+    setGuardando(true);
     try {
       if (esPrestamoNuevo && form.tipo === 'gasto') {
         if (!nombrePrestamo.trim()) return notifyError('Escribe a quién le prestas');
@@ -358,15 +364,23 @@ export default function Movimientos() {
         notifySuccess(editing?'Actualizado':'Registrado');
       }
       setModal(false);
-      load();
+      load({ silencioso: true });
     } catch { notifyError('Error guardando'); }
+    finally { setGuardando(false); }
   };
 
   const remove = id => {
     confirmToast('¿Eliminar este movimiento?', async () => {
-      await eliminarMovimiento(id);
-      notifySuccess('Eliminado');
-      load();
+      // Optimista: la fila sale de la lista al instante en vez de esperar las
+      // consultas al servidor. Si algo falla, se restaura recargando la lista.
+      setMovs(prev => prev.filter(m => m.id !== id));
+      try {
+        await eliminarMovimiento(id);
+        notifySuccess('Eliminado');
+      } catch {
+        notifyError('No se pudo eliminar');
+      }
+      load({ silencioso: true });
     });
   };
 
@@ -557,6 +571,7 @@ export default function Movimientos() {
           deudaDestinoId={deudaDestinoId}
           setDeudaDestinoId={setDeudaDestinoId}
           tarjetasActivas={tarjetasActivas}
+          guardando={guardando}
         />
       )}
     </div>
