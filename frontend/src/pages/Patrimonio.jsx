@@ -14,6 +14,7 @@ import { confirmToast } from '../utils/confirm';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
 import confetti from 'canvas-confetti';
+import useUnaVez from '../utils/useUnaVez';
 
 const TIPOS_ACTIVO = ['Efectivo','Cuenta bancaria','Inversión','CDT','Vehículo','Inmueble','Negocio','Préstamo otorgado','Otro'];
 // 'Tarjeta de crédito' ya no vive acá — tiene su propia sección
@@ -69,7 +70,8 @@ export function Activos() {
     return 0;
   };
 
-  const submit = async e => {
+  const unaVez = useUnaVez(); // evita guardados duplicados por doble toque
+  const submit = unaVez(async e => {
     e.preventDefault();
     try {
       const payload = {
@@ -92,7 +94,7 @@ export function Activos() {
       setForm({nombre:'',tipo:'Inversión',valor_inicial:'',valor_actual:'',fecha_adquisicion:'',descripcion:'',tasa_rendimiento:'',tipo_rendimiento:'manual'});
       load();
     } catch(err) { notifyError('Error guardando'); console.error(err); }
-  };
+  });
 
   const abrirEditar = (a) => {
     setEditandoId(a.id);
@@ -114,7 +116,7 @@ export function Activos() {
     setModal(true);
   };
 
-  const registrarRend = async () => {
+  const registrarRend = unaVez(async () => {
     if (!rendMonto || parseFloat(rendMonto)<=0) return notifyError('Ingresa un monto válido');
     try {
       await registrarRendimientoActivo({ activo_id: modalRend.id, rendimiento_monto: parseFloat(String(rendMonto).replace(',','.')), fecha: rendFecha });
@@ -122,7 +124,7 @@ export function Activos() {
       setModalRend(null); setRendMonto('');
       load();
     } catch { notifyError('Error registrando rendimiento'); }
-  };
+  });
 
   const del = id => {
     confirmToast('¿Eliminar este activo?', async () => {
@@ -367,7 +369,8 @@ export function Deudas() {
   const [modalProgramar, setModalProgramar] = useState(false);
   const [formProgramar, setFormProgramar] = useState({ monto:'', dia_mes:1, medio_pago:'bancolombia' });
 
-  const submit = async e => {
+  const unaVez = useUnaVez(); // evita guardados duplicados por doble toque
+  const submit = unaVez(async e => {
     e.preventDefault();
     try {
       await crearDeuda(form);
@@ -377,7 +380,7 @@ export function Deudas() {
     } catch {
       notifyError('Error guardando');
     }
-  };
+  });
 
   const del = id => confirmToast('¿Eliminar esta deuda? También se borra todo su historial.', async () => {
     await eliminarDeuda(id); notifySuccess('Eliminada');
@@ -411,7 +414,7 @@ export function Deudas() {
   });
   const abrirEditarMov = (m) => setModalMov({ id: m.id, tipo: m.tipo, monto: String(m.monto), fecha: m.fecha, nota: m.nota || '', num_cuotas: m.num_cuotas || '' });
 
-  const guardarMov = async () => {
+  const guardarMov = unaVez(async () => {
     const monto = parseFloat(String(modalMov.monto).replace(',','.'));
     if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
     // Solo el abono representa plata real saliendo de una cuenta hoy —
@@ -435,7 +438,7 @@ export function Deudas() {
       setModalMov(null);
       refrescarDetalle(id);
     } catch { notifyError('Error guardando el movimiento'); }
-  };
+  });
 
   const borrarMov = (m) => confirmToast('¿Eliminar este movimiento del historial?', async () => {
     const id = detalle.id;
@@ -450,7 +453,7 @@ export function Deudas() {
     interes_mensual_monto: detalle.interes_mensual_monto ?? '',
   });
 
-  const guardarEditarDeuda = async e => {
+  const guardarEditarDeuda = unaVez(async e => {
     e.preventDefault();
     try {
       await actualizarDeuda(detalle.id, formEditar);
@@ -461,9 +464,9 @@ export function Deudas() {
     } catch {
       notifyError('Error actualizando');
     }
-  };
+  });
 
-  const guardarProgramarPago = async e => {
+  const guardarProgramarPago = unaVez(async e => {
     e.preventDefault();
     const monto = parseFloat(String(formProgramar.monto).replace(',','.'));
     if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
@@ -478,7 +481,7 @@ export function Deudas() {
       const pagos = await getPagosProgramados();
       setPagoProgramado(pagos.find(p => p.deuda_id === detalle.id && p.activo) || null);
     } catch { notifyError('Error programando el pago'); }
-  };
+  });
 
   const cancelarProgramacion = () => confirmToast('¿Cancelar el pago automático de esta deuda?', async () => {
     await eliminarPagoProgramado(pagoProgramado.id);
@@ -773,7 +776,8 @@ export function Metas() {
   const load = () => getMetas().then(setItems).catch(()=>notifyError('Error cargando metas'));
   useEffect(()=>{load();},[]);
 
-  const submit = async e => {
+  const unaVez = useUnaVez(); // evita guardados duplicados por doble toque
+  const submit = unaVez(async e => {
     e.preventDefault();
     try {
       await crearMeta({
@@ -784,9 +788,9 @@ export function Metas() {
       setForm({nombre:'',descripcion:'',monto_objetivo:'',fecha_limite:'',icono:'ti-target'});
       load();
     } catch { notifyError('Error guardando'); }
-  };
+  });
 
-  const confirmarAporte = async () => {
+  const confirmarAporte = unaVez(async () => {
     const abono = parseFloat(String(aporteMonto).replace(',','.'));
     if (!abono || abono <= 0) return notifyError('Ingresa un monto válido');
     if (!aporteMedio) return notifyError('Elige el medio de pago con el que aportaste');
@@ -806,7 +810,7 @@ export function Metas() {
       setModalAporte(null); setAporteMonto(''); setAporteMedio('');
       load();
     } catch { notifyError('Error registrando el aporte'); }
-  };
+  });
 
   const del = id => confirmToast('¿Eliminar esta meta?', async () => { await eliminarMeta(id); notifySuccess('Eliminada'); load(); });
 
@@ -931,7 +935,8 @@ export function Prestamos() {
     setModal(true);
   };
 
-  const submit = async e => {
+  const unaVez = useUnaVez(); // evita guardados duplicados por doble toque
+  const submit = unaVez(async e => {
     e.preventDefault();
     if (!editandoId && !form.medio_pago) return notifyError('Elige con qué medio de pago prestaste');
     try {
@@ -947,7 +952,7 @@ export function Prestamos() {
       setEditandoId(null);
       load();
     } catch { notifyError('Error guardando el préstamo'); }
-  };
+  });
 
   const abrirEditar = (p) => {
     setEditandoId(p.id);
@@ -968,7 +973,7 @@ export function Prestamos() {
     finally { setLoadingDetalle(false); }
   };
 
-  const confirmarAbono = async () => {
+  const confirmarAbono = unaVez(async () => {
     const monto = parseFloat(String(modalAbono.monto).replace(',','.'));
     if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
     if (!modalAbono.medio_pago) return notifyError('Elige el medio de pago con el que te pagaron');
@@ -986,7 +991,7 @@ export function Prestamos() {
       setDetalle(d || null);
       if (d) setMovimientos(await getPrestamoMovimientos(d.id));
     } catch { notifyError('Error registrando el pago'); }
-  };
+  });
 
   const [verPagados, setVerPagados] = useState(false);
 

@@ -12,6 +12,7 @@ import { confirmToast } from '../utils/confirm';
 import Ring from '../components/Ring';
 import Icon from '../utils/icons';
 import confetti from 'canvas-confetti';
+import useUnaVez from '../utils/useUnaVez';
 
 // Selector plano de medio de pago — mismo patrón que en Patrimonio.jsx y
 // Dashboard.jsx (duplicado a propósito, no vale la pena una dependencia
@@ -80,7 +81,8 @@ export default function Tarjetas() {
   const saldoTotal = activas.reduce((a, t) => a + parseFloat(t.saldo_actual || 0), 0);
   const cupoTotalSuma = activas.reduce((a, t) => a + parseFloat(t.cupo_total || 0), 0);
 
-  const submitNueva = async e => {
+  const unaVez = useUnaVez(); // evita guardados duplicados por doble toque
+  const submitNueva = unaVez(async e => {
     e.preventDefault();
     if (!form.medio_pago_vinculado) {
       // Sin vincular es válido (llevarla manual), pero lo confirmamos
@@ -95,7 +97,7 @@ export default function Tarjetas() {
       if (err?.code === '23505') notifyError('Ese medio de pago ya está vinculado a otra tarjeta activa');
       else notifyError('Error guardando la tarjeta');
     }
-  };
+  });
 
   const abrirDetalle = async (t) => {
     setDetalle(t); setLoadingDetalle(true);
@@ -120,7 +122,7 @@ export default function Tarjetas() {
   });
   const abrirEditarMov = (m) => setModalMov({ id: m.id, tipo: m.tipo, monto: String(m.monto), fecha: m.fecha, nota: m.nota || '', num_cuotas: m.num_cuotas || '' });
 
-  const guardarMov = async () => {
+  const guardarMov = unaVez(async () => {
     const monto = parseFloat(String(modalMov.monto).replace(',', '.'));
     if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
     try {
@@ -146,7 +148,7 @@ export default function Tarjetas() {
       setModalMov(null);
       refrescarDetalle(id);
     } catch { notifyError('Error guardando el movimiento'); }
-  };
+  });
 
   const borrarMov = (m) => confirmToast(m.movimiento_id ? '¿Eliminar este movimiento? También se quita de Movimientos y de tu presupuesto.' : '¿Eliminar este movimiento del historial?', async () => {
     const id = detalle.id;
@@ -160,7 +162,7 @@ export default function Tarjetas() {
 
   const abrirPagar = () => setModalPagar(true) || setPagoForm({ monto: '', medio_pago: '', fecha: todayLocalStr() });
 
-  const confirmarPago = async () => {
+  const confirmarPago = unaVez(async () => {
     const monto = parseFloat(String(pagoForm.monto).replace(',', '.'));
     if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
     if (!pagoForm.medio_pago) return notifyError('Elige el medio de pago con el que pagaste');
@@ -171,7 +173,7 @@ export default function Tarjetas() {
       setModalPagar(false);
       refrescarDetalle(detalle.id);
     } catch { notifyError('Error registrando el pago'); }
-  };
+  });
 
   const abrirEditarTarjeta = () => setFormEditar({
     nombre: detalle.nombre, banco: detalle.banco || '', ultimos_digitos: detalle.ultimos_digitos || '',
@@ -180,7 +182,7 @@ export default function Tarjetas() {
     tasa_interes: detalle.tasa_interes ?? '', pago_minimo_pct: detalle.pago_minimo_pct ?? '',
   });
 
-  const guardarEditarTarjeta = async e => {
+  const guardarEditarTarjeta = unaVez(async e => {
     e.preventDefault();
     try {
       await actualizarTarjeta(detalle.id, formEditar);
@@ -192,7 +194,7 @@ export default function Tarjetas() {
       if (err?.code === '23505') notifyError('Ese medio de pago ya está vinculado a otra tarjeta activa');
       else notifyError('Error actualizando');
     }
-  };
+  });
 
   const cerrar = () => confirmToast('¿Cerrar esta tarjeta? Se mantiene todo el historial, pero deja de contar como activa.', async () => {
     await cerrarTarjeta(detalle.id); notifySuccess('Tarjeta cerrada');
@@ -204,7 +206,7 @@ export default function Tarjetas() {
     setDetalle(null); load();
   });
 
-  const guardarProgramarPago = async e => {
+  const guardarProgramarPago = unaVez(async e => {
     e.preventDefault();
     const monto = parseFloat(String(formProgramar.monto).replace(',', '.'));
     if (!monto || monto <= 0) return notifyError('Ingresa un monto válido');
@@ -219,7 +221,7 @@ export default function Tarjetas() {
       const pagos = await getPagosProgramados();
       setPagoProgramado(pagos.find(p => p.tarjeta_id === detalle.id && p.activo) || null);
     } catch { notifyError('Error programando el pago'); }
-  };
+  });
 
   const cancelarProgramacion = () => confirmToast('¿Cancelar el pago automático de esta tarjeta?', async () => {
     await eliminarPagoProgramado(pagoProgramado.id);

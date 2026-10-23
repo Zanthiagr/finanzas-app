@@ -1,10 +1,20 @@
 import { supabase } from './supabase';
 import { parseLocalDate, todayLocalStr, getSemanaDelMes, diaEfectivoPago, CATEGORIA_PAGO_TARJETA, PREFIJO_MEDIO_TARJETA, esMedioTarjeta } from './helpers';
 
-// Helper para obtener el usuario actual
+// Helper para obtener el usuario actual.
+// Se guarda en memoria: antes CADA función de api.js esperaba a
+// supabase.auth.getSession() (que toma un candado interno), y el Dashboard
+// dispara ~10 consultas a la vez que hacían fila en ese candado. El id solo
+// cambia al iniciar/cerrar sesión o cambiar de cuenta — onAuthStateChange
+// lo mantiene al día (solo asigna una variable, sin llamar a Supabase
+// adentro del callback, como recomienda la documentación).
+let _userId = null;
+supabase.auth.onAuthStateChange((_evento, session) => { _userId = session?.user?.id ?? null; });
 const getUserId = async () => {
+  if (_userId) return _userId;
   const { data: { session } } = await supabase.auth.getSession();
-  return session?.user?.id;
+  _userId = session?.user?.id ?? null;
+  return _userId;
 };
 
 // ── MOVIMIENTOS ──────────────────────────────────────────
@@ -73,15 +83,22 @@ export const crearMovimiento = async (mov) => {
     anio_num:    fecha.getFullYear(),
   };
 
-  const { data, error } = await supabase.from('movimientos').insert(payload).select().single();
+  // La búsqueda de la tarjeta vinculada no depende del insert (solo del
+  // medio de pago), así que corre a la vez: en el caso común (sin tarjeta)
+  // se ahorra una ida y vuelta entera a la base de datos.
+  const [{ data, error }, tarjetaId] = await Promise.all([
+    supabase.from('movimientos').insert(payload).select().single(),
+    buscarTarjetaVinculada(userId, medioPago),
+  ]);
   if (error) throw error;
 
-  // Si el medio de pago está vinculado a una tarjeta de crédito, este
-  // gasto (o ingreso, ej. un reembolso) también se refleja en la deuda —
-  // automáticamente, sin que el usuario tenga que ir a Deudas a hacerlo
-  // aparte. El movimiento en sí queda igual (para categorías/reportes);
-  // solo se excluye del cálculo de "capital disponible" (ver getSaldoTotal).
-  await sincronizarCargoTarjeta(userId, medioPago, payload.tipo, payload.monto, payload.fecha, data.id, mov.descripcion || mov.categoria, mov.num_cuotas);
+  // Si este movimiento se pagó con una tarjeta de crédito (elegida
+  // directamente, o por un medio de pago vinculado — método anterior), este
+  // gasto (o ingreso, ej. un reembolso) también se refleja en el historial
+  // de esa tarjeta y su saldo se recalcula, sin ir a Tarjetas aparte. El
+  // movimiento en sí queda igual (para categorías/reportes); solo se excluye
+  // del cálculo de "capital disponible" (ver getSaldoTotal).
+  await sincronizarCargoTarjeta(tarjetaId, payload.tipo, payload.monto, payload.fecha, data.id, mov.descripcion || mov.categoria, mov.num_cuotas);
 
   return data;
 };
@@ -106,8 +123,7 @@ const buscarTarjetaVinculada = async (userId, medioPago) => {
 // cargo/abono correspondiente en el historial de la tarjeta. 'gasto' con
 // esa tarjeta = 'cargo' (aumenta el saldo que debes); 'ingreso' con esa
 // tarjeta = 'abono' (ej. un reembolso reduce el saldo).
-const sincronizarCargoTarjeta = async (userId, medioPago, tipoMov, monto, fecha, movimientoId, nota, numCuotas) => {
-  const tarjetaId = await buscarTarjetaVinculada(userId, medioPago);
+const sincronizarCargoTarjeta = async (tarjetaId, tipoMov, monto, fecha, movimientoId, nota, numCuotas) => {
   if (!tarjetaId) return;
   await crearTarjetaMovimiento({
     tarjeta_id: tarjetaId, tipo: tipoMov === 'ingreso' ? 'abono' : 'cargo',
@@ -145,24 +161,25 @@ export const actualizarMovimiento = async (id, mov) => {
     anio_num:    fecha.getFullYear(),
   };
 
-  // Antes de tocar nada, revisa si este movimiento ya tenía un abono
-  // vinculado a una deuda (creado desde "Abonar" en Dashboard/Patrimonio,
-  // o desde este mismo formulario con la categoría "Deudas") — para
-  // poder recrearlo con los datos nuevos después de actualizar, en vez de
-  // solo borrarlo y dejar la deuda desincronizada del monto/fecha real.
-  const { data: deudaVinculada } = await supabase
-    .from('deuda_movimientos').select('deuda_id, tipo, nota').eq('movimiento_id', id).maybeSingle();
-
-  const { data, error } = await supabase
-    .from('movimientos').update(payload).eq('id', id).select().single();
+  // Todo lo que NO depende de lo demás corre a la vez (antes eran ~5
+  // consultas una tras otra): el update del movimiento, los vínculos que ya
+  // tenía (abono de deuda / cargo de tarjeta) y la tarjeta que le toca ahora.
+  const [{ data, error }, { data: deudaVinculada }, { data: tarjetaVinculada }, tarjetaId] = await Promise.all([
+    supabase.from('movimientos').update(payload).eq('id', id).select().single(),
+    supabase.from('deuda_movimientos').select('id, deuda_id, tipo, nota').eq('movimiento_id', id).maybeSingle(),
+    supabase.from('tarjeta_movimientos').select('id').eq('movimiento_id', id).maybeSingle(),
+    buscarTarjetaVinculada(userId, medioPago),
+  ]);
   if (error) throw error;
 
-  // Si este movimiento ya tenía un cargo vinculado en alguna tarjeta, se
-  // borra (recalcula esa deuda/tarjeta) y se vuelve a evaluar desde cero con los
-  // datos nuevos — más simple y confiable que intentar "actualizar en el
-  // sitio", porque el medio de pago pudo cambiar de tarjeta a efectivo o
-  // viceversa, o pudo cambiar el monto.
-  await borrarCargoVinculado(id);
+  // Los vínculos viejos se borran (recalculando esa deuda/tarjeta) y se
+  // vuelven a crear desde cero con los datos nuevos — más simple y confiable
+  // que "actualizar en el sitio", porque el medio de pago pudo cambiar de
+  // tarjeta a efectivo o viceversa, o pudo cambiar el monto.
+  await Promise.all([
+    deudaVinculada?.id ? eliminarDeudaMovimiento(deudaVinculada.id) : null,
+    tarjetaVinculada?.id ? eliminarTarjetaMovimiento(tarjetaVinculada.id) : null,
+  ]);
 
   if (deudaVinculada) {
     await crearDeudaMovimiento({
@@ -170,7 +187,7 @@ export const actualizarMovimiento = async (id, mov) => {
       fecha: payload.fecha, nota: deudaVinculada.nota, movimiento_id: id,
     });
   }
-  await sincronizarCargoTarjeta(userId, medioPago, payload.tipo, payload.monto, payload.fecha, id, mov.descripcion || mov.categoria, mov.num_cuotas);
+  await sincronizarCargoTarjeta(tarjetaId, payload.tipo, payload.monto, payload.fecha, id, mov.descripcion || mov.categoria, mov.num_cuotas);
 
   return data;
 };
@@ -186,13 +203,14 @@ export const eliminarMovimiento = async (id) => {
 // al hacerlo. Se usa antes de editar o borrar un movimiento, para que el
 // historial nunca quede desincronizado con los gastos reales.
 const borrarCargoVinculado = async (movimientoId) => {
-  const { data: enDeuda } = await supabase
-    .from('deuda_movimientos').select('id').eq('movimiento_id', movimientoId).maybeSingle();
-  if (enDeuda?.id) await eliminarDeudaMovimiento(enDeuda.id);
-
-  const { data: enTarjeta } = await supabase
-    .from('tarjeta_movimientos').select('id').eq('movimiento_id', movimientoId).maybeSingle();
-  if (enTarjeta?.id) await eliminarTarjetaMovimiento(enTarjeta.id);
+  const [{ data: enDeuda }, { data: enTarjeta }] = await Promise.all([
+    supabase.from('deuda_movimientos').select('id').eq('movimiento_id', movimientoId).maybeSingle(),
+    supabase.from('tarjeta_movimientos').select('id').eq('movimiento_id', movimientoId).maybeSingle(),
+  ]);
+  await Promise.all([
+    enDeuda?.id ? eliminarDeudaMovimiento(enDeuda.id) : null,
+    enTarjeta?.id ? eliminarTarjetaMovimiento(enTarjeta.id) : null,
+  ]);
 };
 
 export const getResumen = async ({ mes, anio } = {}) => {
@@ -316,12 +334,11 @@ export const eliminarDeuda = async (id) => {
 // nunca se puede desincronizar (antes 'monto_pagado' se sumaba/restaba a
 // mano en cada acción, sin ningún registro de por qué llegó a ese número).
 const recalcularDeuda = async (deudaId) => {
-  const { data: deuda, error: eDeuda } = await supabase
-    .from('deudas').select('capital_original, monto_total').eq('id', deudaId).single();
+  const [{ data: deuda, error: eDeuda }, { data: movs, error: eMovs }] = await Promise.all([
+    supabase.from('deudas').select('capital_original, monto_total').eq('id', deudaId).single(),
+    supabase.from('deuda_movimientos').select('tipo, monto').eq('deuda_id', deudaId),
+  ]);
   if (eDeuda) throw eDeuda;
-
-  const { data: movs, error: eMovs } = await supabase
-    .from('deuda_movimientos').select('tipo, monto').eq('deuda_id', deudaId);
   if (eMovs) throw eMovs;
 
   const capital = parseFloat(deuda.capital_original ?? deuda.monto_total);
@@ -482,12 +499,11 @@ export const eliminarTarjeta = async (id) => {
 // de bajar (uso normal de una tarjeta), así que no existe "activa=false
 // automático al llegar a 0" — cerrar la tarjeta es una acción manual.
 const recalcularTarjeta = async (tarjetaId) => {
-  const { data: tarjeta, error: eTarjeta } = await supabase
-    .from('tarjetas_credito').select('saldo_inicial').eq('id', tarjetaId).single();
+  const [{ data: tarjeta, error: eTarjeta }, { data: movs, error: eMovs }] = await Promise.all([
+    supabase.from('tarjetas_credito').select('saldo_inicial').eq('id', tarjetaId).single(),
+    supabase.from('tarjeta_movimientos').select('tipo, monto').eq('tarjeta_id', tarjetaId),
+  ]);
   if (eTarjeta) throw eTarjeta;
-
-  const { data: movs, error: eMovs } = await supabase
-    .from('tarjeta_movimientos').select('tipo, monto').eq('tarjeta_id', tarjetaId);
   if (eMovs) throw eMovs;
 
   const sumar = (tipo) => (movs || []).filter(m => m.tipo === tipo).reduce((a, m) => a + parseFloat(m.monto), 0);
@@ -947,34 +963,28 @@ export const getResumenMedioPago = async ({ mes, anio } = {}) => {
 // solo para generar reportes, el saldo real de la persona sigue existiendo.
 export const getSaldoTotal = async () => {
   const userId = await getUserId();
-  const { data, error } = await supabase
-    .from('movimientos')
-    .select('tipo, monto, medio_pago')
-    .eq('usuario_id', userId);
-  if (error) throw error;
 
-  // Medios de pago vinculados a una tarjeta de crédito activa — lo
-  // gastado ahí NO es capital propio saliendo de una cuenta, es plata
-  // prestada. Se excluye por completo del saldo real disponible (el
-  // gasto en sí se sigue contando en categorías/reportes normalmente,
-  // solo no afecta "cuánta plata tengo").
-  const { data: tarjetas } = await supabase
-    .from('tarjetas_credito').select('medio_pago_vinculado')
-    .eq('usuario_id', userId).eq('activa', true).not('medio_pago_vinculado', 'is', null);
-  const mediosTarjeta = new Set((tarjetas || []).map(t => t.medio_pago_vinculado));
-
-  // Capital inicial: dinero que la persona ya tenía antes de empezar a usar
-  // la app (no es un "ingreso" nuevo). Se suma aparte porque vive en su
-  // propia tabla. Si la tabla todavía no existe (falta correr la migración)
-  // se ignora en silencio para no romper el resto del dashboard.
-  let iniciales = [];
-  try {
-    const { data: dataIni, error: errIni } = await supabase
-      .from('saldos_iniciales')
-      .select('medio_pago, monto')
-      .eq('usuario_id', userId);
-    if (!errIni) iniciales = dataIni || [];
-  } catch { /* tabla no existe aún */ }
+  // Las tres consultas son independientes entre sí: antes se esperaban una
+  // detrás de otra (3 idas y vueltas); ahora salen juntas (1).
+  //  - movimientos: todo el historial del usuario.
+  //  - tarjetas con medio de pago vinculado (método anterior): lo gastado
+  //    ahí NO es capital propio saliendo de una cuenta, es plata prestada;
+  //    se excluye del saldo real disponible (el gasto sí se sigue contando
+  //    en categorías/reportes, solo no afecta "cuánta plata tengo").
+  //  - capital inicial: dinero que la persona ya tenía antes de empezar a
+  //    usar la app (no es un "ingreso" nuevo). Si la tabla todavía no
+  //    existe se ignora en silencio para no romper el resto del dashboard.
+  const [resMovs, resTarjetas, resIniciales] = await Promise.all([
+    supabase.from('movimientos').select('tipo, monto, medio_pago').eq('usuario_id', userId),
+    supabase.from('tarjetas_credito').select('medio_pago_vinculado')
+      .eq('usuario_id', userId).eq('activa', true).not('medio_pago_vinculado', 'is', null),
+    Promise.resolve(supabase.from('saldos_iniciales').select('medio_pago, monto').eq('usuario_id', userId))
+      .catch(() => ({ data: null, error: true })),
+  ]);
+  if (resMovs.error) throw resMovs.error;
+  const data = resMovs.data;
+  const mediosTarjeta = new Set((resTarjetas.data || []).map(t => t.medio_pago_vinculado));
+  const iniciales = !resIniciales.error ? (resIniciales.data || []) : [];
 
   const BANCOS_KEYS = ['bancolombia','davivienda','bogota','nequi','daviplata','bbva','occidente','popular','itau','scotiabank','falabella','nu','lulo','otro_banco'];
 
